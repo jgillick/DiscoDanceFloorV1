@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Disco Dance Floor Controller</title>
+	<link rel="stylesheet" type="text/css" href="public/stylesheets/reset.css" /> 
+	<link rel="stylesheet" type="text/css" href="public/stylesheets/preview.css" /> 
+	<script type="text/javascript" src="javascript/frameworks/jquery-2.1.1.js"></script>
+	<script type="text/javascript" src="lib/emulated_floor.js"></script>
+	<script type="text/javascript" src="javascript/preview.js"></script>
+
+	<style id="grid-dimensions"></style>
+	<style id="grid-frame"></style>
+<head>
+<body>
+	
+<div id="preview">
+	<div class="emulator">
+		<table class="grid">
+			<tbody></tbody>
+		</table>
+		<form class="dimensions">
+			<fieldset>
+				<legend>Floor Dimensions</legend>
+				<ul>
+					<li class="x-dimension">
+						<label>
+							<span>X</span>
+							<input type="text" id="floor-max-x" value="" />
+						</label>
+					</li>
+					<li class="y-dimension">
+						<label>
+							<span>Y</span>
+							<input type="text" id="floor-max-y" value="" />
+						</label>
+					</li>
+				</ul>
+			</fieldset>
+		</form>
+	</div>
+	<section class="programs">
+		<h1>Programs</h1>
+		<select id="program-list" multiple></select>
+		<div class="description"></div>
+		<div class="actions">
+			<button>New</button>
+			<button disabled>Edit</button>
+		</div>
+	</section>
+</div>
+</body>
+</html>

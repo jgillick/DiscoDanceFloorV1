@@ -1,0 +1,12 @@
+{
+  "name": "disco-floor-controller",
+  "description": "The controller for a step responsive disco dance floor",
+  "version": "0.0.1",
+  "main": "index.html",
+  "node-main": "app.js",
+  "dependencies": {
+  	"bluebird": "*",
+  	"pubsub-js": "*",
+  	"underscore": "*"
+  }
+}

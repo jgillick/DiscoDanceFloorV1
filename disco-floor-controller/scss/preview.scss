@@ -1,0 +1,108 @@
+body {
+	font: normal 14px 'Helvetica Neue', Helvetica, Arial;
+	background: #999;
+}
+
+#preview {
+
+	.emulator {
+		position: absolute;
+		top: 0; bottom: 0;
+		left: 0; right: 200px;
+		padding: 2px 2px 42px 2px;
+
+		.dimensions {
+			position: absolute;
+			bottom: 0;
+			left: 0; right: 0;
+			height: 40px;
+			background: #333;
+			box-shadow: 0 -3px 14px 0px #666;
+
+			fieldset {
+				border: none;
+				padding: 0;
+				text-align: center;
+
+				legend {
+					display: none;
+				}
+				ul {
+					list-style-type: none;
+					padding: 0;
+					margin: 0;
+					li {
+						display: inline-block;
+						padding: 5px 3px;
+
+						span {
+							display: none;
+						}
+						input {
+							width: 2em;
+							font-size: 14px;
+							text-align: center;
+							border-radius: 5px;
+						}
+					}
+				}
+				.x-dimension label:after {
+					padding-left: 5px;
+					content: 'x';
+					color: #ddd;
+				}
+			}
+		}
+	}
+	.grid {
+		box-sizing: border-box;
+		border-collapse: collapse;
+		margin: 0 auto;
+		background: #fff;
+
+		td {
+			background: rgba(0, 0, 0, 0.05);
+			border: 2px solid #dedede;
+			cursor: url(../../images/shoe_small.png) 10 15, auto; 
+
+			&:hover {
+				opacity: 0.9;
+			}
+		}
+	}
+	.programs {
+		position: fixed;
+		top: 0;
+		right: 0;
+		width: 200px;
+		height: 100%;
+		background: #dedede;
+		padding: 10px;
+		box-shadow: -3px 0px 14px 0px #666;
+		box-sizing: border-box;
+
+		h1 {
+			margin: 10px 0;
+			font-size: 18px;
+			text-align: center;
+		}
+
+		select {
+			border: none;
+			outline: none;
+			width: 100%;
+			font-size: 14px;
+			font-family: inherit;
+
+			option {
+				padding: 5px;
+			}
+		}
+		.actions {
+			position: absolute;
+			bottom: 2.5em;
+			left: 0; right: 0;
+			text-align: center;
+		}
+	} 
+}
