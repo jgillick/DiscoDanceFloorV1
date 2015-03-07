@@ -17,10 +17,6 @@ TestMaster::TestMaster(MessageBuffer *rx, MessageBuffer *tx, SoftwareSerial *ser
 void TestMaster::setup() {
   Serial.println("I'm the master, bitch!");
 
-// #ifdef __AVR_ATmega2560__   
-//   Serial1.begin(4800);
-// #endif
-
   myAddress       = MASTER_ADDRESS;
   lastNodeAddress = myAddress;
   txBuffer->setMyAddress(myAddress);
@@ -188,7 +184,7 @@ void TestMaster::programDiffColors() {
   long now = millis();
 
   // Shift colors
-  if (txBuffer->sentAt + 500 < now) {
+  if (txBuffer->sentAt + 250 < now) {
     uint8_t led = prog0lastLED++;
     uint8_t color[3] = {0,0,0};
 

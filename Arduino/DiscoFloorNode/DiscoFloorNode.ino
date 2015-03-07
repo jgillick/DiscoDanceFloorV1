@@ -40,8 +40,8 @@ void setup() {
   digitalWrite(TX_CONTROL, RS485Receive);
   
   // Init serial communication
-  Serial.begin(4800);
-  debugSerial.begin(4800);
+  Serial.begin(9600);
+  debugSerial.begin(9600);
 
   // This is the master node
   pinMode(ENABLE_MASTER, INPUT);
