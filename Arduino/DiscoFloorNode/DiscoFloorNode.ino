@@ -85,18 +85,13 @@ void processMessage() {
     setAddress();
   } 
 
-  // Process ACK
-  else if (rxBuffer.type == TYPE_ACK) {
-    processACK();
-  }
-
   // Messages to Master
   else if (rxBuffer.addressedToMaster()) {
     masterMessage();
   }
 
   // Addressed to us
-  else {
+  else if (rxBuffer.addressedToMe()){
     myMessage();
   }
 
@@ -117,8 +112,12 @@ void processACK() {
 
 // Process messages addressed to me
 void myMessage() {
-  debugSerial.println(F("Received message"));
+  // debugSerial.println(F("Received message"));
+
   switch(rxBuffer.type) {
+    case TYPE_ACK:
+      processACK();
+    break;
     case TYPE_COLOR:
       setColor();
     break;
@@ -159,13 +158,12 @@ void setColor() {
 void setAddress() {
   int enabled = digitalRead(ENABLE_NODE);
 
-  debugSerial.println(F("Set address"));
-  if (enabled != HIGH) debugSerial.println(F("Node not enabled"));
-  if (rxBuffer.type != TYPE_ADDR) debugSerial.println(F("Not setting address"));
+  // debugSerial.println(F("Set address"));
+  // if (enabled != HIGH) debugSerial.println(F("Node not enabled"));
+  // if (rxBuffer.type != TYPE_ADDR) debugSerial.println(F("Not setting address"));
 
   // Just enabled, clear RX and wait for next address (in case current RX is stale)
   if (enabled == HIGH && enabledState == false) {
-    debugSerial.println(F("Enabled and waiting for fresh address"));
     rxBuffer.reset();
     enabledState = true;
   }
