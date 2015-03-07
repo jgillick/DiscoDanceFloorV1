@@ -1,41 +1,5 @@
 /*
-  Code for a single dance floor node. It handles
-  sending and receiving message via RS485 to and 
-  from the master node.
-
-  For a simple setup, you can add an additional node
-  as master. Just set pin 5 on that node high and it 
-  will act as master using the TestMaster code.
-
-  Wiring:
-  =======
-
-  Arduino
-  --------
-  0:   To pin 1 of RS485 chip (RO)
-  1:   To pin 4 of RS485 chip (DI)
-  2:   To '-' for nodes, '+' for master
-  4:   To pin 6 of next node
-  6:   From pin 4 of the previous node or master
-  7:   To blue pin of RGB LED
-  8:   To red pin of RGB LED
-  9:   To green pin of RGB LED
-  10:  To both TX/RX enable pins of RS485 chip (pins 2 & 3)
-  12:  (master only, optional) Attach to pin 13 of either node to receive debugging statements
-  13:  (optional) Attach to master's pin 12, for debugging statements.
-
-  RS485 chip (MAX485 or ISL8487E)
-  -------------------------------
-  Wire pins 2 & 3 together and then to pin 10 of floor node. 
-
-  1:   To pin 0 (RX) of floor node
-  2:   To pin 10 of floor node
-  3:   To pin 10 of floor node
-  4:   To pin 1 (TX) of floor node
-  5:   To 5V
-  6:   Bus A/Y
-  7:   Bus B/Z
-  8:   To common
+  See README for description and pin assignment
 */
 
 // #include <HardwareSerial_RS485.h>
