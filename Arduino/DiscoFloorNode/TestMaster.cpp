@@ -166,7 +166,7 @@ void TestMaster::programSameColor() {
   long now = millis();
 
   // Change LED color
-  if (txBuffer->sentAt + 2000 < now) {
+  if (txBuffer->sentAt + 1000 < now) {
     uint8_t color[3] = {0,0,0};
     color[prog0lastLED] = 1;
 
@@ -188,7 +188,7 @@ void TestMaster::programDiffColors() {
   long now = millis();
 
   // Shift colors
-  if (txBuffer->sentAt + 2000 < now) {
+  if (txBuffer->sentAt + 500 < now) {
     uint8_t led = prog0lastLED++;
     uint8_t color[3] = {0,0,0};
 
@@ -206,7 +206,6 @@ void TestMaster::programDiffColors() {
       txBuffer->type = TYPE_COLOR;
       txBuffer->write(color, 3);
       txBuffer->send();
-      delay(20);
 
       // Update color index
       led = wrap(led, 2);

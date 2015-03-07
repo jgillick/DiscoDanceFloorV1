@@ -16,7 +16,7 @@
 #include "Constants.h"
 
 #define ADDRESSING_TIMEOUT  10000
-#define PROGRAM_TIMEOUT     5000
+#define PROGRAM_TIMEOUT     10000
 #define PROGRAM_MAX         1
 
 class TestMaster {
