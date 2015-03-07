@@ -118,9 +118,9 @@ uint8_t MessageBuffer::processHeader() {
   }
 
   // Is not addressed to us or MASTER
-  if (!addressedToMe() && !addressedToMaster()) {
-    return messageState = MSG_STATE_ABT;
-  }
+  // if (!addressedToMe() && !addressedToMaster()) {
+  //   return messageState = MSG_STATE_ABT;
+  // }
 
   // Reset buffer and prepare to process message
   bufferPos = 0;
@@ -213,7 +213,6 @@ uint8_t MessageBuffer::send() {
 
   // Start sending
   digitalWrite(txControl, RS485Transmit);
-  delay(10);
 
   Serial.print(MSG_SOM); sent++;
 
@@ -248,7 +247,6 @@ uint8_t MessageBuffer::send() {
 
   // Set back to receive
   digitalWrite(txControl, RS485Receive);
-  delay(10);
 
   // Serial.print("Type: ");
   // Serial.write((char)type);
