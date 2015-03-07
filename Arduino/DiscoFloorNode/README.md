@@ -43,6 +43,9 @@ Wire pins 2 & 3 together and then to pin 10 of floor node.
 8:   To common
 ```
 
+I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816) chip 
+which is pin compatible with MAS485, but cheaper.
+
 Debugging
 =========
 All nodes output serial debugging statements to pin 13 (4800 baud). If pin 12 of the master node is
