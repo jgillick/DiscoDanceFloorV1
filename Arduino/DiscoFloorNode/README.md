@@ -9,10 +9,9 @@ by bringing pin 5 high. This node will then run the network through
 a node registration and a series of simple programs.
 
 Wiring
-=======
+------
 
-Arduino
---------
+### Arduino
 
 ```
 0:   To pin 1 of RS485 chip (RO)
@@ -28,8 +27,9 @@ Arduino
 13:  (optional) Attach to master's pin 12, for debugging statements.
 ```
 
-RS485 chip (MAX485 or ISL8487E)
--------------------------------
+
+### RS485 chip (MAX485 or ISL8487E)
+
 Wire pins 2 & 3 together and then to pin 10 of floor node. 
 
 ```
@@ -47,7 +47,7 @@ I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL84
 which is pin compatible with MAS485, but cheaper.
 
 Test Master Flow
-================
+----------------
 
 1. Enable first floor node (pin 4 HIGH)
 2. Ask for the node's address (repeat message after ACK_TIMEOUT)
@@ -61,6 +61,6 @@ Test Master Flow
 
 
 Debugging
-=========
+---------
 All nodes output serial debugging statements to pin 13 (4800 baud). If pin 12 of the master node is
 connected to this pin, it will dump these statements out to serial.
