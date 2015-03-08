@@ -51,12 +51,18 @@ Test Master Flow
 1. Enable first floor node (pin 4 HIGH)
 2. Ask for the node's address (repeat message after ACK_TIMEOUT)
 3. When node responds with address, respond with ACK. Node will then enable the next node.
-4. Repeat steps 3 & 4 until no more nodes respond for 10 seconds (defined by ADDRESSING_TIMEOUT)
-5. Run programs, switching every 10 seconds (defined by PROGRAM_TIMEOUT):
+4. Repeat steps 3 & 4 until no more nodes respond for 5 seconds (defined by ADDRESSING_TIMEOUT)
+5. Get status of all nodes
+  1. Send global (*) request for node status.
+  2. Each node responds with current state: current color, is fading (1 or 0), and if sensor detects person (1 or 0)
+  3. If the repsonse chain fails for some reason (i.e. node 3 doesn't respond), master sends another status
+     request for all nodes from that node forward (3-*).
+  4. If still no status response from the same node, move to the next node forward (4-*)
+6. Run programs, switching every 10 seconds (defined by PROGRAM_TIMEOUT):
   1. Color program: Sets ALL LEDs to a single solid color.
   2. Differnet color program: Sets all LEDs to different solid colors.
   3. Fade program: Fade all LEDs to different colors.
-  4. Repeat programs 1 - 3.
+  4. Repeat
 
 
 Debugging
