@@ -4,6 +4,11 @@
 #define TYPE_ADDR         0x02 // Announce address
 #define TYPE_COLOR        0x04 // Set color
 #define TYPE_FADE         0x05 // Set fade
+#define TYPE_STATUS       0x06 // Set or Get node status
+
+// Flags
+#define FADING           B001
+#define SENSOR_DETECT    B010
 
 // PINS
 #define ENABLE_MASTER    2

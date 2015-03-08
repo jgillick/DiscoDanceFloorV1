@@ -1,12 +1,12 @@
 #include "TestMaster.h"
 
 TestMaster::TestMaster(MessageBuffer *rx, MessageBuffer *tx, SoftwareSerial *serial) {
-  rxBuffer = rx;
-  txBuffer = tx;
+  stage       = ADDRESSING;
+  rxBuffer    = rx;
+  txBuffer    = tx;
   debugSerial = serial;
 
   myAddress        = 1;
-  isAddressing     = true;
   programTime      = 0;
   currentProgram   = 0;
   lastAddrRXTime   = millis();
@@ -15,10 +15,11 @@ TestMaster::TestMaster(MessageBuffer *rx, MessageBuffer *tx, SoftwareSerial *ser
 }
 
 void TestMaster::setup() {
-  Serial.println("I'm the master, bitch!");
+  Serial.println(F("I'm the master, bitch!"));
 
-  myAddress       = MASTER_ADDRESS;
-  lastNodeAddress = myAddress;
+  myAddress        = MASTER_ADDRESS;
+  firstNodeAddress = 0;
+  lastNodeAddress  = myAddress;
   txBuffer->setMyAddress(myAddress);
   rxBuffer->setMyAddress(myAddress);
 
@@ -31,86 +32,58 @@ void TestMaster::setup() {
 
 void TestMaster::loop() {
   long now = millis();
+  rxBuffer->read();
 
   // Print Debug
   if (debugSerial->available()) {
     char c;
     delay(100);
-    Serial.print("#: ");
+    Serial.print(F("#: "));
     while(debugSerial->available()) {
       if (c == '\n') {
-        Serial.print("#: ");
+        Serial.print(F("#: "));
       }
       c = debugSerial->read();
       Serial.print(c);
     }
-    if (c != '\n') Serial.print("\n");
+    if (c != '\n') Serial.print(F("\n"));
   }
 
-  // Done waiting for addresses
-  if (isAddressing && lastAddrRXTime > 0 && lastAddrRXTime + ADDRESSING_TIMEOUT < now) {
-    Serial.println("Done addressing");
-    Serial.print(lastNodeAddress - myAddress);
-    Serial.println(" node(s) found");
-    isAddressing = false; 
-
-    if (lastNodeAddress == myAddress) {
-      Serial.println("No nodes detected");
-    }
+  // Process stage
+  switch(stage) {
+    case ADDRESSING:
+      addressing(now);
+    break;
+    case GET_STATUS:
+      getNodeStatus(now);
+    break;
+    case RUN_PROGRAM:
+      runPrograms(now);
+    break;
   }
 
-  // Message received from the bus
-  if (rxBuffer->read() == MSG_STATE_RDY) {
-    processMessage();
-  }
-
-  // Send last address
-  if (isAddressing && txBuffer->sentAt > 0 && now > txBuffer->sentAt + ACK_TIMEOUT) {
-    txBuffer->send();
-  }
-
-  // Run programs
-  if (!isAddressing && lastNodeAddress > myAddress) {
-    runPrograms(now);
-  }
-}
-
-void TestMaster::sendAddress (){
-  txBuffer->start();
-  txBuffer->setDestAddress(MSG_ALL);
-  txBuffer->type = TYPE_ADDR;
-  txBuffer->write(lastNodeAddress);
-  txBuffer->send();
-}
-
-void TestMaster::sendACK(uint8_t addr) {
-  Serial.print("Sending ACK to node ");
-  Serial.println(addr);
-  delay(50);
-
-  txBuffer->start();
-  txBuffer->setDestAddress(addr);
-  txBuffer->type = TYPE_ACK;
-  txBuffer->write(myAddress);
-  txBuffer->send();
-}
-
-void TestMaster::processMessage() {
-
-  // Not addressed to me
-  if (!rxBuffer->addressedToMe()) {
+  // Reset last received message
+  if (rxBuffer->getState() == MSG_STATE_RDY) {
     rxBuffer->reset();
-    return;
   }
-    
-  // Register Latest address
-  if (rxBuffer->type == TYPE_ADDR) {
-    uint8_t addr = (uint8_t)rxBuffer->getBody()[0];
+}
+
+void TestMaster::addressing(long now) {
+  uint8_t addr;
+
+  // Register new address
+  if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->type == TYPE_ADDR) {
+    addr = (uint8_t)rxBuffer->getBody()[0];
 
     // New address must be bigger than the last registered address
     if (addr > lastNodeAddress) {
-      Serial.print("Add node at address ");
+      Serial.print(F("Add node at address "));
       Serial.println(addr);
+
+      if (!firstNodeAddress) {
+        firstNodeAddress = addr;
+      }
+
       lastNodeAddress = addr;
       sendACK(addr);
       delay(50);
@@ -120,14 +93,135 @@ void TestMaster::processMessage() {
       lastAddrRXTime = millis();
     } 
     else {
-      Serial.print("Invalid address: "); 
+      Serial.print(F("Invalid address: ")); 
       Serial.print(addr);
-      Serial.print(" < ");
+      Serial.print(F(" < "));
       Serial.println(lastNodeAddress); 
     }
   }
 
-  rxBuffer->reset();
+  // Done waiting for addresses
+  if (lastAddrRXTime > 0 && lastAddrRXTime + ADDRESSING_TIMEOUT < now) {
+    Serial.println(F("Done addressing"));
+    Serial.print(lastNodeAddress - myAddress);
+    Serial.println(F(" node(s) found"));
+    
+    if (!firstNodeAddress) {
+      Serial.println(F("No nodes detected"));
+      goIdle();
+    } else {
+      nextStage();
+    }
+  }
+
+  // Resend last address
+  else if (txBuffer->sentAt > 0 && now > txBuffer->sentAt + ACK_TIMEOUT) {
+    txBuffer->send();
+  }
+}
+
+void TestMaster::sendAddress(){
+  txBuffer->start(TYPE_ADDR);
+  txBuffer->setDestAddress(MSG_ALL);
+  txBuffer->write(lastNodeAddress);
+  txBuffer->send();
+}
+
+void TestMaster::sendACK(uint8_t addr) {
+  Serial.print(F("Sending ACK to node "));
+  Serial.println(addr);
+  delay(50);
+
+  txBuffer->start(TYPE_ACK);
+  txBuffer->setDestAddress(addr);
+  txBuffer->write(myAddress);
+  txBuffer->send();
+}
+
+void TestMaster::goIdle() {
+  stage = IDLE;
+}
+
+// Move to the next stage in the program (1. addressing -> 2. get status -> 3. run program -> (repeat 2 & 3))
+void TestMaster::nextStage() {
+  Serial.print(F("Move to next stage: "));
+
+  switch(stage) {
+    case ADDRESSING:
+    case RUN_PROGRAM:
+      statusTries = 0;
+      lastStatusAddr = MASTER_ADDRESS;
+      lastStatusTXTime = 0;
+      txBuffer->reset();
+      stage = GET_STATUS;
+
+      Serial.println(F("GET NODE STATUS"));
+    break;
+    case GET_STATUS:
+      stage = RUN_PROGRAM;
+      Serial.println(F("RUN PROGRAMS"));
+    break;
+  }
+}
+
+void TestMaster::getNodeStatus(long now) {
+
+  // All statuses received
+  if (lastStatusAddr == lastNodeAddress) {
+    Serial.println(F("Done getting status"));
+    nextStage();
+  }
+
+  // Register status
+  else if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->type == TYPE_STATUS) {
+    Serial.print(F("Got status from "));
+    Serial.println(rxBuffer->getSourceAddress());
+
+    if (rxBuffer->getSourceAddress() > lastStatusAddr) {
+      statusTries = 0;
+      lastStatusAddr = rxBuffer->getSourceAddress();
+      lastStatusTXTime = now;
+    } else {
+      Serial.println(F("Invalid status address"));
+    }
+  }
+
+  // Send request for status
+  else if (now > lastStatusTXTime + ACK_TIMEOUT) {
+    sendStatusRequest(now);
+  }
+}
+
+void TestMaster::sendStatusRequest(long now) {
+
+  // Try from the next node forward
+  if (statusTries >= 2) {
+
+    // We're out of nodes
+    if (lastStatusAddr + 1 >= lastNodeAddress) {
+      Serial.println(F("No more nodes to get status from"));
+      nextStage();
+      return;
+    }
+    else {
+      Serial.print(F("No status received from "));
+      Serial.print(lastStatusAddr + 1);
+      Serial.println(F(", moving on"));
+
+      lastStatusAddr++;
+      statusTries = 0;
+    }
+  }
+
+  Serial.print(F("Get status starting from "));
+  Serial.println(lastStatusAddr + 1);
+
+  txBuffer->start(TYPE_STATUS);
+  txBuffer->setDestAddress(lastStatusAddr + 1, '*');
+  txBuffer->send();
+
+  lastStatusTXTime = now;
+  statusTries++;
 }
 
 void TestMaster::runPrograms(long now) {
@@ -137,13 +231,13 @@ void TestMaster::runPrograms(long now) {
 
     // First program to run
     if (programTime == 0) {
-      Serial.print("Running program: ");
+      Serial.print(F("Running program: "));
       Serial.println(currentProgram);
     }
     // Move to next program
     else {
       currentProgram = wrap(++currentProgram, PROGRAM_NUM - 1);
-      Serial.print("Update to program: ");
+      Serial.print(F("Update to program: "));
       Serial.println(currentProgram);
     } 
 
@@ -172,12 +266,11 @@ void TestMaster::programSameColor(long now) {
     uint8_t color[3] = {0,0,0};
     color[prog0lastLED] = 255;
 
-    Serial.print("Set Same LED ");
+    Serial.print(F("Set Same LED "));
     Serial.println(prog0lastLED);
 
-    txBuffer->start();
+    txBuffer->start(TYPE_COLOR);
     txBuffer->setDestAddress(MSG_ALL);
-    txBuffer->type = TYPE_COLOR;
     txBuffer->write(color, 3);
     txBuffer->send();
 
@@ -199,12 +292,11 @@ void TestMaster::programDiffColors(long now) {
       color[2] = 0;
       color[led++] = 255;
 
-      Serial.print("Set Different LEDs");
+      Serial.print(F("Set Different LEDs"));
       Serial.println(prog0lastLED);
 
-      txBuffer->start();
+      txBuffer->start(TYPE_COLOR);
       txBuffer->setDestAddress(i);
-      txBuffer->type = TYPE_COLOR;
       txBuffer->write(color, 3);
       txBuffer->send();
 
@@ -237,16 +329,15 @@ void TestMaster::programFadeColors(long now) {
         data[rgbSelect] = random(0, maxValue);
       }
 
-      Serial.print("Send Fade to ");
-      Serial.print(i); Serial.print(": ");
+      Serial.print(F("Send Fade to "));
+      Serial.print(i); Serial.print(F(": "));
       Serial.print(data[0]); Serial.print(F(","));
       Serial.print(data[1]); Serial.print(F(",")); 
       Serial.print(data[2]); 
       Serial.println(F(" in 1000ms")); 
 
-      txBuffer->start();
+      txBuffer->start(TYPE_FADE);
       txBuffer->setDestAddress(i);
-      txBuffer->type = TYPE_FADE;
       txBuffer->write(data, 4);
       txBuffer->send();
     }

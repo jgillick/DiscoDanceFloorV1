@@ -122,6 +122,14 @@ void myMessage() {
     case TYPE_FADE:
       handleFadeMessage();
     break;
+    case TYPE_STATUS:
+      if (rxBuffer.getLowerDestRange() == myAddress) {
+        debugSerial.println(F("Send Status (direct address)"));
+        sendStatus();
+      } else if (rxBuffer.getLowerDestRange() < myAddress){
+        debugSerial.println(F("Status: Not my turn yet"));
+      }
+    break;
     case TYPE_ADDR:
       // If master reports our address, enable the next node (in case we didn't hear the ACK)
       if (txBuffer.type == TYPE_ADDR && needsAck == true && rxBuffer.getBody()[0] == myAddress) {
@@ -135,6 +143,37 @@ void myMessage() {
 
 // Observe any messages are going to master
 void masterMessage() {
+
+  switch(rxBuffer.type) {
+
+    // If the previous node sent it's status to mater, send ours next.
+    case TYPE_STATUS:
+      debugSerial.print(F("Observed status sent to master for "));
+      debugSerial.println(rxBuffer.getSourceAddress());
+      if (rxBuffer.getSourceAddress() + 1 == myAddress) {
+        debugSerial.println(F("Send Status (from queue)"));
+        sendStatus();
+      }
+    break;
+  }
+}
+
+// Send node status to master
+void sendStatus() {
+  uint8_t flag = 0;
+
+  // Define cell flags
+  if (isFading()) {
+    flag |= FADING;
+  }
+
+  txBuffer.start(TYPE_STATUS);
+  txBuffer.setDestAddress(MASTER_ADDRESS);
+  txBuffer.write(flag);
+  txBuffer.write(rgb[0].get_value());
+  txBuffer.write(rgb[1].get_value());
+  txBuffer.write(rgb[2].get_value());
+  txBuffer.send();
 }
 
 // Set the LED color
@@ -221,9 +260,8 @@ void setAddress() {
       rxBuffer.setMyAddress(myAddress);
 
       // Announce address to master
-      txBuffer.start();
+      txBuffer.start(TYPE_ADDR);
       txBuffer.setDestAddress(MASTER_ADDRESS);
-      txBuffer.type = TYPE_ADDR;
       txBuffer.write(myAddress);
       txBuffer.send();
 
@@ -239,6 +277,10 @@ void updateLEDs() {
   rgb[0].update();
   rgb[1].update();
   rgb[2].update();
+}
+
+bool isFading() {
+  return rgb[0].is_fading() || rgb[1].is_fading() || rgb[2].is_fading();
 }
 
 void setColor(uint8_t red, uint8_t green, uint8_t blue) {

@@ -15,19 +15,29 @@
 #include "MessageBuffer.h"
 #include "Constants.h"
 
-#define ADDRESSING_TIMEOUT  10000
+#define ADDRESSING_TIMEOUT  5000
 #define PROGRAM_TIMEOUT     10000
 #define PROGRAM_NUM         3
+
+// Program stages
+#define IDLE                0x00
+#define ADDRESSING          0x01
+#define GET_STATUS          0x02
+#define RUN_PROGRAM         0x03
 
 class TestMaster {
 private:
 
-  bool     isAddressing;
-  uint8_t  myAddress,
+  uint8_t  stage,
+           myAddress,
+           firstNodeAddress,
            lastNodeAddress,
-           currentProgram;
+           currentProgram,
+           lastStatusAddr,
+           statusTries;
   long     programTime,
-           lastAddrRXTime;
+           lastAddrRXTime,
+           lastStatusTXTime;
 
   uint8_t  prog0lastLED;
 
@@ -36,8 +46,14 @@ private:
   SoftwareSerial *debugSerial;
 
   void processMessage();
+  void addressing(long);
   void sendAddress();
-  void sendACK(uint8_t addr);
+  void sendACK(uint8_t);
+  void goIdle();
+  void nextStage();
+
+  void getNodeStatus(long);
+  void sendStatusRequest(long);
 
   void runPrograms(long);
   void programSameColor(long);
