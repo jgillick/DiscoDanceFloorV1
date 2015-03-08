@@ -35,7 +35,9 @@ private:
            currentProgram,
            lastStatusAddr,
            statusTries;
+
   long     programTime,
+           programTXTime,
            lastAddrRXTime,
            lastStatusTXTime;
 

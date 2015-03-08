@@ -37,7 +37,7 @@ void TestMaster::loop() {
   // Print Debug
   if (debugSerial->available()) {
     char c;
-    delay(100);
+    delay(10);
     Serial.print(F("#: "));
     while(debugSerial->available()) {
       if (c == '\n') {
@@ -130,7 +130,6 @@ void TestMaster::sendAddress(){
 void TestMaster::sendACK(uint8_t addr) {
   Serial.print(F("Sending ACK to node "));
   Serial.println(addr);
-  delay(50);
 
   txBuffer->start(TYPE_ACK);
   txBuffer->setDestAddress(addr);
@@ -153,8 +152,8 @@ void TestMaster::nextStage() {
       lastStatusAddr = MASTER_ADDRESS;
       lastStatusTXTime = 0;
       txBuffer->reset();
-      stage = GET_STATUS;
 
+      stage = GET_STATUS;
       Serial.println(F("GET NODE STATUS"));
     break;
     case GET_STATUS:
@@ -199,7 +198,6 @@ void TestMaster::sendStatusRequest(long now) {
 
     // We're out of nodes
     if (lastStatusAddr + 1 >= lastNodeAddress) {
-      Serial.println(F("No more nodes to get status from"));
       nextStage();
       return;
     }
@@ -212,9 +210,6 @@ void TestMaster::sendStatusRequest(long now) {
       statusTries = 0;
     }
   }
-
-  Serial.print(F("Get status starting from "));
-  Serial.println(lastStatusAddr + 1);
 
   txBuffer->start(TYPE_STATUS);
   txBuffer->setDestAddress(lastStatusAddr + 1, '*');
@@ -241,8 +236,8 @@ void TestMaster::runPrograms(long now) {
       Serial.println(currentProgram);
     } 
 
+    programTXTime = 0;
     programTime = millis();
-    txBuffer->reset();
   }
 
   // Select program
@@ -257,12 +252,14 @@ void TestMaster::runPrograms(long now) {
       programFadeColors(now);
     break;
   }
+
+  nextStage();
 }
 
 void TestMaster::programSameColor(long now) {
 
   // Change LED color
-  if (txBuffer->sentAt + 1000 < now) {
+  if (programTXTime + 1000 < now) {
     uint8_t color[3] = {0,0,0};
     color[prog0lastLED] = 255;
 
@@ -273,6 +270,7 @@ void TestMaster::programSameColor(long now) {
     txBuffer->setDestAddress(MSG_ALL);
     txBuffer->write(color, 3);
     txBuffer->send();
+    programTXTime = now;
 
     // Update color index
     prog0lastLED = wrap(++prog0lastLED, 2);
@@ -282,7 +280,7 @@ void TestMaster::programSameColor(long now) {
 void TestMaster::programDiffColors(long now) {
 
   // Shift colors
-  if (txBuffer->sentAt + 250 < now) {
+  if (programTXTime + 250 < now) {
     uint8_t led = prog0lastLED++;
     uint8_t color[3] = {0,0,0};
 
@@ -299,6 +297,7 @@ void TestMaster::programDiffColors(long now) {
       txBuffer->setDestAddress(i);
       txBuffer->write(color, 3);
       txBuffer->send();
+      programTXTime = now;
 
       // Update color index
       led = wrap(led, 2);
@@ -314,7 +313,7 @@ void TestMaster::programFadeColors(long now) {
       rgbSelect;
 
   // Change colors
-  if (txBuffer->sentAt + 1000 < now) {
+  if (programTXTime + 1000 < now) {
 
     for (uint8_t i = myAddress + 1; i <= lastNodeAddress; i++) {
       data[0] = 0;
@@ -341,5 +340,7 @@ void TestMaster::programFadeColors(long now) {
       txBuffer->write(data, 4);
       txBuffer->send();
     }
+
+    programTXTime = now;
   }
 }
