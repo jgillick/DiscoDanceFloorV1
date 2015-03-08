@@ -30,7 +30,9 @@ Wiring
 
 ### RS485 chip (MAX485 or ISL8487E)
 
-Wire pins 2 & 3 together and then to pin 10 of floor node. 
+I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816) chip 
+which is pin compatible with MAS485, but cheaper. Both pins 2 and 3 (RE & DE) can be wired together and then connected
+to pin 7 of the floor node.
 
 ```
 1:   To pin 0 (RX) of floor node
@@ -42,9 +44,6 @@ Wire pins 2 & 3 together and then to pin 10 of floor node.
 7:   Bus B/Z
 8:   To common
 ```
-
-I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816) chip 
-which is pin compatible with MAS485, but cheaper.
 
 Test Master Flow
 ----------------
