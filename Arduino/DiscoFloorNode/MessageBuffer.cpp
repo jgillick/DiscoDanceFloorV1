@@ -7,6 +7,10 @@ MessageBuffer::MessageBuffer(uint8_t txCntl) {
   reset();
 }
 
+void MessageBuffer::start(uint8_t messageType) {
+  start();
+  type = messageType;
+}
 void MessageBuffer::start() {
   // Serial.println("RESET");
   messageState = MSG_STATE_IDL;
@@ -33,6 +37,10 @@ void MessageBuffer::setMyAddress(uint8_t addr) {
   myAddress = addr;
 }
 
+uint8_t MessageBuffer::getSourceAddress() {
+  return srcAddress;
+}
+
 void MessageBuffer::setDestAddress(uint8_t start, uint8_t end) {
   messageState = MSG_STATE_ACT;
   addressDestRange[0] = start;
@@ -42,8 +50,12 @@ void MessageBuffer::setDestAddress(uint8_t addr) {
   setDestAddress(addr, addr);
 }
 
-uint8_t* MessageBuffer::getDestRange() {
-  return addressDestRange;
+uint8_t MessageBuffer::getLowerDestRange() {
+  return addressDestRange[0];
+}
+
+uint8_t MessageBuffer::getUpperDestRange() {
+  return addressDestRange[1];
 }
 
 bool MessageBuffer::addressedToMe() {
@@ -110,8 +122,8 @@ uint8_t MessageBuffer::processHeader() {
   }
 
   // Source address
-  if (buffer[headerPos] != 0) {
-    srcAddress = 0;
+  if (headerPos < bufferPos) {
+    srcAddress = buffer[headerPos];
   }
   else {
     srcAddress = MASTER_ADDRESS;

@@ -105,8 +105,14 @@ class MessageBuffer {
     // Get the current state of reading the incoming message
     uint8_t getState();
 
-    // Get the destination address range for this message
-    uint8_t* getDestRange();
+    // Get the address the message is from
+    uint8_t getSourceAddress();
+
+    // Get the lower end of the destination range
+    uint8_t getLowerDestRange();
+
+    // Get the upper end of the destination range ('*' means everything after lower range)
+    uint8_t getUpperDestRange();
 
     // Filter all incoming messages for this address and 
     // use this as the src address of all outgoing messages
@@ -133,6 +139,7 @@ class MessageBuffer {
     // Reset the entire message to a fresh state
     void reset();
     void start(); // alias of reset
+    void start(uint8_t);
 
     // Write a character to the message
     // If addresses are not set, this will attempt to parse the entire message from start to finish
