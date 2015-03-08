@@ -17,7 +17,7 @@
 
 #define ADDRESSING_TIMEOUT  10000
 #define PROGRAM_TIMEOUT     10000
-#define PROGRAM_MAX         1
+#define PROGRAM_NUM         3
 
 class TestMaster {
 private:
@@ -39,8 +39,10 @@ private:
   void sendAddress();
   void sendACK(uint8_t addr);
 
-  void programSameColor();
-  void programDiffColors();
+  void runPrograms(long);
+  void programSameColor(long);
+  void programDiffColors(long);
+  void programFadeColors(long);
 
   uint8_t wrap(uint8_t val, uint8_t max) {
     if (val > max) return 0;

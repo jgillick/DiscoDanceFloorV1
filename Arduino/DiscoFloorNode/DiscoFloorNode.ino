@@ -4,6 +4,7 @@
 
 // #include <HardwareSerial_RS485.h>
 #include <SoftwareSerial.h>
+#include <LEDFader.h>
 #include "MessageBuffer.h"
 #include "TestMaster.h"
 #include "Constants.h"
@@ -11,9 +12,10 @@
 uint8_t myAddress  = 0;
 boolean needsAck   = false;      // TRUE if we're waiting for an ACK
 
-int rgb[3]         = {LED_RED, 
-                      LED_GREEN, 
-                      LED_BLUE}; // The RGB pins
+// The RGB LEDs
+LEDFader rgb[3] = { LEDFader(LED_RED), 
+                    LEDFader(LED_GREEN), 
+                    LEDFader(LED_BLUE) };
 
 MessageBuffer txBuffer(TX_CONTROL);
 MessageBuffer rxBuffer(TX_CONTROL);
@@ -25,18 +27,11 @@ bool enabledState = false, // is the node enabled
      isMaster     = false; // is this mode the dumy master
 
 void setup() {
-  pinMode(rgb[0],  OUTPUT);
-  pinMode(rgb[1],  OUTPUT);
-  pinMode(rgb[2],  OUTPUT);
-
+  pinMode(NODE_STATUS, OUTPUT);
   pinMode(NEXT_NODE,   OUTPUT);  
-  pinMode(TX_CONTROL,  OUTPUT); 
-  pinMode(STATUS,      OUTPUT);
+  pinMode(TX_CONTROL,  OUTPUT);
   pinMode(ENABLE_NODE, INPUT);
   
-  digitalWrite(rgb[0], LOW);
-  digitalWrite(rgb[1], LOW);
-  digitalWrite(rgb[2], LOW);
   digitalWrite(TX_CONTROL, RS485Receive);
   
   // Init serial communication
@@ -51,7 +46,7 @@ void setup() {
   } 
   else {
     delay(1000);
-    digitalWrite(STATUS, HIGH);
+    digitalWrite(NODE_STATUS, HIGH);
     debugSerial.println(F("I'm a node."));
   }
 }
@@ -64,6 +59,9 @@ void loop() {
     dummyMaster.loop();
     return;
   } 
+
+  // Update non-blocking LED fade
+  updateLEDs();
 
   // Process message received from the bus
   rxBuffer.read();
@@ -119,7 +117,10 @@ void myMessage() {
       processACK();
     break;
     case TYPE_COLOR:
-      setColor();
+      handleColorMessage();
+    break;
+    case TYPE_FADE:
+      handleFadeMessage();
     break;
     case TYPE_ADDR:
       // If master reports our address, enable the next node (in case we didn't hear the ACK)
@@ -137,20 +138,61 @@ void masterMessage() {
 }
 
 // Set the LED color
-void setColor() {
+void handleColorMessage() {
   debugSerial.println(F("Set color!"));
 
   uint8_t *colors = rxBuffer.getBody();
 
   // Invalid color
-  if (rxBuffer.getBodyLen() != 3) return;
+  if (rxBuffer.getBodyLen() != 3) {
+    debugSerial.print("Invalid fade command length: ");
+    debugSerial.println(rxBuffer.getBodyLen());
+    return;
+  }
 
   // Set colors
-  for(int i = 0; i < 3; i++) {
-    debugSerial.print(colors[i]);
-    digitalWrite(rgb[i], colors[i]);
-  }
+  setColor(colors[0], colors[1], colors[2]);
+
+  // Debug
+  debugSerial.print(colors[0]); debugSerial.print(F(","));
+  debugSerial.print(colors[1]); debugSerial.print(F(",")); 
+  debugSerial.print(colors[2]);
   debugSerial.print(F("\n"));
+}
+
+// Set LED fade
+void handleFadeMessage() {
+  debugSerial.println(F("Set fade!"));
+
+  uint8_t *data = rxBuffer.getBody();
+  uint8_t len = rxBuffer.getBodyLen();
+  int duration;
+
+  // Invalid message
+  if (len < 4) {
+    debugSerial.print("Invalid fade command length: ");
+    debugSerial.println(len);
+    return;
+  }
+
+  // Duration
+  // Last numbers are duration divided 
+  // by FADE_DIVIDER (250) and added together
+  duration = data[3] * FADE_DIVIDER;
+  if (len > 4) {
+    for (int i = 4; i < len; i++) {
+      duration += data[i] * FADE_DIVIDER;
+    }
+  }
+
+  // Set colors
+  fadeToColor(duration, data[0], data[1], data[2]);
+
+  // Debug
+  debugSerial.print(data[0]); debugSerial.print(F(","));
+  debugSerial.print(data[1]); debugSerial.print(F(",")); 
+  debugSerial.print(data[2]); debugSerial.print(F(" in ")); 
+  debugSerial.print(duration); debugSerial.print(F("ms\n")); 
 }
 
 
@@ -193,16 +235,22 @@ void setAddress() {
   }
 }
 
-void commSend() {
-  digitalWrite(TX_CONTROL, RS485Transmit);
-  // digitalWrite(RX_CONTROL, RS485Transmit);
-  delay(10);
+void updateLEDs() {
+  rgb[0].update();
+  rgb[1].update();
+  rgb[2].update();
 }
 
-void commReceive() {
-  digitalWrite(TX_CONTROL, RS485Receive);
-  // digitalWrite(RX_CONTROL, RS485Receive); 
-  delay(10);
+void setColor(uint8_t red, uint8_t green, uint8_t blue) {
+  rgb[0].set_value(red);
+  rgb[1].set_value(green);
+  rgb[2].set_value(blue);
+}
+
+void fadeToColor(int time, uint8_t red, uint8_t green, uint8_t blue) {
+  rgb[0].fade(red, time);
+  rgb[1].fade(green, time);
+  rgb[2].fade(blue, time);
 }
 
 void printMsgState(uint8_t state) {

@@ -71,35 +71,7 @@ void TestMaster::loop() {
 
   // Run programs
   if (!isAddressing && lastNodeAddress > myAddress) {
-
-    // Update program
-    if (programTime + PROGRAM_TIMEOUT < now) {
-
-      // First program to run
-      if (programTime == 0) {
-        Serial.print("Running program: ");
-        Serial.println(currentProgram);
-      }
-      // Move to next program
-      else {
-        currentProgram = wrap(++currentProgram, PROGRAM_MAX);
-        Serial.print("Update to program: ");
-        Serial.println(currentProgram);
-      } 
-
-      programTime = millis();
-      txBuffer->reset();
-    }
-
-    // Select program
-    switch (currentProgram) {
-      case 0:
-        programSameColor();
-      break;
-      case 1:
-        programDiffColors();
-      break;
-    }
+    runPrograms(now);
   }
 }
 
@@ -158,13 +130,47 @@ void TestMaster::processMessage() {
   rxBuffer->reset();
 }
 
-void TestMaster::programSameColor() {
-  long now = millis();
+void TestMaster::runPrograms(long now) {
+
+  // Update program
+  if (programTime + PROGRAM_TIMEOUT < now) {
+
+    // First program to run
+    if (programTime == 0) {
+      Serial.print("Running program: ");
+      Serial.println(currentProgram);
+    }
+    // Move to next program
+    else {
+      currentProgram = wrap(++currentProgram, PROGRAM_NUM - 1);
+      Serial.print("Update to program: ");
+      Serial.println(currentProgram);
+    } 
+
+    programTime = millis();
+    txBuffer->reset();
+  }
+
+  // Select program
+  switch (currentProgram) {
+    case 0:
+      programSameColor(now);
+    break;
+    case 1:
+      programDiffColors(now);
+    break;
+    case 2:
+      programFadeColors(now);
+    break;
+  }
+}
+
+void TestMaster::programSameColor(long now) {
 
   // Change LED color
   if (txBuffer->sentAt + 1000 < now) {
     uint8_t color[3] = {0,0,0};
-    color[prog0lastLED] = 1;
+    color[prog0lastLED] = 255;
 
     Serial.print("Set Same LED ");
     Serial.println(prog0lastLED);
@@ -180,8 +186,7 @@ void TestMaster::programSameColor() {
   }
 }
 
-void TestMaster::programDiffColors() {
-  long now = millis();
+void TestMaster::programDiffColors(long now) {
 
   // Shift colors
   if (txBuffer->sentAt + 250 < now) {
@@ -192,7 +197,7 @@ void TestMaster::programDiffColors() {
       color[0] = 0;
       color[1] = 0;
       color[2] = 0;
-      color[led++] = 1;
+      color[led++] = 255;
 
       Serial.print("Set Different LEDs");
       Serial.println(prog0lastLED);
@@ -208,5 +213,42 @@ void TestMaster::programDiffColors() {
     }
 
     prog0lastLED = wrap(prog0lastLED, 2);
+  }
+}
+
+void TestMaster::programFadeColors(long now) {
+  uint8_t data[4] = {0,0,0,4}; // duration is ms divided by 250 (4 == 1000ms)
+  int maxValue = 120,
+      rgbSelect;
+
+  // Change colors
+  if (txBuffer->sentAt + 1000 < now) {
+
+    for (uint8_t i = myAddress + 1; i <= lastNodeAddress; i++) {
+      data[0] = 0;
+      data[1] = 0;
+      data[2] = 0;
+      
+      // Set a two colors to fade to 
+      // (first can go from 0 - 120, secondary can go from 0 - 255)
+      for (int c = 0; c < 2; c++) {
+        rgbSelect = random(0, 3); // Which RGB color to set
+        if (c == 1) maxValue =  255;
+        data[rgbSelect] = random(0, maxValue);
+      }
+
+      Serial.print("Send Fade to ");
+      Serial.print(i); Serial.print(": ");
+      Serial.print(data[0]); Serial.print(F(","));
+      Serial.print(data[1]); Serial.print(F(",")); 
+      Serial.print(data[2]); 
+      Serial.println(F(" in 1000ms")); 
+
+      txBuffer->start();
+      txBuffer->setDestAddress(i);
+      txBuffer->type = TYPE_FADE;
+      txBuffer->write(data, 4);
+      txBuffer->send();
+    }
   }
 }
