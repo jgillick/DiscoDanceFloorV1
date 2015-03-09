@@ -17,8 +17,10 @@ Wiring
 0:   To pin 1 of RS485 chip (RO)
 1:   To pin 4 of RS485 chip (DI)
 2:   To '-' for nodes, '+' for master
-4:   To pin 6 of next node
-6:   From pin 4 of the previous node or master
+3:   Connect to pin 4 with 1M resistor
+4:   To capacitive touch sensor area (eg, bare wire, sheet of aluminum foil, etc)
+5:   To pin 6 of next node
+6:   From pin 5 of the previous node or master
 7:   To both TX/RX enable pins of RS485 chip (pins 2 & 3)
 9:   To green pin of RGB LED
 10:  To blue pin of RGB LED
@@ -48,7 +50,7 @@ to pin 7 of the floor node.
 Test Master Flow
 ----------------
 
-1. Enable first floor node (pin 4 HIGH)
+1. Enable first floor node (pin 5 HIGH)
 2. Ask for the node's address (repeat message after ACK_TIMEOUT)
 3. When node responds with address, respond with ACK. Node will then enable the next node.
 4. Repeat steps 3 & 4 until no more nodes respond for 5 seconds (defined by ADDRESSING_TIMEOUT)
