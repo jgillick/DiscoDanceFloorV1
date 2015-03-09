@@ -35,19 +35,19 @@ void TestMaster::loop() {
   rxBuffer->read();
 
   // Print Debug
-  if (debugSerial->available()) {
-    char c;
-    delay(10);
-    Serial.print(F("#: "));
-    while(debugSerial->available()) {
-      if (c == '\n') {
-        Serial.print(F("#: "));
-      }
-      c = debugSerial->read();
-      Serial.print(c);
-    }
-    if (c != '\n') Serial.print(F("\n"));
-  }
+  // if (debugSerial->available()) {
+  //   char c;
+  //   delay(10);
+  //   Serial.print(F("#: "));
+  //   while(debugSerial->available()) {
+  //     if (c == '\n') {
+  //       Serial.print(F("#: "));
+  //     }
+  //     c = debugSerial->read();
+  //     Serial.print(c);
+  //   }
+  //   if (c != '\n') Serial.print(F("\n"));
+  // }
 
   // Process stage
   switch(stage) {
@@ -128,8 +128,8 @@ void TestMaster::sendAddress(){
 }
 
 void TestMaster::sendACK(uint8_t addr) {
-  Serial.print(F("Sending ACK to node "));
-  Serial.println(addr);
+  // Serial.print(F("Sending ACK to node "));
+  // Serial.println(addr);
 
   txBuffer->start(TYPE_ACK);
   txBuffer->setDestAddress(addr);
@@ -164,15 +164,22 @@ void TestMaster::nextStage() {
 }
 
 void TestMaster::getNodeStatus(long now) {
+  uint8_t sensor, addr, i;
 
   // All statuses received
   if (lastStatusAddr == lastNodeAddress) {
-    Serial.println(F("Done getting status"));
     nextStage();
   }
 
   // Register status
   else if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->type == TYPE_STATUS) {
+    sensor = rxBuffer->getBody()[0] & SENSOR_DETECT;
+    addr = rxBuffer->getSourceAddress();
+    i = addr - MASTER_ADDRESS - 1;
+
+    touchChanged[i] = (touchStatus[i] != sensor);
+    touchStatus[i] = sensor;
+
     Serial.print(F("Got status from "));
     Serial.println(rxBuffer->getSourceAddress());
 
@@ -220,9 +227,11 @@ void TestMaster::sendStatusRequest(long now) {
 }
 
 void TestMaster::runPrograms(long now) {
+  bool progSetup = false;
 
   // Update program
   if (programTime + PROGRAM_TIMEOUT < now) {
+    progSetup = true;
 
     // First program to run
     if (programTime == 0) {
@@ -243,28 +252,31 @@ void TestMaster::runPrograms(long now) {
   // Select program
   switch (currentProgram) {
     case 0:
-      programSameColor(now);
+      programSameColor(progSetup, now);
     break;
     case 1:
-      programDiffColors(now);
+      programDiffColors(progSetup, now);
     break;
     case 2:
-      programFadeColors(now);
+      programFadeColors(progSetup, now);
+    break;
+    case 3:
+      programTouchSensor(progSetup);
     break;
   }
 
   nextStage();
 }
 
-void TestMaster::programSameColor(long now) {
+void TestMaster::programSameColor(bool setup, long now) {
 
   // Change LED color
   if (programTXTime + 1000 < now) {
     uint8_t color[3] = {0,0,0};
     color[prog0lastLED] = 255;
 
-    Serial.print(F("Set Same LED "));
-    Serial.println(prog0lastLED);
+    // Serial.print(F("Set Same LED "));
+    // Serial.println(prog0lastLED);
 
     txBuffer->start(TYPE_COLOR);
     txBuffer->setDestAddress(MSG_ALL);
@@ -277,7 +289,7 @@ void TestMaster::programSameColor(long now) {
   }
 }
 
-void TestMaster::programDiffColors(long now) {
+void TestMaster::programDiffColors(bool setup, long now) {
 
   // Shift colors
   if (programTXTime + 250 < now) {
@@ -290,8 +302,8 @@ void TestMaster::programDiffColors(long now) {
       color[2] = 0;
       color[led++] = 255;
 
-      Serial.print(F("Set Different LEDs"));
-      Serial.println(prog0lastLED);
+      // Serial.print(F("Set Different LEDs"));
+      // Serial.println(prog0lastLED);
 
       txBuffer->start(TYPE_COLOR);
       txBuffer->setDestAddress(i);
@@ -307,7 +319,7 @@ void TestMaster::programDiffColors(long now) {
   }
 }
 
-void TestMaster::programFadeColors(long now) {
+void TestMaster::programFadeColors(bool setup, long now) {
   uint8_t data[4] = {0,0,0,4}; // duration is ms divided by 250 (4 == 1000ms)
   int maxValue = 120,
       rgbSelect;
@@ -328,12 +340,12 @@ void TestMaster::programFadeColors(long now) {
         data[rgbSelect] = random(0, maxValue);
       }
 
-      Serial.print(F("Send Fade to "));
-      Serial.print(i); Serial.print(F(": "));
-      Serial.print(data[0]); Serial.print(F(","));
-      Serial.print(data[1]); Serial.print(F(",")); 
-      Serial.print(data[2]); 
-      Serial.println(F(" in 1000ms")); 
+      // Serial.print(F("Send Fade to "));
+      // Serial.print(i); Serial.print(F(": "));
+      // Serial.print(data[0]); Serial.print(F(","));
+      // Serial.print(data[1]); Serial.print(F(",")); 
+      // Serial.print(data[2]); 
+      // Serial.println(F(" in 1000ms")); 
 
       txBuffer->start(TYPE_FADE);
       txBuffer->setDestAddress(i);
@@ -342,5 +354,39 @@ void TestMaster::programFadeColors(long now) {
     }
 
     programTXTime = now;
+  }
+}
+
+void TestMaster::programTouchSensor(bool setup) {
+  uint8_t addr,
+          color[4] = {0,0,0,4};
+
+  // Reset all LEDs
+  if (setup) {
+    txBuffer->start(TYPE_COLOR);
+    txBuffer->setDestAddress(MSG_ALL);
+    txBuffer->write(color, 3);
+    txBuffer->send();
+  }
+
+  // Fade the nodes who's sensor's value has changed
+  for (uint8_t i = 0; i < MAX_NODES; i++) {
+    if (touchChanged[i]) {
+      addr = i + MASTER_ADDRESS + 1;
+
+      // On
+      if (touchStatus[i]) {
+        color[0] = 255;
+      }
+      // Off
+      else {
+        color[0] = 0;
+      }
+
+      txBuffer->start(TYPE_FADE);
+      txBuffer->setDestAddress(addr);
+      txBuffer->write(color, 4);
+      txBuffer->send();
+    }
   }
 }

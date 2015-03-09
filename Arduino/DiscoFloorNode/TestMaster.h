@@ -16,8 +16,9 @@
 #include "Constants.h"
 
 #define ADDRESSING_TIMEOUT  5000
-#define PROGRAM_TIMEOUT     10000
-#define PROGRAM_NUM         3
+#define PROGRAM_TIMEOUT     15000
+#define PROGRAM_NUM         4
+#define MAX_NODES           4
 
 // Program stages
 #define IDLE                0x00
@@ -35,6 +36,9 @@ private:
            currentProgram,
            lastStatusAddr,
            statusTries;
+
+  uint8_t touchStatus[MAX_NODES],
+          touchChanged[MAX_NODES];
 
   long     programTime,
            programTXTime,
@@ -58,9 +62,10 @@ private:
   void sendStatusRequest(long);
 
   void runPrograms(long);
-  void programSameColor(long);
-  void programDiffColors(long);
-  void programFadeColors(long);
+  void programSameColor(bool, long);
+  void programDiffColors(bool, long);
+  void programFadeColors(bool, long);
+  void programTouchSensor(bool);
 
   uint8_t wrap(uint8_t val, uint8_t max) {
     if (val > max) return 0;
