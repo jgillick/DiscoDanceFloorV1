@@ -5,6 +5,7 @@
 // #include <HardwareSerial_RS485.h>
 #include <SoftwareSerial.h>
 #include <LEDFader.h>
+#include "CapacitiveSensor.h"
 #include "MessageBuffer.h"
 #include "TestMaster.h"
 #include "Constants.h"
@@ -17,9 +18,15 @@ LEDFader rgb[3] = { LEDFader(LED_RED),
                     LEDFader(LED_GREEN), 
                     LEDFader(LED_BLUE) };
 
+// Sensor
+CapacitiveSensor sensor = CapacitiveSensor(SENSOR_SEND, SENSOR_TOUCH);
+uint8_t sensorThreshold = 100; // The minimum sensor value needed to be true
+
+// Message buffers
 MessageBuffer txBuffer(TX_CONTROL);
 MessageBuffer rxBuffer(TX_CONTROL);
 
+// Testing
 SoftwareSerial debugSerial(SSERIAL_DEBUG_RX, SSERIAL_DEBUG_TX);
 TestMaster     dummyMaster(&rxBuffer, &txBuffer, &debugSerial);
 
@@ -27,7 +34,6 @@ bool enabledState = false, // is the node enabled
      isMaster     = false; // is this mode the dumy master
 
 void setup() {
-  pinMode(NODE_STATUS, OUTPUT);
   pinMode(NEXT_NODE,   OUTPUT);  
   pinMode(TX_CONTROL,  OUTPUT);
   pinMode(ENABLE_NODE, INPUT);
@@ -46,7 +52,6 @@ void setup() {
   } 
   else {
     delay(1000);
-    digitalWrite(NODE_STATUS, HIGH);
     debugSerial.println(F("I'm a node."));
   }
 }
@@ -98,12 +103,10 @@ void processMessage() {
 
 // Process an ACK received
 void processACK() {
-  debugSerial.println(F("Received ACK"));
   needsAck = false;
 
   // Address set, tell next node to set address
   if (txBuffer.type == TYPE_ADDR) {
-    debugSerial.println(F("Address next node (ACKED)"));
     digitalWrite(NEXT_NODE, HIGH);
   }
 }
@@ -126,14 +129,12 @@ void myMessage() {
       if (rxBuffer.getLowerDestRange() == myAddress) {
         debugSerial.println(F("Send Status (direct address)"));
         sendStatus();
-      } else if (rxBuffer.getLowerDestRange() < myAddress){
-        debugSerial.println(F("Status: Not my turn yet"));
       }
     break;
     case TYPE_ADDR:
       // If master reports our address, enable the next node (in case we didn't hear the ACK)
       if (txBuffer.type == TYPE_ADDR && needsAck == true && rxBuffer.getBody()[0] == myAddress) {
-        debugSerial.println(F("Address next node (observed)"));
+        // debugSerial.println(F("Address next node (observed)"));
         needsAck = false;
         digitalWrite(NEXT_NODE, HIGH);
       }
@@ -148,8 +149,6 @@ void masterMessage() {
 
     // If the previous node sent it's status to mater, send ours next.
     case TYPE_STATUS:
-      debugSerial.print(F("Observed status sent to master for "));
-      debugSerial.println(rxBuffer.getSourceAddress());
       if (rxBuffer.getSourceAddress() + 1 == myAddress) {
         debugSerial.println(F("Send Status (from queue)"));
         sendStatus();
@@ -166,6 +165,10 @@ void sendStatus() {
   if (isFading()) {
     flag |= FADING;
   }
+  if (sensorValue()) {
+    flag |= SENSOR_DETECT;
+    debugSerial.println(F("SENSOR DETECTED SOMEONE"));
+  }
 
   txBuffer.start(TYPE_STATUS);
   txBuffer.setDestAddress(MASTER_ADDRESS);
@@ -176,6 +179,11 @@ void sendStatus() {
   txBuffer.send();
 }
 
+// 1 if sensor registers someone, 0 if not
+bool sensorValue() {
+  return (sensor.capacitiveSensor(30) >= sensorThreshold);
+}
+
 // Set the LED color
 void handleColorMessage() {
   debugSerial.println(F("Set color!"));
@@ -184,8 +192,8 @@ void handleColorMessage() {
 
   // Invalid color
   if (rxBuffer.getBodyLen() != 3) {
-    debugSerial.print("Invalid fade command length: ");
-    debugSerial.println(rxBuffer.getBodyLen());
+    // debugSerial.print("Invalid fade command length: ");
+    // debugSerial.println(rxBuffer.getBodyLen());
     return;
   }
 
@@ -193,10 +201,10 @@ void handleColorMessage() {
   setColor(colors[0], colors[1], colors[2]);
 
   // Debug
-  debugSerial.print(colors[0]); debugSerial.print(F(","));
-  debugSerial.print(colors[1]); debugSerial.print(F(",")); 
-  debugSerial.print(colors[2]);
-  debugSerial.print(F("\n"));
+  // debugSerial.print(colors[0]); debugSerial.print(F(","));
+  // debugSerial.print(colors[1]); debugSerial.print(F(",")); 
+  // debugSerial.print(colors[2]);
+  // debugSerial.print(F("\n"));
 }
 
 // Set LED fade
@@ -209,8 +217,8 @@ void handleFadeMessage() {
 
   // Invalid message
   if (len < 4) {
-    debugSerial.print("Invalid fade command length: ");
-    debugSerial.println(len);
+    // debugSerial.print("Invalid fade command length: ");
+    // debugSerial.println(len);
     return;
   }
 
@@ -228,10 +236,10 @@ void handleFadeMessage() {
   fadeToColor(duration, data[0], data[1], data[2]);
 
   // Debug
-  debugSerial.print(data[0]); debugSerial.print(F(","));
-  debugSerial.print(data[1]); debugSerial.print(F(",")); 
-  debugSerial.print(data[2]); debugSerial.print(F(" in ")); 
-  debugSerial.print(duration); debugSerial.print(F("ms\n")); 
+  // debugSerial.print(data[0]); debugSerial.print(F(","));
+  // debugSerial.print(data[1]); debugSerial.print(F(",")); 
+  // debugSerial.print(data[2]); debugSerial.print(F(" in ")); 
+  // debugSerial.print(duration); debugSerial.print(F("ms\n")); 
 }
 
 
@@ -265,8 +273,8 @@ void setAddress() {
       txBuffer.write(myAddress);
       txBuffer.send();
 
-      debugSerial.print(F("My address is: "));
-      debugSerial.println(myAddress);
+      // debugSerial.print(F("My address is: "));
+      // debugSerial.println(myAddress);
 
       needsAck = true;
     }
@@ -295,30 +303,30 @@ void fadeToColor(int time, uint8_t red, uint8_t green, uint8_t blue) {
   rgb[2].fade(blue, time);
 }
 
-void printMsgState(uint8_t state) {
-  debugSerial.print(state, HEX);
-  debugSerial.print(F(": "));
-  switch(state) {
-    case MSG_STATE_IDL:
-      debugSerial.println(F("IDL"));
-    break;
-    case MSG_STATE_HDR:
-      debugSerial.println(F("HDR"));
-    break;
-    case MSG_STATE_ACT:
-      debugSerial.println(F("ACT"));
-    break;
-    case MSG_STATE_IGN:
-      debugSerial.println(F("IGN"));
-    break;
-    case MSG_STATE_RDY:
-      debugSerial.println(F("RDY"));
-    break;
-    case MSG_STATE_ABT:
-      debugSerial.println(F("ABT"));
-    break;
-    default:
-      debugSerial.println(F("OTHER"));
-  }
-  delay(500);
-}
+// void printMsgState(uint8_t state) {
+//   debugSerial.print(state, HEX);
+//   debugSerial.print(F(": "));
+//   switch(state) {
+//     case MSG_STATE_IDL:
+//       debugSerial.println(F("IDL"));
+//     break;
+//     case MSG_STATE_HDR:
+//       debugSerial.println(F("HDR"));
+//     break;
+//     case MSG_STATE_ACT:
+//       debugSerial.println(F("ACT"));
+//     break;
+//     case MSG_STATE_IGN:
+//       debugSerial.println(F("IGN"));
+//     break;
+//     case MSG_STATE_RDY:
+//       debugSerial.println(F("RDY"));
+//     break;
+//     case MSG_STATE_ABT:
+//       debugSerial.println(F("ABT"));
+//     break;
+//     default:
+//       debugSerial.println(F("OTHER"));
+//   }
+//   delay(500);
+// }
