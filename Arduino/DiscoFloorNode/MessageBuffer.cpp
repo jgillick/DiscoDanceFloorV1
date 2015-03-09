@@ -12,7 +12,6 @@ void MessageBuffer::start(uint8_t messageType) {
   type = messageType;
 }
 void MessageBuffer::start() {
-  // Serial.println("RESET");
   messageState = MSG_STATE_IDL;
 
   type = 0;
@@ -136,7 +135,6 @@ uint8_t MessageBuffer::processHeader() {
 
   // Reset buffer and prepare to process message
   bufferPos = 0;
-  // Serial.println("Process body");
   return messageState = MSG_STATE_ACT;
 }
 
@@ -157,20 +155,16 @@ uint8_t MessageBuffer::write(uint8_t c) {
 
   // Start of message
   if(c == MSG_SOM) {
-    // Serial.println("SOM");
     reset();
     messageState = MSG_STATE_HDR;
   }
 
   // End of message
   else if (c == MSG_EOM) {
-    // Serial.println("EOM");
     if(messageState == MSG_STATE_ACT) {
-      // Serial.println("New message!");
       isNew = true;
       return messageState = MSG_STATE_RDY;
     } else {
-      // Serial.println("RESET");
       reset();
     }
   }
@@ -178,7 +172,6 @@ uint8_t MessageBuffer::write(uint8_t c) {
   // Header
   else if (messageState == MSG_STATE_HDR) {
     if (c == MSG_EOH) return processHeader();
-    // Serial.println("HEAD");
     return addToBuffer(c);
   }
 
@@ -187,10 +180,8 @@ uint8_t MessageBuffer::write(uint8_t c) {
 
     // First character is message type
     if (type == 0 && bufferPos == 0) {
-      // Serial.println("TYPE");
       type = c;
     } else {
-      // Serial.println("BODY");
       return addToBuffer(c);
     }
   }
@@ -207,10 +198,6 @@ uint8_t MessageBuffer::write(uint8_t* buf, uint8_t len) {
 
 uint8_t MessageBuffer::read() {
   digitalWrite(txControl, RS485Receive);
-
-  // if (Serial.available()) {
-  //   Serial.println("Incoming...");
-  // }
   while (Serial.available() > 0) {
     write((uint8_t)Serial.read());
   }
@@ -259,15 +246,6 @@ uint8_t MessageBuffer::send() {
 
   // Set back to receive
   digitalWrite(txControl, RS485Receive);
-
-  // Serial.print("Type: ");
-  // Serial.write((char)type);
-  // Serial.print(", Buffer: ");
-  // Serial.print(bufferPos);
-  // Serial.print(", Msg Size: ");
-  // Serial.println(sent);
-  // Serial.print("Sent at: ");
-  // Serial.println(sentAt);
 
   return sent;
 }
