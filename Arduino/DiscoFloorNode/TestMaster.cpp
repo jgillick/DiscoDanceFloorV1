@@ -57,8 +57,8 @@ void TestMaster::loop() {
     case GET_STATUS:
       getNodeStatus(now);
     break;
-    case RUN_PROGRAM:
-      runPrograms(now);
+    case UPDATING:
+      updateNodes(now);
     break;
   }
 
@@ -142,7 +142,7 @@ void TestMaster::goIdle() {
 void TestMaster::nextStage() {
   switch(stage) {
     case ADDRESSING:
-    case RUN_PROGRAM:
+    case UPDATING:
       statusTries = 0;
       lastStatusAddr = MASTER_ADDRESS;
       lastStatusTXTime = 0;
@@ -152,7 +152,7 @@ void TestMaster::nextStage() {
       // Serial.println(F("GET NODE STATUS"));
     break;
     case GET_STATUS:
-      stage = RUN_PROGRAM;
+      stage = UPDATING;
       // Serial.println(F("RUN PROGRAMS"));
     break;
   }
@@ -221,7 +221,7 @@ void TestMaster::sendStatusRequest(long now) {
   statusTries++;
 }
 
-void TestMaster::runPrograms(long now) {
+void TestMaster::updateNodes(long now) {
   bool progSetup = false;
 
   // Update program

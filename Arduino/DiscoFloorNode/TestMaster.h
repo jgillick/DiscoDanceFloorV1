@@ -24,7 +24,7 @@
 #define IDLE                0x00
 #define ADDRESSING          0x01
 #define GET_STATUS          0x02
-#define RUN_PROGRAM         0x03
+#define UPDATING            0x03
 
 class TestMaster {
 private:
@@ -61,7 +61,7 @@ private:
   void getNodeStatus(long);
   void sendStatusRequest(long);
 
-  void runPrograms(long);
+  void updateNodes(long);
   void programSameColor(bool, long);
   void programDiffColors(bool, long);
   void programFadeColors(bool, long);
