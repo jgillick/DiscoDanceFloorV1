@@ -2,13 +2,12 @@
   See README for description and pin assignment
 */
 
-// #include <HardwareSerial_RS485.h>
 #include <SoftwareSerial.h>
 #include <LEDFader.h>
 #include "CapacitiveSensor.h"
 #include "MessageBuffer.h"
-#include "TestMaster.h"
 #include "Constants.h"
+#include "TestMaster.h"
 
 uint8_t myAddress  = 0;
 boolean needsAck   = false;      // TRUE if we're waiting for an ACK
@@ -76,7 +75,6 @@ void loop() {
 
   // Resend message
   // if (needsAck && now > txBuffer.sentAt + ACK_TIMEOUT) {
-  //   debugSerial.println(F("Resend message"));
   //   txBuffer.send();
   // }
 }
@@ -106,16 +104,15 @@ void processACK() {
   needsAck = false;
 
   // Address set, tell next node to set address
-  if (txBuffer.type == TYPE_ADDR) {
+  if (txBuffer.getType() == TYPE_ADDR) {
     digitalWrite(NEXT_NODE, HIGH);
   }
 }
 
 // Process messages addressed to me
 void myMessage() {
-  // debugSerial.println(F("Received message"));
 
-  switch(rxBuffer.type) {
+  switch(rxBuffer.getType()) {
     case TYPE_ACK:
       processACK();
     break;
@@ -127,14 +124,13 @@ void myMessage() {
     break;
     case TYPE_STATUS:
       if (rxBuffer.getLowerDestRange() == myAddress) {
-        debugSerial.println(F("Send Status (direct address)"));
+        Serial.println(F("Send Status (direct address)"));
         sendStatus();
       }
     break;
     case TYPE_ADDR:
       // If master reports our address, enable the next node (in case we didn't hear the ACK)
-      if (txBuffer.type == TYPE_ADDR && needsAck == true && rxBuffer.getBody()[0] == myAddress) {
-        // debugSerial.println(F("Address next node (observed)"));
+      if (txBuffer.getType() == TYPE_ADDR && needsAck == true && rxBuffer.getBody()[0] == myAddress) {
         needsAck = false;
         digitalWrite(NEXT_NODE, HIGH);
       }
@@ -145,12 +141,12 @@ void myMessage() {
 // Observe any messages are going to master
 void masterMessage() {
 
-  switch(rxBuffer.type) {
+  switch(rxBuffer.getType()) {
 
     // If the previous node sent it's status to mater, send ours next.
     case TYPE_STATUS:
       if (rxBuffer.getSourceAddress() + 1 == myAddress) {
-        debugSerial.println(F("Send Status (from queue)"));
+        Serial.println(F("Send Status (from queue)"));
         sendStatus();
       }
     break;
@@ -167,7 +163,6 @@ void sendStatus() {
   }
   if (sensorValue()) {
     flag |= SENSOR_DETECT;
-    debugSerial.println(F("SENSOR DETECTED SOMEONE"));
   }
 
   txBuffer.start(TYPE_STATUS);
@@ -186,41 +181,27 @@ bool sensorValue() {
 
 // Set the LED color
 void handleColorMessage() {
-  debugSerial.println(F("Set color!"));
+  Serial.println(F("Set color!"));
 
   uint8_t *colors = rxBuffer.getBody();
 
   // Invalid color
-  if (rxBuffer.getBodyLen() != 3) {
-    // debugSerial.print("Invalid fade command length: ");
-    // debugSerial.println(rxBuffer.getBodyLen());
-    return;
-  }
+  if (rxBuffer.getBodyLen() != 3) return;
 
   // Set colors
   setColor(colors[0], colors[1], colors[2]);
-
-  // Debug
-  // debugSerial.print(colors[0]); debugSerial.print(F(","));
-  // debugSerial.print(colors[1]); debugSerial.print(F(",")); 
-  // debugSerial.print(colors[2]);
-  // debugSerial.print(F("\n"));
 }
 
 // Set LED fade
 void handleFadeMessage() {
-  debugSerial.println(F("Set fade!"));
+  Serial.println(F("Set fade!"));
 
   uint8_t *data = rxBuffer.getBody();
   uint8_t len = rxBuffer.getBodyLen();
   int duration;
 
   // Invalid message
-  if (len < 4) {
-    // debugSerial.print("Invalid fade command length: ");
-    // debugSerial.println(len);
-    return;
-  }
+  if (len < 4) return;
 
   // Duration
   // Last numbers are duration divided 
@@ -234,22 +215,12 @@ void handleFadeMessage() {
 
   // Set colors
   fadeToColor(duration, data[0], data[1], data[2]);
-
-  // Debug
-  // debugSerial.print(data[0]); debugSerial.print(F(","));
-  // debugSerial.print(data[1]); debugSerial.print(F(",")); 
-  // debugSerial.print(data[2]); debugSerial.print(F(" in ")); 
-  // debugSerial.print(duration); debugSerial.print(F("ms\n")); 
 }
 
 
 // Set an address if one hasn't been defined yet
 void setAddress() {
   int enabled = digitalRead(ENABLE_NODE);
-
-  // debugSerial.println(F("Set address"));
-  // if (enabled != HIGH) debugSerial.println(F("Node not enabled"));
-  // if (rxBuffer.type != TYPE_ADDR) debugSerial.println(F("Not setting address"));
 
   // Just enabled, clear RX and wait for next address (in case current RX is stale)
   if (enabled == HIGH && enabledState == false) {
@@ -258,7 +229,7 @@ void setAddress() {
   }
 
   // Set address
-  else if (enabled == HIGH && rxBuffer.type == TYPE_ADDR) {
+  else if (enabled == HIGH && rxBuffer.getType() == TYPE_ADDR) {
     uint8_t addr = (uint8_t)rxBuffer.getBody()[0];
 
     // Valid addresses are greater than MASTER
@@ -272,9 +243,6 @@ void setAddress() {
       txBuffer.setDestAddress(MASTER_ADDRESS);
       txBuffer.write(myAddress);
       txBuffer.send();
-
-      // debugSerial.print(F("My address is: "));
-      // debugSerial.println(myAddress);
 
       needsAck = true;
     }
@@ -304,29 +272,29 @@ void fadeToColor(int time, uint8_t red, uint8_t green, uint8_t blue) {
 }
 
 // void printMsgState(uint8_t state) {
-//   debugSerial.print(state, HEX);
-//   debugSerial.print(F(": "));
+//   Serial.print(state, HEX);
+//   Serial.print(F(": "));
 //   switch(state) {
 //     case MSG_STATE_IDL:
-//       debugSerial.println(F("IDL"));
+//       Serial.println(F("IDL"));
 //     break;
 //     case MSG_STATE_HDR:
-//       debugSerial.println(F("HDR"));
+//       Serial.println(F("HDR"));
 //     break;
 //     case MSG_STATE_ACT:
-//       debugSerial.println(F("ACT"));
+//       Serial.println(F("ACT"));
 //     break;
 //     case MSG_STATE_IGN:
-//       debugSerial.println(F("IGN"));
+//       Serial.println(F("IGN"));
 //     break;
 //     case MSG_STATE_RDY:
-//       debugSerial.println(F("RDY"));
+//       Serial.println(F("RDY"));
 //     break;
 //     case MSG_STATE_ABT:
-//       debugSerial.println(F("ABT"));
+//       Serial.println(F("ABT"));
 //     break;
 //     default:
-//       debugSerial.println(F("OTHER"));
+//       Serial.println(F("OTHER"));
 //   }
 //   delay(500);
 // }

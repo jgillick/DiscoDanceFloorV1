@@ -35,19 +35,19 @@ void TestMaster::loop() {
   rxBuffer->read();
 
   // Print Debug
-  // if (debugSerial->available()) {
-  //   char c;
-  //   delay(10);
-  //   Serial.print(F("#: "));
-  //   while(debugSerial->available()) {
-  //     if (c == '\n') {
-  //       Serial.print(F("#: "));
-  //     }
-  //     c = debugSerial->read();
-  //     Serial.print(c);
-  //   }
-  //   if (c != '\n') Serial.print(F("\n"));
-  // }
+  if (debugSerial->available()) {
+    char c;
+    delay(10);
+    Serial.print(F("#: "));
+    while(debugSerial->available()) {
+      if (c == '\n') {
+        Serial.print(F("#: "));
+      }
+      c = debugSerial->read();
+      Serial.print(c);
+    }
+    if (c != '\n') Serial.print(F("\n"));
+  }
 
   // Process stage
   switch(stage) {
@@ -72,7 +72,7 @@ void TestMaster::addressing(long now) {
   uint8_t addr;
 
   // Register new address
-  if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->type == TYPE_ADDR) {
+  if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->getType() == TYPE_ADDR) {
     addr = (uint8_t)rxBuffer->getBody()[0];
 
     // New address must be bigger than the last registered address
@@ -95,14 +95,11 @@ void TestMaster::addressing(long now) {
     else {
       Serial.print(F("Invalid address: ")); 
       Serial.print(addr);
-      Serial.print(F(" < "));
-      Serial.println(lastNodeAddress); 
     }
   }
 
   // Done waiting for addresses
   if (lastAddrRXTime > 0 && lastAddrRXTime + ADDRESSING_TIMEOUT < now) {
-    Serial.println(F("Done addressing"));
     Serial.print(lastNodeAddress - myAddress);
     Serial.println(F(" node(s) found"));
     
@@ -143,8 +140,6 @@ void TestMaster::goIdle() {
 
 // Move to the next stage in the program (1. addressing -> 2. get status -> 3. run program -> (repeat 2 & 3))
 void TestMaster::nextStage() {
-  Serial.print(F("Move to next stage: "));
-
   switch(stage) {
     case ADDRESSING:
     case RUN_PROGRAM:
@@ -154,11 +149,11 @@ void TestMaster::nextStage() {
       txBuffer->reset();
 
       stage = GET_STATUS;
-      Serial.println(F("GET NODE STATUS"));
+      // Serial.println(F("GET NODE STATUS"));
     break;
     case GET_STATUS:
       stage = RUN_PROGRAM;
-      Serial.println(F("RUN PROGRAMS"));
+      // Serial.println(F("RUN PROGRAMS"));
     break;
   }
 }
@@ -172,7 +167,7 @@ void TestMaster::getNodeStatus(long now) {
   }
 
   // Register status
-  else if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->type == TYPE_STATUS) {
+  else if (rxBuffer->getState() == MSG_STATE_RDY && rxBuffer->getType() == TYPE_STATUS) {
     sensor = rxBuffer->getBody()[0] & SENSOR_DETECT;
     addr = rxBuffer->getSourceAddress();
     i = addr - MASTER_ADDRESS - 1;
@@ -180,8 +175,8 @@ void TestMaster::getNodeStatus(long now) {
     touchChanged[i] = (touchStatus[i] != sensor);
     touchStatus[i] = sensor;
 
-    Serial.print(F("Got status from "));
-    Serial.println(rxBuffer->getSourceAddress());
+    // Serial.print(F("Got status from "));
+    // Serial.println(rxBuffer->getSourceAddress());
 
     if (rxBuffer->getSourceAddress() > lastStatusAddr) {
       statusTries = 0;
@@ -209,9 +204,9 @@ void TestMaster::sendStatusRequest(long now) {
       return;
     }
     else {
-      Serial.print(F("No status received from "));
-      Serial.print(lastStatusAddr + 1);
-      Serial.println(F(", moving on"));
+      // Serial.print(F("No status received from "));
+      // Serial.print(lastStatusAddr + 1);
+      // Serial.println(F(", moving on"));
 
       lastStatusAddr++;
       statusTries = 0;
@@ -235,14 +230,14 @@ void TestMaster::runPrograms(long now) {
 
     // First program to run
     if (programTime == 0) {
-      Serial.print(F("Running program: "));
-      Serial.println(currentProgram);
+      // Serial.print(F("Running program: "));
+      // Serial.println(currentProgram);
     }
     // Move to next program
     else {
       currentProgram = wrap(++currentProgram, PROGRAM_NUM - 1);
-      Serial.print(F("Update to program: "));
-      Serial.println(currentProgram);
+      // Serial.print(F("Update to program: "));
+      // Serial.println(currentProgram);
     } 
 
     programTXTime = 0;
