@@ -8,15 +8,16 @@ MessageBuffer::MessageBuffer(uint8_t txCntl) {
 }
 
 void MessageBuffer::start(uint8_t messageType) {
-  start();
   type = messageType;
-}
-void MessageBuffer::start() {
-  messageState = MSG_STATE_IDL;
 
-  type = 0;
+  if (type == 0) {
+    messageState = MSG_STATE_IDL;
+  } else {
+    messageState = MSG_STATE_ACT;
+  }
+
   sentAt = 0;
-  escaped = true;
+  // escaped = true;
   bufferPos = 0;
   isNew = true;
 
@@ -25,7 +26,11 @@ void MessageBuffer::start() {
   addressDestRange[1] = 0;
 }
 void MessageBuffer::reset() {
-  start();
+  start(0);
+}
+
+uint8_t MessageBuffer::getType() {
+  return type;
 }
 
 uint8_t MessageBuffer::getState() {
@@ -116,6 +121,7 @@ uint8_t MessageBuffer::processHeader() {
   // Address range
   if (buffer[headerPos] == '-') {
     setDestAddress(destination, buffer[++headerPos]);
+    headerPos++;
   } else {
     setDestAddress(destination);
   }
@@ -139,7 +145,6 @@ uint8_t MessageBuffer::processHeader() {
 }
 
 uint8_t MessageBuffer::write(uint8_t c) { 
-  if (messageState >= MSG_STATE_RDY) return messageState;
 
   // Escape characer
   // if (escaped) {
@@ -159,10 +164,25 @@ uint8_t MessageBuffer::write(uint8_t c) {
     messageState = MSG_STATE_HDR;
   }
 
+  // Aborted or overflow, wait until we see a new message
+  else if (messageState >= MSG_STATE_RDY) {
+    return messageState;
+  }
+
   // End of message
   else if (c == MSG_EOM) {
     if(messageState == MSG_STATE_ACT) {
       isNew = true;
+
+      // Compare checksum
+      uint8_t checksum = buffer[--bufferPos];
+      buffer[bufferPos] = '\0';
+      if (calculateChecksum() != checksum) {
+        Serial.print(F("CHECKSUMS MISMATCH: "));
+        Serial.print(checksum); Serial.print(" != "); Serial.println(calculateChecksum());
+        return messageState = MSG_STATE_ABT;
+      }
+
       return messageState = MSG_STATE_RDY;
     } else {
       reset();
@@ -189,6 +209,23 @@ uint8_t MessageBuffer::write(uint8_t c) {
   return messageState;
 }
 
+
+// Calculate the checksum for this message
+uint8_t MessageBuffer::calculateChecksum() {
+  uint8_t checksum = 0;
+  if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return 0;
+
+  checksum = _crc_ibutton_update(checksum, addressDestRange[0]);
+  checksum = _crc_ibutton_update(checksum, addressDestRange[1]);
+  checksum = _crc_ibutton_update(checksum, srcAddress);
+  checksum = _crc_ibutton_update(checksum, type);
+  for(int i = 0; i < bufferPos; i++ ){
+    checksum = _crc_ibutton_update(checksum, buffer[i]);
+  }
+
+  return checksum;
+}
+
 uint8_t MessageBuffer::write(uint8_t* buf, uint8_t len) {
   for(int i = 0; i < len; i++) {
     write(buf[i]);
@@ -205,12 +242,14 @@ uint8_t MessageBuffer::read() {
 }
 
 uint8_t MessageBuffer::send() {
-  uint8_t sent = 0;
+  uint8_t sent = 0,
+          checksum;
 
   if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return 0;
   if (myAddress == 0) return 0;
 
   // Start sending
+  srcAddress = myAddress;
   digitalWrite(txControl, RS485Transmit);
 
   Serial.print(MSG_SOM); sent++;
@@ -224,14 +263,15 @@ uint8_t MessageBuffer::send() {
   }
 
   // From address
-  if (myAddress != MASTER_ADDRESS) {
-    Serial.write(myAddress);
+  if (srcAddress != MASTER_ADDRESS) {
+    Serial.write(srcAddress);
     sent++;
   }
 
   // Type and message body
   Serial.print(MSG_EOH);
   Serial.write(type);
+
   sent += 2;
   for(int i = 0; i < bufferPos; i++ ){
     Serial.write(buffer[i]);
@@ -239,8 +279,10 @@ uint8_t MessageBuffer::send() {
   sent += bufferPos - 1;
 
   // End of message
+  checksum = calculateChecksum();
+  Serial.write(checksum);
   Serial.print(MSG_EOM);
-  sent++;
+  sent += 2;
   Serial.flush();
   sentAt = millis();
 

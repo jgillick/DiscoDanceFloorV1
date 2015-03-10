@@ -4,7 +4,7 @@
   Format
   ------
   Each message follows the format:
-  >{from}{to},{type}{body}{checksum}\n
+  >{to}{from},{type}{body}{checksum}\n
 
   >          - The start of a message
   {to}       - Is the address to the node the message is going to
@@ -40,8 +40,8 @@
 
 #ifndef MessageBuffer_H_
 #define MessageBuffer_H_
-
-#include <stdint.h>
+  
+#include <util/crc16.h>
 #include <Arduino.h>
 #include "Constants.h"
 
@@ -68,12 +68,14 @@
 
 class MessageBuffer {
   private: 
-    uint8_t  myAddress,
+    
+    uint8_t  type,
+             myAddress,
              srcAddress,
              bufferPos,
              txControl,
              messageState;
-    bool escaped;
+    // bool escaped;
     uint8_t buffer[MSG_BUFFER_LEN + 1];
 
     // The range of addresses this message is for
@@ -86,7 +88,9 @@ class MessageBuffer {
 
     // Process the header from the buffer
     uint8_t processHeader();
-    
+
+    void setType(uint8_t);
+    uint8_t calculateChecksum();
   public:
     MessageBuffer(uint8_t);
     
@@ -94,7 +98,7 @@ class MessageBuffer {
     bool isNew;
 
     // The message type
-    uint8_t type;
+    uint8_t getType();
 
     // The time the current message was sent
     long sentAt;
@@ -138,8 +142,9 @@ class MessageBuffer {
 
     // Reset the entire message to a fresh state
     void reset();
-    void start(); // alias of reset
-    void start(uint8_t);
+
+    // Start a new message of a type
+    void start(uint8_t type);
 
     // Write a character to the message
     // If addresses are not set, this will attempt to parse the entire message from start to finish
