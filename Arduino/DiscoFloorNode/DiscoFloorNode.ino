@@ -2,12 +2,15 @@
   See README for description and pin assignment
 */
 
-#include <SoftwareSerial.h>
-#include <LEDFader.h>
+#include "LEDFader.h"
 #include "CapacitiveSensor.h"
 #include "MessageBuffer.h"
 #include "Constants.h"
+
+#ifdef DUMMY_MASTER
+#include <SoftwareSerial.h>
 #include "TestMaster.h"
+#endif
 
 uint8_t myAddress  = 0;
 boolean needsAck   = false;      // TRUE if we're waiting for an ACK
@@ -26,8 +29,10 @@ MessageBuffer txBuffer(TX_CONTROL);
 MessageBuffer rxBuffer(TX_CONTROL);
 
 // Testing
+#ifdef DUMMY_MASTER
 SoftwareSerial debugSerial(SSERIAL_DEBUG_RX, SSERIAL_DEBUG_TX);
 TestMaster     dummyMaster(&rxBuffer, &txBuffer, &debugSerial);
+#endif
 
 bool enabledState = false, // is the node enabled
      isMaster     = false; // is this mode the dumy master
@@ -41,9 +46,11 @@ void setup() {
   
   // Init serial communication
   Serial.begin(9600);
-  debugSerial.begin(9600);
 
   // This is the master node
+#ifdef DUMMY_MASTER
+  debugSerial.begin(9600);
+
   pinMode(ENABLE_MASTER, INPUT);
   isMaster = (digitalRead(ENABLE_MASTER) == HIGH);
   if (isMaster) {
@@ -51,18 +58,30 @@ void setup() {
   } 
   else {
     delay(1000);
-    debugSerial.println(F("I'm a node."));
+    Serial.println(F("I'm a node."));
   }
+#endif
+}
+
+void reset() {
+  myAddress = 0;
+  txBuffer.setMyAddress(0);
+  rxBuffer.setMyAddress(0);
+  txBuffer.reset();
+  rxBuffer.reset();
+  digitalWrite(NEXT_NODE, LOW);
 }
 
 void loop() {
   long now = millis();
 
+#ifdef DUMMY_MASTER
   // Skip to TestMater loop
   if (isMaster) {
     dummyMaster.loop();
     return;
   } 
+#endif
 
   // Update non-blocking LED fade
   updateLEDs();
@@ -113,6 +132,9 @@ void processACK() {
 void myMessage() {
 
   switch(rxBuffer.getType()) {
+    case TYPE_RESET:
+      reset();
+    break;
     case TYPE_ACK:
       processACK();
     break;
@@ -124,15 +146,23 @@ void myMessage() {
     break;
     case TYPE_STATUS:
       if (rxBuffer.getLowerDestRange() == myAddress) {
-        Serial.println(F("Send Status (direct address)"));
+        // Serial.println(F("Send Status (direct address)"));
         sendStatus();
       }
     break;
     case TYPE_ADDR:
-      // If master reports our address, enable the next node (in case we didn't hear the ACK)
-      if (txBuffer.getType() == TYPE_ADDR && needsAck == true && rxBuffer.getBody()[0] == myAddress) {
-        needsAck = false;
-        digitalWrite(NEXT_NODE, HIGH);
+      // Maybe someone didn't hear our address
+      if (txBuffer.getType() == TYPE_ADDR && needsAck == true) {
+
+        // Master didn't hear our address, resend
+        if (rxBuffer.getBody()[0] == myAddress - 1) {
+          txBuffer.send();
+        }
+        // We didn't hear master's ACK
+        else if (rxBuffer.getBody()[0] == myAddress) {
+          needsAck = false;
+          digitalWrite(NEXT_NODE, HIGH);
+        }
       }
     break;
   }
@@ -146,7 +176,7 @@ void masterMessage() {
     // If the previous node sent it's status to mater, send ours next.
     case TYPE_STATUS:
       if (rxBuffer.getSourceAddress() + 1 == myAddress) {
-        Serial.println(F("Send Status (from queue)"));
+        // Serial.println(F("Send Status (from queue)"));
         sendStatus();
       }
     break;
@@ -156,9 +186,10 @@ void masterMessage() {
 // Send node status to master
 void sendStatus() {
   uint8_t flag = 0;
+  bool fading = isFading();
 
   // Define cell flags
-  if (isFading()) {
+  if (fading) {
     flag |= FADING;
   }
   if (sensorValue()) {
@@ -168,9 +199,19 @@ void sendStatus() {
   txBuffer.start(TYPE_STATUS);
   txBuffer.setDestAddress(MASTER_ADDRESS);
   txBuffer.write(flag);
+
+  // Current color
   txBuffer.write(rgb[0].get_value());
   txBuffer.write(rgb[1].get_value());
   txBuffer.write(rgb[2].get_value());
+
+  // Target color
+  if (fading){
+    txBuffer.write(rgb[0].get_target_value());
+    txBuffer.write(rgb[1].get_target_value());
+    txBuffer.write(rgb[2].get_target_value());    
+  }
+
   txBuffer.send();
 }
 
@@ -181,7 +222,7 @@ bool sensorValue() {
 
 // Set the LED color
 void handleColorMessage() {
-  Serial.println(F("Set color!"));
+  // Serial.println(F("Set color!"));
 
   uint8_t *colors = rxBuffer.getBody();
 
@@ -194,7 +235,7 @@ void handleColorMessage() {
 
 // Set LED fade
 void handleFadeMessage() {
-  Serial.println(F("Set fade!"));
+  // Serial.println(F("Set fade!"));
 
   uint8_t *data = rxBuffer.getBody();
   uint8_t len = rxBuffer.getBodyLen();
@@ -234,6 +275,7 @@ void setAddress() {
 
     // Valid addresses are greater than MASTER
     if (addr >= MASTER_ADDRESS) {
+
       myAddress = addr + 1;
       txBuffer.setMyAddress(myAddress);
       rxBuffer.setMyAddress(myAddress);
