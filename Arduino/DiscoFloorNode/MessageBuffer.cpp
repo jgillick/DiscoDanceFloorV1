@@ -19,6 +19,7 @@ void MessageBuffer::start(uint8_t messageType) {
   sentAt = 0;
   // escaped = true;
   bufferPos = 0;
+  headerPos = 0;
   isNew = true;
 
   srcAddress = 0;
@@ -106,42 +107,37 @@ uint8_t MessageBuffer::addToBuffer(uint8_t c) {
   return messageState;
 }
 
-uint8_t MessageBuffer::processHeader() {
-  uint8_t headerPos = 0,
-          destination;
+uint8_t MessageBuffer::processHeader(uint8_t c) {
+  if (messageState != MSG_STATE_HDR) return messageState;
 
-  // No header or header is too long, corrupt message
-  if (bufferPos == 0 || bufferPos > 5) {
-    return messageState = MSG_STATE_ABT;
+  // Headder parts
+  switch (headerPos){
+
+    // Lower Destination
+    case 0:
+      addressDestRange[0] = c;
+    break;
+    // Upper Destination
+    case 1:
+      addressDestRange[1] = c;
+    break;
+    // Source address
+    case 2:
+      srcAddress = c;
+    break;
+    // Message type
+    case 3:
+      type = c;
+    break;
+
   }
+  headerPos++;
 
-  // Get destination address
-  destination = buffer[headerPos++];
-
-  // Address range
-  if (buffer[headerPos] == '-') {
-    setDestAddress(destination, buffer[++headerPos]);
-    headerPos++;
-  } else {
-    setDestAddress(destination);
+  // Move onto the body of the message
+  if (headerPos >= 4) {
+    return messageState = MSG_STATE_ACT;  
   }
-
-  // Source address
-  if (headerPos < bufferPos) {
-    srcAddress = buffer[headerPos];
-  }
-  else {
-    srcAddress = MASTER_ADDRESS;
-  }
-
-  // Is not addressed to us or MASTER
-  // if (!addressedToMe() && !addressedToMaster()) {
-  //   return messageState = MSG_STATE_ABT;
-  // }
-
-  // Reset buffer and prepare to process message
-  bufferPos = 0;
-  return messageState = MSG_STATE_ACT;
+  return messageState;
 }
 
 uint8_t MessageBuffer::write(uint8_t c) { 
@@ -178,8 +174,16 @@ uint8_t MessageBuffer::write(uint8_t c) {
       uint8_t checksum = buffer[--bufferPos];
       buffer[bufferPos] = '\0';
       if (calculateChecksum() != checksum) {
+        Serial.print("D:");
+        Serial.write(addressDestRange[0]);Serial.print(',');
+        Serial.write(addressDestRange[1]);Serial.print(',');
+        Serial.write(srcAddress);Serial.print(',');
+        Serial.write(type);Serial.print('B:');
+        for(int i = 0; i < bufferPos; i++ ){
+          Serial.write(buffer[i]);Serial.print(',');
+        }
         Serial.print(F("CHECKSUMS MISMATCH: "));
-        Serial.print(checksum); Serial.print(" != "); Serial.println(calculateChecksum());
+        Serial.write(checksum); Serial.print(" != "); Serial.write(calculateChecksum());
         return messageState = MSG_STATE_ABT;
       }
 
@@ -191,19 +195,12 @@ uint8_t MessageBuffer::write(uint8_t c) {
 
   // Header
   else if (messageState == MSG_STATE_HDR) {
-    if (c == MSG_EOH) return processHeader();
-    return addToBuffer(c);
+    return processHeader(c);
   }
 
   // Message body
   else if(messageState == MSG_STATE_ACT) {
-
-    // First character is message type
-    if (type == 0 && bufferPos == 0) {
-      type = c;
-    } else {
-      return addToBuffer(c);
-    }
+    return addToBuffer(c);
   }
 
   return messageState;
@@ -242,8 +239,7 @@ uint8_t MessageBuffer::read() {
 }
 
 uint8_t MessageBuffer::send() {
-  uint8_t sent = 0,
-          checksum;
+  uint8_t sent = 0;
 
   if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return 0;
   if (myAddress == 0) return 0;
@@ -254,33 +250,20 @@ uint8_t MessageBuffer::send() {
 
   Serial.print(MSG_SOM); sent++;
 
-  // Destination address
+  // Headers
   Serial.write(addressDestRange[0]); sent++;
-  if (addressDestRange[0] != addressDestRange[1]) {
-    Serial.write('-');
-    Serial.write(addressDestRange[1]); 
-    sent += 2;
-  }
+  Serial.write(addressDestRange[1]); sent++;
+  Serial.write(srcAddress);          sent++;
+  Serial.write(type);                sent++;
 
-  // From address
-  if (srcAddress != MASTER_ADDRESS) {
-    Serial.write(srcAddress);
-    sent++;
-  }
-
-  // Type and message body
-  Serial.print(MSG_EOH);
-  Serial.write(type);
-
-  sent += 2;
+  // Message body
   for(int i = 0; i < bufferPos; i++ ){
     Serial.write(buffer[i]);
   }
   sent += bufferPos - 1;
 
-  // End of message
-  checksum = calculateChecksum();
-  Serial.write(checksum);
+  // End of messageState
+  Serial.write(calculateChecksum());
   Serial.print(MSG_EOM);
   sent += 2;
   Serial.flush();

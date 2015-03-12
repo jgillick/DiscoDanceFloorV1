@@ -4,13 +4,12 @@
   Format
   ------
   Each message follows the format:
-  >{to}{from},{type}{body}{checksum}\n
+  >{to}{from}{type}{body}{checksum}\n
 
   >          - The start of a message
-  {to}       - Is the address to the node the message is going to
-  {from}     - (optional) Is the address the message is from (0 - 255). 
-               Only when a node is communicating to master (see Addressing)
-  ,          - Marks the end of the header
+  {to}       - Two bytes that make up the destination address range the message is going to (inclusive). 
+               If the message is for one node, that address is both bytes
+  {from}     - The address of the node the message is from
   {type}     - The message type (set LED, get sensor value, etc)
   {body}     - The body of the message
   {checksum} - (not yet implemented) A 2 byte fletcher16 checksum
@@ -50,9 +49,8 @@
 // Message format and characters
 #define MSG_SOM         '>'   // Start of message
 #define MSG_EOM         '\n'  // End of message
-#define MSG_EOH         ','   // End of header
 #define MSG_ESC         '\\'  // Escape character
-#define MSG_ALL         '*'   // The address used for all nodes
+#define MSG_ALL         0x00  // The wildcard address used to target all nodes
 
 // Maximum size of the message buffer
 #define MSG_BUFFER_LEN  10    
@@ -69,14 +67,15 @@
 class MessageBuffer {
   private: 
     
+    uint8_t buffer[MSG_BUFFER_LEN + 1];
     uint8_t  type,
              myAddress,
              srcAddress,
+             headerPos,
              bufferPos,
              txControl,
              messageState;
     // bool escaped;
-    uint8_t buffer[MSG_BUFFER_LEN + 1];
 
     // The range of addresses this message is for
     // `toRange[0]` and `toRange[0]` are inclusive, both addresses are included in the range.
@@ -87,7 +86,7 @@ class MessageBuffer {
     uint8_t addToBuffer(uint8_t);
 
     // Process the header from the buffer
-    uint8_t processHeader();
+    uint8_t processHeader(uint8_t);
 
     void setType(uint8_t);
     uint8_t calculateChecksum();
