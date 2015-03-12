@@ -178,12 +178,12 @@ void TestMaster::getNodeStatus(long now) {
     // Serial.print(F("Got status from "));
     // Serial.println(rxBuffer->getSourceAddress());
 
-    if (rxBuffer->getSourceAddress() > lastStatusAddr) {
+    if (addr > lastStatusAddr) {
       statusTries = 0;
-      lastStatusAddr = rxBuffer->getSourceAddress();
+      lastStatusAddr = addr;
       lastStatusTXTime = now;
     } else {
-      Serial.println(F("Invalid status address"));
+      // Serial.println(F("Invalid status address"));
     }
   }
 
@@ -214,7 +214,7 @@ void TestMaster::sendStatusRequest(long now) {
   }
 
   txBuffer->start(TYPE_STATUS);
-  txBuffer->setDestAddress(lastStatusAddr + 1, '*');
+  txBuffer->setDestAddress(lastStatusAddr + 1, MSG_ALL);
   txBuffer->send();
 
   lastStatusTXTime = now;
