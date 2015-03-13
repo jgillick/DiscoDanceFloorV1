@@ -17,7 +17,7 @@ void MessageBuffer::start(uint8_t messageType) {
   }
 
   sentAt = 0;
-  // escaped = true;
+  escaped = false;
   bufferPos = 0;
   headerPos = 0;
   isNew = true;
@@ -143,19 +143,16 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
 uint8_t MessageBuffer::write(uint8_t c) { 
 
   // Escape characer
-  // if (escaped) {
-  //   if(messageState == MSG_STATE_ACT) {
-  //     addToBuffer(c);
-  //   } 
-  //   escaped = false;
-  //   return messageState;
-  // }
-  // else if (c == MSG_ESC) {
-  //   escaped = true;
-  // }
+  if (escaped) {
+    escaped = false;
+    if (messageState == MSG_STATE_ACT) {
+      addToBuffer(c);
+      return messageState;
+    }
+  }
 
   // Start of message
-  if(c == MSG_SOM) {
+  else if(c == MSG_SOM) {
     reset();
     messageState = MSG_STATE_HDR;
   }
@@ -183,7 +180,7 @@ uint8_t MessageBuffer::write(uint8_t c) {
           Serial.write(buffer[i]);Serial.print(',');
         }
         Serial.print(F("CHECKSUMS MISMATCH: "));
-        Serial.write(checksum); Serial.print(" != "); Serial.write(calculateChecksum());
+        Serial.write(checksum); Serial.print("!="); Serial.write(calculateChecksum());
         return messageState = MSG_STATE_ABT;
       }
 
@@ -200,7 +197,11 @@ uint8_t MessageBuffer::write(uint8_t c) {
 
   // Message body
   else if(messageState == MSG_STATE_ACT) {
-    return addToBuffer(c);
+    if (c == MSG_ESC) {
+      escaped = true;
+    } else {
+      return addToBuffer(c);
+    }
   }
 
   return messageState;
@@ -256,8 +257,11 @@ uint8_t MessageBuffer::send() {
   Serial.write(srcAddress);          sent++;
   Serial.write(type);                sent++;
 
-  // Message body
+  // Add message body and escape reserved bytes
   for(int i = 0; i < bufferPos; i++ ){
+    if (buffer[i] == MSG_SOM || buffer[i] == MSG_EOM || buffer[i] == MSG_ESC) {
+      Serial.write(MSG_ESC);  
+    }
     Serial.write(buffer[i]);
   }
   sent += bufferPos - 1;

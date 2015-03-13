@@ -75,7 +75,7 @@ class MessageBuffer {
              bufferPos,
              txControl,
              messageState;
-    // bool escaped;
+    bool escaped;
 
     // The range of addresses this message is for
     // `toRange[0]` and `toRange[0]` are inclusive, both addresses are included in the range.
