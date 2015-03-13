@@ -46,7 +46,7 @@ If you see errors about not being able to find 'serialport', you might have to r
  * Create a symlink from what's there to the directory it is looking for.
     * In my case: `ln -s node-v43-darwin-x64 node-webkit-v43-darwin-x64`
 
- That should fix it.
+That should fix it.
 
 ## Writing Programs
 TBD
