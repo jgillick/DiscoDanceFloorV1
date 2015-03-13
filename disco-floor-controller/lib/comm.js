@@ -1,7 +1,8 @@
 'use strict';
 
-var Serial = require('serialport').SerialPort,
-		Buffer = require('buffer'),
+var EventEmitter  = require("events").EventEmitter,
+		util   			  = require("util"),
+		Serial 			  = require('serialport').SerialPort,
 		MessageParser = require('./serial_message_parser.js');
 
 const BAUD_RATE			      = 9600;
@@ -29,20 +30,25 @@ var serialPort,
 		statusTries,
 		lastNodeAddr = MessageParser.MASTER_ADDRESS,
 		lastUpdate = 0,
-		updateDir = 1,
 		addressingStageTimeout,
 		nodeRegistration;
 
 
 // Set our address on the parser
 MessageParser.setMyAddress(MessageParser.MASTER_ADDRESS);
-		
+
 
 /**
 	Handles communication with the floor nodes
 	over the serial port
+
+	@inherits EventEmitter
 */
-var comm = {
+function Comm(){
+	EventEmitter.call(this);
+}
+// util.inherits(Comm, EventEmitter);
+Comm.prototype = {
 
 	/**
 		Start communicating with all the floor cells
@@ -92,7 +98,7 @@ var comm = {
 
 		@method nextStage
 	*/
-	nextStage: function() {		
+	nextStage: function() {
 		if (txBuffer) {
 			txBuffer.reset();
 			txBuffer = null;
@@ -100,14 +106,16 @@ var comm = {
 
 		// From the old status to the new status
 		switch(stage) {
-			case IDLE: 
+			case IDLE:
 				stage = ADDRESSING;
 			break;
-			case ADDRESSING: 
+			case ADDRESSING:
 				if (nodeRegistration.length) {
 					stage = STATUSING;
+					this.emit('done-addressing', nodeRegistration.length);
 					console.log('Done addressing. Found', nodeRegistration.length, 'floor cells');
-				} 
+					return;
+				}
 				// Nothing found, continue
 				else {
 					console.log('No addresses found, try again');
@@ -124,23 +132,25 @@ var comm = {
 
 		// Setup and call the new status handler on the next tick of the event loop
 		switch(stage) {
-			case ADDRESSING: 
+			case ADDRESSING:
 				process.nextTick(this.addressing.bind(this));
 			break;
-			case STATUSING: 
+			case STATUSING:
 				console.log('STATUSING');
 				lastStatusAddr = MessageParser.MASTER_ADDRESS;
-				process.nextTick(this.status.bind(this));
+				// process.nextTick(this.status.bind(this));
+				setTimeout(this.status.bind(this), 10);
 			break;
-			case UPDATING: 
+			case UPDATING:
 				console.log('UPDATING');
-				process.nextTick(this.update.bind(this));
+				// process.nextTick(this.update.bind(this));
+				setTimeout(this.update.bind(this), 10);
 			break;
 		}
 	},
 
 	/**
-		Pass the most recent message to the correct stage. 
+		Pass the most recent message to the correct stage.
 		For example, all messages received during the addressing stage
 		will be sent to the `addressing` method.
 	*/
@@ -182,7 +192,8 @@ var comm = {
 
 				nodeRegistration.push(addr);
 				lastNodeAddr = addr;
-				
+				this.emit('new-node', addr);
+
 				// Send ACK, and then query for the next address
 				sendACK(addr)
 				.then(function(){
@@ -190,13 +201,13 @@ var comm = {
 				});
 
 				// Update timeout
-				clearTimeout(addressingStageTimeout); 
+				clearTimeout(addressingStageTimeout);
 				addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
-			} 
+			}
 			else {
-				console.log('Invalid address:', addr); 
-			}	
-		} 
+				console.log('Invalid address:', addr);
+			}
+		}
 	},
 
 	/**
@@ -241,7 +252,6 @@ var comm = {
 		Handle the node update stage
 	*/
 	update: function() {
-		console.log('...');
 
 		// Set random color fades every 1.5 seconds
 		if (lastUpdate + 1500 < Date.now()) {
@@ -249,15 +259,15 @@ var comm = {
 					maxValue = 120,
 					rgbSelect, tx;
 
-			
+
 			// Each node
 			nodeRegistration.forEach(function(addr){
 				tx = new MessageParser();
 				data[0] = 0;
 				data[1] = 0;
 				data[2] = 0;
-				
-				// Set a two colors to fade to 
+
+				// Set a two colors to fade to
 				// (first can go from 0 - 120, secondary can go from 0 - 255)
 				for (var c = 0; c < 2; c++) {
 					rgbSelect = Math.floor(Math.random() * 3); // Which RGB color to set
@@ -265,7 +275,6 @@ var comm = {
 					data[rgbSelect] = Math.floor(Math.random() * maxValue);
 				}
 
-				tx.label = 'Updating';
 				tx.start(MessageParser.TYPE_FADE);
 				tx.setDestAddress(addr);
 				tx.write(data);
@@ -279,9 +288,11 @@ var comm = {
 	}
 
 };
+Comm.prototype.__proto__ = EventEmitter.prototype;
+var comm = new Comm();
 
 /**
-	A custom SerialPort parser that runs incoming data through the 
+	A custom SerialPort parser that runs incoming data through the
 	MessageParser and emits `message-ready` every time it finds
 	an incoming message.
 
@@ -328,7 +339,7 @@ function sendAddressingRequest() {
 	Send a request for node status
 
 	@function sendStatusRequest
-	@return {MessageParser} The sent message object
+	@return {MessageParser or False} The sent message object or `False` if there are not more nodes
 */
 function sendStatusRequest() {
 	var tx = new MessageParser();
@@ -342,11 +353,10 @@ function sendStatusRequest() {
 
   // We're out of nodes
   if (lastStatusAddr + 1 >= lastNodeAddr) {
-    comm.nextStage();
-    return null;
+  	comm.nextStage();
+    return false;
   }
 
-  tx.label = 'Status request';
   tx.start(MessageParser.TYPE_STATUS);
   tx.setDestAddress(lastStatusAddr + 1, MessageParser.MSG_ALL);
   tx.send();
@@ -367,13 +377,10 @@ function sendStatusRequest() {
 */
 function sendACK(addr) {
 	var tx = new MessageParser();
-	tx.label = "ACKING";
 	tx.start(MessageParser.TYPE_ACK);
   tx.setDestAddress(addr);
   return tx.send();
 }
 
 
-module.exports = comm;
-module.exports.port = serialPort;
-module.exports.Parser = MessageParser;
+module.exports = new Comm();

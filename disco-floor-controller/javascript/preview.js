@@ -65,10 +65,50 @@ function serialSetup(){
 	}
 	updatePorts();
 
+	// Skip serial
+	$('#serial-setup button.skip').click(function(){
+		$('#serial-setup').addClass('closed');
+	});
+
 	// Port selected, connect and get node count
-	$('#serial-setup .connect').click(function(){
-		var port = $('#serial-ports-list').val();
-		console.log('Open', port);
+	$('#serial-setup button.connect').click(function(){
+		var el = $('#serial-setup'),
+				status = el.find('p.status'),
+				port = $('#serial-ports-list').val(),
+				foundNodes = 0;
+
+		// Connect
+		el.addClass('connect');
 		comm.start(port);
+
+		// Show status
+		comm.on('new-node', function(){
+			foundNodes++;
+
+			if (foundNodes == 1) {
+				status.html('Found '+ foundNodes +' floor cell');
+			} else {
+				status.html('Found '+ foundNodes +' floor cells');
+			}
+		});
+
+		// Setup floor
+		comm.on('done-addressing', function(nodeCount){
+			var sqrt, x, y;
+
+			if (!nodeCount) {
+				status.html('No floor cells were found.');
+				return;
+			}
+
+			sqrt = Math.sqrt(nodeCount);
+			x = Math.floor(sqrt);
+			y = Math.ceil(sqrt);
+
+			disco.controller.setDimensions(x, y);
+			$('#serial-setup').addClass('closed');
+			$('.dimensions').css('display', 'none');
+		});
+
 	});
 }

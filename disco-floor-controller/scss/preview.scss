@@ -5,7 +5,7 @@ body {
 
 #serial-setup {
 	position: absolute;
-	top: 0; bottom: 0; 
+	top: 0; bottom: 0;
 	left: 0; right: 0;
 	z-index: 2;
 
@@ -24,6 +24,32 @@ body {
 		fieldset {
 			padding: 10px;
 		}
+	}
+
+	.connecting {
+		display: none;
+		h1 {
+			font-size: 16px;
+			font-weight: bold;
+			margin: 0 0 15px;
+			text-align: center;
+		}
+		p.status {
+			text-align: center;
+		}
+	}
+
+	&.connect {
+		.selection {
+			display: none;
+		}
+		.connecting {
+			display: block;
+		}
+	}
+
+	&.closed {
+		display: none;
 	}
 }
 
@@ -87,7 +113,7 @@ body {
 		td {
 			background: rgba(0, 0, 0, 0.05);
 			border: 2px solid #dedede;
-			cursor: url(../../images/shoe_small.png) 10 15, auto; 
+			cursor: url(../../images/shoe_small.png) 10 15, auto;
 
 			&:hover {
 				opacity: 0.9;
@@ -128,5 +154,5 @@ body {
 			left: 0; right: 0;
 			text-align: center;
 		}
-	} 
+	}
 }
