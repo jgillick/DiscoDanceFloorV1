@@ -130,13 +130,11 @@ var comm = {
 			case STATUSING: 
 				console.log('STATUSING');
 				lastStatusAddr = MessageParser.MASTER_ADDRESS;
-				// process.nextTick(this.status.bind(this));
-				setTimeout(this.status.bind(this), 10);
+				process.nextTick(this.status.bind(this));
 			break;
 			case UPDATING: 
 				console.log('UPDATING');
-				// process.nextTick(this.update.bind(this));
-				setTimeout(this.update.bind(this), 10)
+				process.nextTick(this.update.bind(this));
 			break;
 		}
 	},
