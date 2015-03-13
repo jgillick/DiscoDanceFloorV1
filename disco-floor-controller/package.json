@@ -1,12 +1,17 @@
 {
   "name": "disco-floor-controller",
   "description": "The controller for a step responsive disco dance floor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jgillick/DiscoDanceFloor"
+  },
   "version": "0.0.1",
   "main": "index.html",
   "node-main": "app.js",
   "dependencies": {
-  	"bluebird": "*",
-  	"pubsub-js": "*",
-  	"underscore": "*"
+    "bluebird": "*",
+    "pubsub-js": "*",
+    "underscore": "*",
+    "serialport": "*"
   }
 }
