@@ -162,6 +162,11 @@ uint8_t MessageBuffer::write(uint8_t c) {
     return messageState;
   }
 
+  // Header
+  else if (messageState == MSG_STATE_HDR) {
+    return processHeader(c);
+  }
+
   // End of message
   else if (c == MSG_EOM) {
     if(messageState == MSG_STATE_ACT) {
@@ -188,11 +193,6 @@ uint8_t MessageBuffer::write(uint8_t c) {
     } else {
       reset();
     }
-  }
-
-  // Header
-  else if (messageState == MSG_STATE_HDR) {
-    return processHeader(c);
   }
 
   // Message body

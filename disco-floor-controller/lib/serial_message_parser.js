@@ -306,6 +306,11 @@ MessageParser.prototype = {
 			return this._state;
 		}
 
+		// Header
+		else if (this._state == MSG_STATE_HDR) {
+			return this.processHeader(c);
+		}
+
 		// End of message, parse and return
 		else if (c == MSG_EOM) {
 			if(this._state == MSG_STATE_ACT) {
@@ -330,11 +335,6 @@ MessageParser.prototype = {
 			} else {
 				this.reset();
 			}
-		}
-
-		// Header
-		else if (this._state == MSG_STATE_HDR) {
-			return this.processHeader(c);
 		}
 
 		// Message body
