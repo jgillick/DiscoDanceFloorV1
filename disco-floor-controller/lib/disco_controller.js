@@ -1,10 +1,11 @@
-var Promise = require("bluebird"),
-	fs = require('fs'),
-	path = require('path'),
-	events = require('events'),
-	util = require('util'),
-	discoUtils = require('./utils.js'),
-	FloorCell = require('./floor_cell.js');
+'use strict';
+
+var fs = require('fs'),
+		path = require('path'),
+		events = require('events'),
+		util = require('util'),
+		discoUtils = require('./utils.js'),
+		FloorCell = require('./floor_cell.js');
 
 var eventEmitter = new events.EventEmitter(),
 	controller,
@@ -16,10 +17,10 @@ var eventEmitter = new events.EventEmitter(),
 
 	@method refreshController
 */
-refreshController = function(){
+function refreshController(){
 	var x = 10,
-		y = 10,
-		dimensions;
+			y = 10,
+			dimensions;
 
 	if (controller) {
 		dimensions = controller.getDimensions();
@@ -44,12 +45,12 @@ module.exports.refreshController = refreshController;
 */
 module.exports.runProgram = function(file){
 	var controller = refreshController();
-	
+
 	program = require('../programs/'+ file);
 	program.init(controller).then(function(){
 		program.run();
 	});
-}
+};
 
 /**
 	Get a list of disco programs
@@ -61,7 +62,7 @@ module.exports.runProgram = function(file){
 module.exports.getProgramList = function(){
 
 	// Read files from the programs directory
-	if (!programs || programs.length == 0) {
+	if (!programs || programs.length === 0) {
 		return new Promise(function(resolve, reject) {
 			programs = [];
 
@@ -95,7 +96,7 @@ module.exports.getProgramList = function(){
 
 	// Return cached list
 	return Promise.resolve(programs);
-}
+};
 
 /**
 	The fade loop is called many times a second to set the color
@@ -104,7 +105,7 @@ module.exports.getProgramList = function(){
 	@class FadeLoop
 	@private
 */
-FadeLoop = {
+var FadeLoop = {
 
 	/**
 		True if some cells are currently fading
@@ -130,7 +131,7 @@ FadeLoop = {
 			this.fading = true;
 			this.last_loop_time = Date.now();
 			window.requestAnimationFrame(function(){
-				this.loop()
+				this.loop();
 			}.bind(this));
 		}
 	},
@@ -149,7 +150,7 @@ FadeLoop = {
 		eventEmitter.emit('fadeFrame.start');
 
 		try {
-		
+
 			// Process all fading cells
 			for (var i = 0, len = cells.length; i < len; i++) {
 				cell = cells[i];
@@ -164,7 +165,7 @@ FadeLoop = {
 			this.last_loop_time = Date.now();
 			if (fading) {
 				window.requestAnimationFrame(function(){
-					this.loop()
+					this.loop();
 				}.bind(this));
 				// setTimeout(function(){
 				// 	this.loop()
@@ -200,8 +201,8 @@ FadeLoop = {
 		// We must be done, skip ahead
 		if (multiplier >= 1) {
 			setRGB = toRGB;
-			fadeComplete = true;	
-		} 
+			fadeComplete = true;
+		}
 		// Increment each color
 		else {
 			for (var i = 0; i < 3; i++) {
@@ -220,7 +221,7 @@ FadeLoop = {
 			cell.setFadeDuration(duration - sinceLastLoop);
 		}
 	}
-}
+};
 
 
 
@@ -228,7 +229,7 @@ FadeLoop = {
 	The central controller for the disco floor.
 	@class DiscoController
 */
-var DiscoController = function(x, y){ 
+var DiscoController = function(x, y){
 
 	/**
 		Floor max x/y dimensions
@@ -252,7 +253,7 @@ var DiscoController = function(x, y){
 		* read: The floor is setup and ready
 		* dimensions.willChange: The floor dimensions are about to change
 		* dimensions.changed: The floor dimensions have just changed
-		* cell.colorSet: A color has been set on a floor cell 
+		* cell.colorSet: A color has been set on a floor cell
 
 		@property events
 		@type EventEmitter
@@ -295,7 +296,7 @@ var DiscoController = function(x, y){
 
 	/**
 		Get the floor dimensions
-		
+
 		@method getDimensions
 		@return {Object} Object with the floor's x/y values
 	*/
@@ -346,7 +347,7 @@ var DiscoController = function(x, y){
 	}
 
 	/**
-		Start the fade loop which will animate any 
+		Start the fade loop which will animate any
 		fading cell
 
 		@method startFadeLoop
