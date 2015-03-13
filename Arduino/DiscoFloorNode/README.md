@@ -8,8 +8,7 @@ For a simple test setup, you can make one of the nodes the "master"
 by bringing pin 5 high. This node will then run the network through
 a node registration and a series of simple programs.
 
-Wiring
-------
+## Wiring
 
 ### Arduino
 
@@ -29,7 +28,6 @@ Wiring
 13:  (optional) Attach to master's pin 12, for debugging statements.
 ```
 
-
 ### RS485 chip (MAX485 or ISL8487E)
 
 I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816) chip 
@@ -47,8 +45,7 @@ to pin 7 of the floor node.
 8:   To common
 ```
 
-Test Master Flow
-----------------
+## Test Master Flow
 
 1. Enable first floor node (pin 5 HIGH)
 2. Ask for the node's address (repeat message after ACK_TIMEOUT)
@@ -67,7 +64,12 @@ Test Master Flow
   4. Repeat
 
 
-Debugging
----------
+## Debugging
+
 All nodes output serial debugging statements to pin 13 (4800 baud). If pin 12 of the master node is
 connected to this pin, it will dump these statements out to serial.
+
+## Libraries
+
+In order to make the libraries available to the horrible Arduino IDE for compiling, put everything in the libraries directory
+in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
