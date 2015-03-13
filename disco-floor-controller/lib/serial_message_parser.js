@@ -26,8 +26,7 @@ const MASTER_ADDRESS = 1;
 const MSG_SOM = '>'.charCodeAt(0);	 // Start of message
 const MSG_EOM = '\n'.charCodeAt(0);	 // End of message
 const MSG_ESC = '\\'.charCodeAt(0);	 // Escape character
-const MSG_ALL = 0;	                 // The wildcard address used to target all nodes
-const MSG_RNG = '-'.charCodeAt(0);	 // The address range separator
+const MSG_ALL = 0x00;                // The wildcard address used to target all nodes
 
 // Message types
 const TYPE_NULL	  = 0x00;
@@ -49,7 +48,12 @@ const MSG_STATE_BOF = 0x82;	// buffer over flow
 
 
 var myAddress,
-		serialPort;
+		serialPort,
+		escapeChars = [
+			MSG_SOM,
+			MSG_EOM,
+			MSG_ESC
+		];
 
 /**
 	@class MessageParser
@@ -238,12 +242,32 @@ MessageParser.prototype = {
 	},
 
 	/**
-		Append and/or process a new byte to the message
-
-		@param {byte} c An 8-bit byte to add to the message
-		@return {int} The current message parsing state
+		Add a character to the message body
+	
+		@method write
+		@param {byte} c An byte to add to the message
 	*/
 	write: function(c) {
+		// String or buffer of data
+		if (c.length) {
+			for (var i = 0; i < c.length; i++) {
+				this.write(c[i]);
+			}
+			return this._state;
+		}
+
+		// Add to buffer
+		this._buffer.push(c);
+	},
+
+	/**
+		Parse an incoming message one byte at a time
+	
+		@method parse
+		@param {byte} c Another byte to process
+		@return {int} The current message parsing state
+	*/
+	parse: function(c) {
 		var receivedChecksum, 
 				calcedChecksum;
 
@@ -255,22 +279,19 @@ MessageParser.prototype = {
 		// String or buffer of data
 		if (c.length) {
 			for (var i = 0; i < c.length; i++) {
-				this.write(c[i]);
+				this.parse(c[i]);
 			}
 			return this._state;
 		}
 
 		// Escape characer
-		// if (this._escaped) {
-		//	 if(this._state == MSG_STATE_ACT) {
-		//		 this._buffer.push(c;
-		//	 } 
-		//	 this._escaped = false;
-		//	 return this._state;
-		// }
-		// else if (c == MSG_ESC) {
-		//	 this._escaped = true;
-		// }
+		if (this._escaped) { 
+			this._escaped = false;
+			if (this._state == MSG_STATE_ACT) {
+			 this._buffer.push(c);
+			 return this._state;
+			}
+		}
 
 		// Start of message
 		else if(c == MSG_SOM) {
@@ -292,11 +313,9 @@ MessageParser.prototype = {
 				// Compare checksum
 				receivedChecksum = this._buffer.pop();
 				calcedChecksum = this.calculateChecksum();
-
 				if (calcedChecksum == receivedChecksum) {
 					this._state = MSG_STATE_RDY;
 				} else {
-
 					// Debug
 					// console.log('CHECKSUMS MISMATCH: ', receivedChecksum, ' != ', calcedChecksum);
 					// console.log('\tType:', this.getTypeAsString()+',\t', 
@@ -306,8 +325,7 @@ MessageParser.prototype = {
 					// console.log(this._fullBuffer.join('\t'));
 					// console.log(this._fullBufferChars.join('\t'));
 
-					// this._state = MSG_STATE_ABT;
-					this._state = MSG_STATE_RDY;
+					this._state = MSG_STATE_ABT;
 				}
 			} else {
 				this.reset();
@@ -321,7 +339,11 @@ MessageParser.prototype = {
 
 		// Message body
 		else if(this._state == MSG_STATE_ACT) {
-			this._buffer.push(c);
+			if (c == MSG_ESC) {
+				 this._escaped = true;
+			} else {
+				this._buffer.push(c);
+			}
 		}
 
 		return this._state;
@@ -402,8 +424,6 @@ MessageParser.prototype = {
 				return reject('The "myAddress" has not been defined yet. See MessageParser.setMyAddress(<byte>)');
 			if (this.addressDestRange[0] === undefined || this.addressDestRange[1] === undefined) 
 				return reject('The destination address has not been defined yet. See setDestAddress(<byte>, [<byte>])');
-			if (this._state != MSG_STATE_RDY && this._state != MSG_STATE_ACT) 
-				return reject('The message is not ready to be sent. Did you forget to add a type or destination address?');
 
 			// Start sending
 			this.srcAddress = myAddress;
@@ -415,8 +435,13 @@ MessageParser.prototype = {
 			data.push(myAddress);
 			data.push(this.type);
 
-			// Message body
-			data.push.apply(data, this._buffer);
+			// Add message body and escape reserved bytes
+			this._buffer.forEach(function(c, i){
+				if (escapeChars.indexOf(c) > -1) {
+					data.push(MSG_ESC);
+				} 
+				data.push(c);
+			})
 
 			// End of message
 			data.push(this.calculateChecksum());
