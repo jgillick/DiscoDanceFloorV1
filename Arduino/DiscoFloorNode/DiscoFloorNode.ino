@@ -40,6 +40,7 @@ bool enabledState = false, // is the node enabled
 void setup() {
   pinMode(NEXT_NODE,   OUTPUT);  
   pinMode(TX_CONTROL,  OUTPUT);
+  pinMode(NODE_STATUS, OUTPUT);
   pinMode(ENABLE_NODE, INPUT);
   
   digitalWrite(TX_CONTROL, RS485Receive);
@@ -61,6 +62,7 @@ void setup() {
     Serial.println(F("I'm a node."));
   }
 #endif
+  digitalWrite(NODE_STATUS, HIGH);
 }
 
 void reset() {

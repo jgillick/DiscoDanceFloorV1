@@ -18,6 +18,9 @@
 #define NEXT_NODE        5    // Enables the next node so it can register itself
 #define ENABLE_NODE      6    // Sets ID when HIGH
 #define TX_CONTROL       7    // RS485 TX Enable
+#define NODE_STATUS      8
+
+// For master debugging
 #define SSERIAL_DEBUG_RX 12   // Debug SoftwareSerial RX line
 #define SSERIAL_DEBUG_TX 13   // Debug SoftwareSerial TX line
 
