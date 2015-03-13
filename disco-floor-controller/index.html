@@ -4,9 +4,11 @@
 	<title>Disco Dance Floor Controller</title>
 	<link rel="stylesheet" type="text/css" href="public/stylesheets/reset.css" /> 
 	<link rel="stylesheet" type="text/css" href="public/stylesheets/preview.css" /> 
+
 	<script type="text/javascript" src="javascript/frameworks/jquery-2.1.1.js"></script>
 	<script type="text/javascript" src="lib/emulated_floor.js"></script>
 	<script type="text/javascript" src="javascript/preview.js"></script>
+	<script type="text/javascript" src="javascript/serial.js"></script>
 
 	<style id="grid-dimensions"></style>
 	<style id="grid-frame"></style>
@@ -42,11 +44,28 @@
 		<h1>Programs</h1>
 		<select id="program-list" multiple></select>
 		<div class="description"></div>
-		<div class="actions">
+		<!-- <div class="actions">
 			<button>New</button>
 			<button disabled>Edit</button>
-		</div>
+		</div> -->
 	</section>
 </div>
+
+<div id="serial-setup">
+	<div class="content">
+		<fieldset>
+			<legend>Select Device</legend>
+			<select id="serial-ports-list">
+				<option value="">Loading...</option>
+			</select>
+			<button class="connect">Connect</button>
+		</fieldset>
+		<fieldset>
+			<legend>- Or -</legend>
+			<button class="skip">Continue in Emulation Mode</button>
+		</fieldset>
+	</div>
+</div>
+
 </body>
 </html>

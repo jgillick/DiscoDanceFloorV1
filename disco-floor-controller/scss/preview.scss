@@ -3,6 +3,30 @@ body {
 	background: #999;
 }
 
+#serial-setup {
+	position: absolute;
+	top: 0; bottom: 0; 
+	left: 0; right: 0;
+	z-index: 2;
+
+	.content {
+		width: 50%;
+		overflow: auto;
+		padding: 10px;
+		border: 1px solid #000;
+		border-radius: 5px;
+		background: #dedede;
+
+		position: absolute;
+		top: 20%;
+		left: 20%;
+
+		fieldset {
+			padding: 10px;
+		}
+	}
+}
+
 #preview {
 
 	.emulator {
