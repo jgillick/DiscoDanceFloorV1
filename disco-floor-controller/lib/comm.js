@@ -29,6 +29,7 @@ var serialPort,
 		statusTries,
 		lastNodeAddr = MessageParser.MASTER_ADDRESS,
 		lastUpdate = 0,
+		updateDir = 1,
 		addressingStageTimeout,
 		nodeRegistration;
 
@@ -121,20 +122,21 @@ var comm = {
 			break;
 		}
 
-		// Setup and call the new status
+		// Setup and call the new status handler on the next tick of the event loop
 		switch(stage) {
 			case ADDRESSING: 
-				console.log('ADDRESSING');
-				this.addressing();
+				process.nextTick(this.addressing.bind(this));
 			break;
 			case STATUSING: 
 				console.log('STATUSING');
 				lastStatusAddr = MessageParser.MASTER_ADDRESS;
-				this.status();
+				// process.nextTick(this.status.bind(this));
+				setTimeout(this.status.bind(this), 10);
 			break;
 			case UPDATING: 
 				console.log('UPDATING');
-				this.update();
+				// process.nextTick(this.update.bind(this));
+				setTimeout(this.update.bind(this), 10)
 			break;
 		}
 	},
@@ -295,7 +297,7 @@ function serialParser(emitter, buffer) {
 	}
 
 	for (var i = 0; i < buffer.length; i++){
-		rxBuffer.write(buffer.readUInt8(i));
+		rxBuffer.parse(buffer.readUInt8(i));
 
 		if (rxBuffer.isReady()){
 			emitter.emit('message-ready', rxBuffer);
