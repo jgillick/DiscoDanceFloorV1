@@ -6,35 +6,12 @@ var SerialPort = require('serialport').SerialPort;
 var optimist = require('../node_modules/serialport/node_modules/optimist');
 var comm = require('../lib/comm.js');
 
-var parser = new comm.Parser();
-// console.log(comm.Parser)
-
 var args = optimist
   .alias('h', 'help')
   .alias('h', '?')
   .options('portname', {
     alias: 'p',
     describe: 'Name of serial port. See serialPortList.js for open serial ports.'
-  })
-  .options('baud', {
-    describe: 'Baud rate.',
-    default: 9600
-  })
-  .options('databits', {
-    describe: 'Data bits.',
-    default: 8
-  })
-  .options('parity', {
-    describe: 'Parity.',
-    default: 'none'
-  })
-  .options('stopbits', {
-    describe: 'Stop bits.',
-    default: 1
-  })
-  .options('localecho', {
-    describe: 'Enable local echo.',
-    boolean: true
   })
   .argv;
 
@@ -56,26 +33,6 @@ process.stdin.on('data', function (s) {
     process.exit(0);
   }
 });
-
-// var openOptions = {
-//   baudRate: args.baud,
-//   dataBits: args.databits,
-//   parity: args.parity,
-//   stopBits: args.stopbits,
-//   parser: comm.serialParser
-// };
-// var port = new SerialPort(args.portname, openOptions);
-
-// port.on('data', function (data) {
-//   for (var i = 0, c; i < data.length; i++){
-//     parser.write(data.readUInt8(i));
-//     if (parser.isReady()) {
-//       // console.log('We have a valid message!');
-//     }
-//     // process.stdout.write(String.fromCharCode(data.readUInt8(i)));
-//   }
-//   // process.stdout.write(data.toString());
-// });
 
 var port = comm.start(args.portname);
 port.on('error', function (err) {
