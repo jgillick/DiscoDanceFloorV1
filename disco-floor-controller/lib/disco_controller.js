@@ -17,45 +17,56 @@ var eventEmitter = new events.EventEmitter(),
 
 	@method refreshController
 */
-function refreshController(){
-	var x = 10,
-			y = 10,
-			dimensions;
+// function refreshController(){
+// 	var x = 10,
+// 			y = 10,
+// 			dimensions;
 
-	if (controller) {
-		dimensions = controller.getDimensions();
-		x = dimensions.x;
-		y = dimensions.y;
+// 	if (controller) {
+// 		dimensions = controller.getDimensions();
+// 		x = dimensions.x;
+// 		y = dimensions.y;
 
-		dimensions = null;
-		controller = null;
-	}
+// 		dimensions = null;
+// 		controller = null;
+// 	}
 
-	controller = new DiscoController(x, y);
-	module.exports.controller = controller;
-	return controller;
-}
-module.exports.refreshController = refreshController;
+// 	controller = new DiscoController(x, y);
+// 	module.exports.controller = controller;
+// 	return controller;
+// }
+// module.exports.refreshController = refreshController;
 
 /**
-	Run a disco program
+	Are we emulating the floor or actually communicating
+	with a real one?
+
+	@property emulatedFloor
+	@type boolean
+*/
+module.exports.emulatedFloor = true;
+
+/**
+	Run a disco program from the 'programs' directory
 
 	@method runProgram
-	@param {String} file The name of the program file to run
+	@param {String} name The name of the program file to run
 */
-module.exports.runProgram = function(file){
-	var controller = refreshController();
+module.exports.runProgram = function(name){
+	if (!name.match(/\.js$/)) {
+		name = name +'.js';
+	}
 
-	program = require('../programs/'+ file);
+	program = require('../programs/'+ name);
 	program.init(controller).then(function(){
 		program.run();
 	});
 };
 
 /**
-	Get a list of disco programs
+	Get a list of available disco programs.
 
-	@method runProgram
+	@method getProgramList
 	@param {String} file The name of the program file to run
 	@return {Promise} which will resolve with the program list
 */
@@ -99,8 +110,8 @@ module.exports.getProgramList = function(){
 };
 
 /**
-	The fade loop is called many times a second to set the color
-	of all the floor cells that are being faded
+	The fade loop handles every step of fading one color to another
+	and is called several times a second.
 
 	@class FadeLoop
 	@private
@@ -131,8 +142,10 @@ var FadeLoop = {
 			this.fading = true;
 			this.last_loop_time = Date.now();
 			window.requestAnimationFrame(function(){
+			// setTimeout(function(){
 				this.loop();
 			}.bind(this));
+ 			// }.bind(this), 30);
 		}
 	},
 
@@ -165,8 +178,10 @@ var FadeLoop = {
 			this.last_loop_time = Date.now();
 			if (fading) {
 				window.requestAnimationFrame(function(){
+				// setTimeout(function(){
 					this.loop();
 				}.bind(this));
+				// }.bind(this), 30);
 				// setTimeout(function(){
 				// 	this.loop()
 				// }.bind(this), 60);
@@ -209,7 +224,7 @@ var FadeLoop = {
 				var from = fromRGB[i],
 					to = toRGB[i];
 
-				colorDiff = to - from,
+				colorDiff = to - from;
 				increment = Math.round(colorDiff * multiplier);
 				setRGB[i] = from + increment;
 			}
@@ -222,7 +237,6 @@ var FadeLoop = {
 		}
 	}
 };
-
 
 
 /**
@@ -248,6 +262,15 @@ var DiscoController = function(x, y){
 	var cells = [];
 
 	/**
+		Map of cell addresses to their index in the `cells` array.
+
+		@property cellAddresses
+		@type Hash of addresses address to index numbers
+		@private
+	*/
+	var cellAddresses = {};
+
+	/**
 		Events emitted from the floor controller:
 
 		* read: The floor is setup and ready
@@ -261,6 +284,36 @@ var DiscoController = function(x, y){
 	this.events = eventEmitter;
 
 	/**
+		Returns the index of the cell at the
+		x/y position of the floor
+
+		@private
+		@method getCellIndex
+		@param {int} x
+		@param {int} y
+		@returns int
+	*/
+	function getCellIndex(x, y) {
+		var index, cell,
+			xMax = dimensions.x;
+
+		if (x < 0 || y < 0 || x >= xMax || y >= dimensions.y) {
+			throw util.format('Invalid x/y coordinate: %sx%s', x, y);
+		}
+
+		// Unwind the x/y coordinates into flat index
+		index = (y * xMax) + x;
+		cell = cells[index];
+
+		// Validate index or search for it manually
+		if (!cell || (cell && cell.getX() != x || cell.getY() != y)) {
+			throw util.format('Internal Error: Cell at index %s doesn\'t match x/y coordinate expected: %sx%s', index, x, y);
+		}
+
+		return index;
+	}
+
+	/**
 		Set floor dimensions
 
 		Fires the following PubSub topics:
@@ -272,27 +325,64 @@ var DiscoController = function(x, y){
 		@param {int} y Floor height
 	*/
 	this.setDimensions = function(x, y) {
-		if (typeof x != "number" || typeof y != "number" || x <= 0 || y <= 0) {
+		var i = 0;
+
+		if (typeof x != "number" || typeof y != "number") {
 			throw "Dimensions need to be be greater than zero.";
 		}
 
 		eventEmitter.emit('dimensions.willChange', x, y);
 
-		cells = [];
 		dimensions.x = x;
 		dimensions.y = y;
 
 		// Create cells
-		var i = 0;
 		for (var yPos = 0; yPos < y; yPos++) {
 			for (var xPos = 0; xPos < x; xPos++) {
-				// console.log(i, xPos, 'x', yPos);
-				cells[i++] = new FloorCell(xPos, yPos, this);
+				var cell = cells[i];
+				if (cell){
+					cell.setXY(xPos, yPos);
+				} else {
+					cells[i] = new FloorCell(xPos, yPos, this);
+				}
+				i++;
 			}
 		}
 
+		// Remove unused nodes
+		if (cells[i]) {
+			cells = cells.slice(0, i);
+		}
+
 		eventEmitter.emit('dimensions.changed', x, y);
-	}
+	};
+
+	/**
+		Automatically set the dimensions of the table to
+		the most equal square possible, with the height
+		being favored to be longer.
+
+		For example:
+			* If you have 100 nodes, the dimensions will be 10x10
+			* If you have 110 nodes, the dimensions will be 10x11
+
+		@method autoSetDimensions
+		@returns Object with new x/y values
+	*/
+	this.autoSetDimensions = function() {
+		// No cells
+		if (cells.length === 0) {
+			this.setDimensions(0, 0);
+			return dimensions;
+		}
+
+		var sqrt = Math.sqrt(cells.length),
+				x = Math.floor(sqrt),
+				y = Math.ceil(sqrt);
+
+		this.setDimensions(x, y);
+		return dimensions;
+	};
 
 	/**
 		Get the floor dimensions
@@ -302,7 +392,43 @@ var DiscoController = function(x, y){
 	*/
 	this.getDimensions = function() {
 		return dimensions;
-	}
+	};
+
+	/**
+		Create a new addressed floor cell and add it to
+		the end of the list of cells.
+
+		NOTE: This will also automatically reset the
+		dimensions of the floor to new computed values.
+
+		@method addCellWithAddress
+		@param {byte} address The address for this cell
+		@return FloorCell
+	*/
+	this.addCellWithAddress = function(address) {
+		var index = cells.length;
+
+		cellAddresses[address] = index;
+		cells.push(null); // setting dimensions will add the node
+		this.autoSetDimensions();
+
+		return cells[index];
+	};
+
+	/**
+		Set an address on an existing floor cell.
+
+		@method setCellAddress
+		@param {int} x The x position of the cell
+		@param {int} y The y position of the cell
+		@param {byte} address The address for this cell
+		@return FloorCell
+	*/
+	this.setCellAddress = function(x, y, address){
+		var index = getCellIndex(x, y);
+		cellAddresses[address] = index;
+		return cells[index];
+	};
 
 	/**
 		Return all the cells for the entire floor
@@ -312,7 +438,7 @@ var DiscoController = function(x, y){
 	*/
 	this.getCells = function(){
 		return cells;
-	}
+	};
 
 	/**
 		Return the floor cell at this x/y location
@@ -323,28 +449,21 @@ var DiscoController = function(x, y){
 		@return FloorCell
 	*/
 	this.getCell = function(x, y) {
-		var index, cell,
-			xMax = dimensions.x;
+		return cells[getCellIndex(x, y)];
+	};
 
-		if (x < 0 || y < 0 || x >= dimensions.x || y >= dimensions.y) {
-			throw util.format('Invalid x/y coordinate: %sx%s', x, y);
-		}
+	/**
+		Get a cell by it's defined address
 
-		// Unwind the x/y coordinates into flat index
-		index = (y * xMax) + x;
-		cell = cells[index];
+		@method getCellByAddress
+		@params {byte} address The cell address
+		@return FloorCell or null
+	*/
+	this.getCellByAddress = function(address) {
+		var index = cellAddresses[address];
+		return cells[index] || null;
+	};
 
-		// Validate index
-		if (!cell || (cell && cell.getX() != x || cell.getY() != y)) {
-			for (var i = 0; i < cells.length; i++) {
-				if (cells[i].getX() == x && cells[i].getY() == y) {
-					break;
-				}
-			}
-			throw util.format('Cell at index %s doesn\'t match x/y coordinate expected: %sx%s', index, x, y);
-		}
-		return cell;
-	}
 
 	/**
 		Start the fade loop which will animate any
@@ -354,7 +473,7 @@ var DiscoController = function(x, y){
 	*/
 	this.startFadeLoop = function() {
 		FadeLoop.start();
-	}
+	};
 
 	this.setDimensions(x, y);
 };
@@ -362,3 +481,4 @@ var DiscoController = function(x, y){
 // Init a new controller
 controller = new DiscoController(6, 6);
 module.exports.controller = controller;
+
