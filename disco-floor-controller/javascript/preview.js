@@ -1,8 +1,8 @@
 'use strict';
 
-var disco = require('./lib/disco_controller.js'),
-	comm = require('./lib/comm.js'),
-	serialPort = require('serialport');
+var disco 		 = require('./lib/disco_controller.js'),
+		comm 			 = require('./lib/comm.js'),
+		serialPort = require('serialport');
 
 var controller = disco.controller;
 
@@ -78,6 +78,8 @@ function serialSetup(){
 				foundNodes = 0;
 
 		// Connect
+		disco.emulatedFloor = false;
+		controller.setDimensions(0, 0);
 		el.addClass('connect');
 		comm.start(port);
 
@@ -94,20 +96,12 @@ function serialSetup(){
 
 		// Setup floor
 		comm.on('done-addressing', function(nodeCount){
-			var sqrt, x, y;
-
 			if (!nodeCount) {
 				status.html('No floor cells were found.');
 				return;
 			}
-
-			sqrt = Math.sqrt(nodeCount);
-			x = Math.floor(sqrt);
-			y = Math.ceil(sqrt);
-
-			disco.controller.setDimensions(x, y);
 			$('#serial-setup').addClass('closed');
-			$('.dimensions').css('display', 'none');
+			$('.status .dimensions').css('display', 'none');
 		});
 
 	});
