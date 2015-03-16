@@ -211,7 +211,7 @@ MessageParser.prototype = {
 	  if (this.addressDestRange[0] == MSG_ALL) return true;
 
 	  // We have not set our address
-	  if (myAddress == 0) return false;
+	  if (myAddress === 0) return false;
 
 	  // Match range
 	  if (this.addressDestRange[1] == MSG_ALL && this.addressDestRange[0] >= myAddress) return true;
