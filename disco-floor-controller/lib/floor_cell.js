@@ -1,24 +1,29 @@
-var Promise = require("bluebird")
-	events = require('events'),
-	discoUtils = require('./utils.js');
-
-
 /**
 	Floor cell object
 	@private
 
-	@param {int} x The x coordinate position of this cell on the floor
-	@param {int} y The y coordinate position of this cell on the floor
-	@param {FloorController} controller The floor controller this cell belongs to
+	@class FloorCell
+	@param {int} xPos The x coordinate position of this cell on the floor
+	@param {int} yPos The y coordinate position of this cell on the floor
+	@param {FloorController} discoController The floor controller this cell belongs to
 */
-function FloorCell (x, y, controller) {
+
+'use strict';
+
+var Promise = require("bluebird"),
+		events = require('events'),
+		disco 		 = require('./disco_controller.js'),
+		discoUtils = require('./utils.js');
+
+
+function FloorCell (xPos, yPos, discoController) {
 
 	this.MODE_NORMAL = 0;
 	this.MODE_FADING = 1;
 
-	var x = x,
-		y = y,
-		controller = controller,
+	var x = xPos,
+		y = yPos,
+		controller = discoController,
 		mode = 0,
 		value = 0,
 		color = [0,0,0],
@@ -28,7 +33,7 @@ function FloorCell (x, y, controller) {
 
 	/**
 		Events emitted are:
-		
+
 		* colorChanged: The color of this cell has changed
 		* fadeStart: A color fade has being
 		* fadeEnd: The fade has completed
@@ -37,7 +42,19 @@ function FloorCell (x, y, controller) {
 		@property events
 		@type EventEmitter
 	*/
-	this.events = new events.EventEmitter(),
+	this.events = new events.EventEmitter();
+
+	/**
+		Set the cells x/y position on the floor
+
+		@method setXY
+		@params {int} xPos
+		@params {int} yPos
+	*/
+	this.setXY = function(xPos, yPos) {
+		x = xPos;
+		y = yPos;
+	};
 
 	/**
 		Get the current mode of this cell.
@@ -50,7 +67,17 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getMode = function() {
 		return mode;
-	}
+	};
+
+	/**
+		True if the floor is currently fading
+
+		@method isFading
+		@return boolean
+	*/
+	this.isFading = function() {
+		return mode == FloorCell.MODE_FADING;
+	};
 
 	/**
 		Get the x position of this cell
@@ -60,7 +87,7 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getX = function() {
 		return x;
-	}
+	};
 
 	/**
 		Get the y position of this cell
@@ -70,7 +97,7 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getY = function() {
 		return y;
-	}
+	};
 
 	/**
 		Set the color of this cell
@@ -95,7 +122,7 @@ function FloorCell (x, y, controller) {
 		color = rgb;
 		this.events.emit('colorChanged', color);
 		controller.events.emit('cell.colorChanged', x, y, color);
-	}
+	};
 
 	/**
 		Get the current color of the cell
@@ -105,11 +132,11 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getColor = function() {
 		return color;
-	}
+	};
 
 	/**
 		Set the cell to fade to a color
-	
+
 		@method fadeToColor
 		@param {Array or String} color The color to fade to. Either an RGB array or string HEX code
 		@param {int} duration The time, in milliseconds, it should take to fade to the color
@@ -127,12 +154,15 @@ function FloorCell (x, y, controller) {
 
 		this.events.emit('fadeStart', color, duration);
 		controller.events.emit('cell.fadeStart', x, y, color, duration);
-		controller.startFadeLoop();
+
+		if (disco.emulatedFloor) {
+			controller.startFadeLoop();
+		}
 
 		fadePromise = Promise.pending();
 
 		return fadePromise.promise;
-	}
+	};
 
 	/**
 		Get the color we're fading to
@@ -142,7 +172,7 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getFadeColor = function(){
 		return fadeColor;
-	}
+	};
 
 	/**
 		Get the duration of the current fade
@@ -152,7 +182,7 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getFadeDuration = function(){
 		return fadeDuration;
-	}
+	};
 
 	/**
 		Set a new duration for the current fade
@@ -162,11 +192,11 @@ function FloorCell (x, y, controller) {
 	*/
 	this.setFadeDuration = function(duration) {
 		fadeDuration = duration;
-	}
+	};
 
 	/**
 		Stop the current fade
-		
+
 		@method stopFade
 	*/
 	this.stopFade = function() {
@@ -179,7 +209,7 @@ function FloorCell (x, y, controller) {
 
 		this.events.emit('fadeEnd');
 		controller.events.emit('cell.fadeEnd', x, y);
-	}
+	};
 
 	/**
 		Return the promise object for the current fade operation
@@ -192,7 +222,7 @@ function FloorCell (x, y, controller) {
 			return fadePromise;
 		}
 		return null;
-	}
+	};
 
 	/**
 		Set the binary step value of the floor cell:
@@ -207,7 +237,7 @@ function FloorCell (x, y, controller) {
 
 		this.events.emit('valueChanged', val);
 		controller.events.emit('cell.valueChanged', x, y, val);
-	}
+	};
 
 	/**
 		Get the step value of the floor cell
@@ -217,7 +247,7 @@ function FloorCell (x, y, controller) {
 	*/
 	this.getValue = function(){
 		return value;
-	}
+	};
 
 }
 
