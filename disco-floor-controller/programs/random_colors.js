@@ -1,6 +1,9 @@
+'use strict';
+
 var Promise = require("bluebird");
 
 var floorController = null;
+
 module.exports = {
 
 	name: 'Random Colors',
@@ -42,7 +45,7 @@ module.exports = {
 	generateColor: function(){
 		var color, total;
 
-		// If the sum of all three colors is less than 200, it will be too 
+		// If the sum of all three colors is less than 200, it will be too
 		// light to see
 		// do {
 		// 	color = [ Math.floor(Math.random() * 128) + 127,
@@ -52,9 +55,9 @@ module.exports = {
 		// 	total = color.reduce(function(a, b) { return a + b});
 		// } while(total < 200)
 
-		color = [ Math.round(Math.random() * 255),
+		color = [ Math.round(Math.random() * 256),
 				  Math.round(Math.random() * 256),
-				  Math.round(Math.random() * 256) 
+				  Math.round(Math.random() * 256)
 				];
 
 		return color;
@@ -65,7 +68,7 @@ module.exports = {
 	*/
 	fadeToColor: function(cell) {
 		var time = Math.random(Math.random() * 1000) + 1000,
-			color = this.generateColor();
+			 color = this.generateColor();
 
 		// Set fade to and from
 		cell.fadeToColor(color, time)
