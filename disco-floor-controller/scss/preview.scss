@@ -13,13 +13,25 @@ body {
 		width: 50%;
 		overflow: auto;
 		padding: 10px;
-		border: 1px solid #000;
-		border-radius: 5px;
+		border: 1px solid #797979;
 		background: #dedede;
+		box-shadow: 5px 5px 14px 0px #666;
 
 		position: absolute;
 		top: 20%;
 		left: 20%;
+
+		h1 {
+			margin: -10px -10px 15px !important;
+			padding: 5px;
+			font-size: 16px;
+			font-weight: bold;
+			margin: 0 0 15px;
+			text-align: center;
+			color: #eee;
+			background: #980068;
+			text-shadow: 2px 2px 4px rgba(0,0,0, 0.6);
+		}
 
 		fieldset {
 			padding: 10px;
@@ -28,12 +40,6 @@ body {
 
 	.connecting {
 		display: none;
-		h1 {
-			font-size: 16px;
-			font-weight: bold;
-			margin: 0 0 15px;
-			text-align: center;
-		}
 		p.status {
 			text-align: center;
 		}
@@ -61,14 +67,15 @@ body {
 		left: 0; right: 200px;
 		padding: 2px 2px 42px 2px;
 
-		.dimensions {
+		.status {
 			position: absolute;
 			bottom: 0;
 			left: 0; right: 0;
 			height: 40px;
 			background: #333;
 			box-shadow: 0 -3px 14px 0px #666;
-
+		}
+		.dimensions {
 			fieldset {
 				border: none;
 				padding: 0;
