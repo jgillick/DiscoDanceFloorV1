@@ -7,7 +7,7 @@
 	>{toRange}{from},{type}{body}{checksum}\n
 
   >          - The start of a message
-  {to}       - Two bytes that make up the destination address range the message is going to (inclusive). 
+  {to}       - Two bytes that make up the destination address range the message is going to (inclusive).
                If the message is for one node, that address is both bytes
   {from}     - The address of the node the message is from
   {type}     - The message type (set LED, get sensor value, etc)
@@ -44,7 +44,7 @@ const MSG_STATE_ACT = 0x20;	// message active
 const MSG_STATE_IGN = 0x40;	// ignore message
 const MSG_STATE_RDY = 0x80;	// message ready
 const MSG_STATE_ABT = 0x81;	// abnormal termination
-const MSG_STATE_BOF = 0x82;	// buffer over flow 
+const MSG_STATE_BOF = 0x82;	// buffer over flow
 
 
 var myAddress,
@@ -67,7 +67,7 @@ function MessageParser() {
 	be sent from. This will also enable better
 	message filtering, since it knows where incoming
 	messages are coming to.
-	
+
 	@method setMyAddress
 	@param {byte} addr
 */
@@ -78,7 +78,7 @@ MessageParser.setMyAddress = function(addr) {
 /**
 	Set the SerialPort that all communication will
 	happen through
-	
+
 	@method setSerialPort
 	@param {SerialPort} port
 */
@@ -177,7 +177,7 @@ MessageParser.prototype = {
 
 		@method reset
 	*/
-	reset: function(){ 
+	reset: function(){
 		this.start(TYPE_NULL);
 	},
 
@@ -243,7 +243,7 @@ MessageParser.prototype = {
 
 	/**
 		Add a character to the message body
-	
+
 		@method write
 		@param {byte} c An byte to add to the message
 	*/
@@ -262,13 +262,13 @@ MessageParser.prototype = {
 
 	/**
 		Parse an incoming message one byte at a time
-	
+
 		@method parse
 		@param {byte} c Another byte to process
 		@return {int} The current message parsing state
 	*/
 	parse: function(c) {
-		var receivedChecksum, 
+		var receivedChecksum,
 				calcedChecksum;
 
 		if (typeof c == 'undefined') return this._state;
@@ -285,7 +285,7 @@ MessageParser.prototype = {
 		}
 
 		// Escape characer
-		if (this._escaped) { 
+		if (this._escaped) {
 			this._escaped = false;
 			if (this._state == MSG_STATE_ACT) {
 			 this._buffer.push(c);
@@ -323,9 +323,9 @@ MessageParser.prototype = {
 				} else {
 					// Debug
 					// console.log('CHECKSUMS MISMATCH: ', receivedChecksum, ' != ', calcedChecksum);
-					// console.log('\tType:', this.getTypeAsString()+',\t', 
+					// console.log('\tType:', this.getTypeAsString()+',\t',
 					// 						'From:', this.normalizeAddress(this.srcAddress) +',\t',
-					// 						'To:', this.normalizeAddress(this.addressDestRange[0]), 
+					// 						'To:', this.normalizeAddress(this.addressDestRange[0]),
 					// 						'-', this.normalizeAddress(this.addressDestRange[0]));
 					// console.log(this._fullBuffer.join('\t'));
 					// console.log(this._fullBufferChars.join('\t'));
@@ -402,14 +402,14 @@ MessageParser.prototype = {
 
 	  // Move onto the body of the message
 	  if (this._headerPos >= 4) {
-	    return this._state = MSG_STATE_ACT;  
+	    return this._state = MSG_STATE_ACT;
 	  }
 	  return this._state;
 	},
 
 	/**
 		Send the message over the serial connection.
-		
+
 		@method send
 		@return {Promise} Resolves with the number of bytes sent or error
 	*/
@@ -418,11 +418,11 @@ MessageParser.prototype = {
 
 		return new Promise(function(resolve, reject) {
 
-			if (!serialPort) 
+			if (!serialPort)
 				return reject('No serial port defined. See `MessageParser.setSerialPort(<SerialPort>)`');
-			if (myAddress === undefined)  
+			if (myAddress === undefined)
 				return reject('The "myAddress" has not been defined yet. See MessageParser.setMyAddress(<byte>)');
-			if (this.addressDestRange[0] === undefined || this.addressDestRange[1] === undefined) 
+			if (this.addressDestRange[0] === undefined || this.addressDestRange[1] === undefined)
 				return reject('The destination address has not been defined yet. See setDestAddress(<byte>, [<byte>])');
 
 			// Start sending
@@ -439,16 +439,16 @@ MessageParser.prototype = {
 			this._buffer.forEach(function(c, i){
 				if (escapeChars.indexOf(c) > -1) {
 					data.push(MSG_ESC);
-				} 
+				}
 				data.push(c);
-			})
+			});
 
 			// End of message
 			data.push(this.calculateChecksum());
 			data.push(MSG_EOM);
 
 			// Send
-			console.log('Send', data);
+			// console.log('Send', data);
 			serialPort.write(data, function(err, results){
 				if (err) {
 					reject(err);
@@ -492,12 +492,12 @@ MessageParser.prototype = {
 	},
 
 	/**
-		Calls `send` now and then at regular intervals every 
+		Calls `send` now and then at regular intervals every
 		`time` milliseconds until it's stopped with `stopSending()` or `reset()`.
 
 		NOTE: This cannot be used at the same time as `sendIn()`. One
 		will override the other.
-	
+
 		@method sendEvery
 		@params {int} time The numbef of milliseconds between sends
 		@returns {Promise} for the initial send
@@ -572,18 +572,18 @@ MessageParser.prototype = {
 
 	/**
 		Convert an address byte into either a string or byte.
-		
+
 		+ If the address is master, then 'MASTER' will be returned.
 		+ If the address is the `MSG_ALL` bypte, then '*' will be returned
 		+ Otherwise, the address byte will be returned.
-	
+
 		@method normalizeAddress
 		@param {byte} addr The address to normalize
 		@return {String or byte}
 	*/
 	normalizeAddress: function(addr) {
 		switch(addr) {
-			case MSG_ALL: 
+			case MSG_ALL:
 				return '*';
 			case MASTER_ADDRESS:
 				return 'MASTER';
@@ -607,7 +607,7 @@ function crc_checksum(crc, data){
 		for (i = 0; i < data.length; i++) {
 			crc = crc_checksum(crc, data.charCodeAt(i));
 		}
-	}	
+	}
 
 	// Number
 	else if (typeof data == 'number') {
