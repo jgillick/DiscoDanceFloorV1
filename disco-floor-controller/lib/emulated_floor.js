@@ -1,15 +1,17 @@
-var controller = require('./lib/disco_controller.js').controller,
-	utils = require('./lib/utils.js');
+'use strict';
+
+var disco = require('./lib/disco_controller.js'),
+		utils = require('./lib/utils.js');
 
 (function() {
 	var fadeProcessing = false;
 
 	$(document).ready(function(){
-		var dimensions = controller.getDimensions();
+		var dimensions = disco.controller.getDimensions();
 
 		// Set floor dimensions
-		$('#floor-max-x').val(dimensions['x']);
-		$('#floor-max-y').val(dimensions['y']);
+		$('#floor-max-x').val(dimensions.x);
+		$('#floor-max-y').val(dimensions.y);
 
 		// User updated floor dimensions
 		$('.dimensions input').keyup(function(){
@@ -17,7 +19,7 @@ var controller = require('./lib/disco_controller.js').controller,
 				y = parseInt($('#floor-max-y').val() );
 
 			if (x != NaN && y != NaN) {
-				controller.setDimensions(x, y);
+				disco.controller.setDimensions(x, y);
 			}
 		});
 
@@ -28,7 +30,7 @@ var controller = require('./lib/disco_controller.js').controller,
 			var td = $(evt.target);
 				x = parseInt(td.attr('data-x')),
 				y = parseInt(td.attr('data-y')),
-				cell = controller.getCell(x, y);
+				cell = disco.controller.getCell(x, y);
 
 			cell.setValue(1);
 		});
@@ -38,7 +40,7 @@ var controller = require('./lib/disco_controller.js').controller,
 			var td = $(evt.target),
 				x = parseInt(td.attr('data-x')),
 				y = parseInt(td.attr('data-y')),
-				cell = controller.getCell(x, y);
+				cell = disco.controller.getCell(x, y);
 
 			cell.setValue(0);
 		});
@@ -74,7 +76,7 @@ var controller = require('./lib/disco_controller.js').controller,
 		}
 
 		table.append(tbody);
-		sizeTable();
+		process.nextTick(sizeTable);
 	}
 
 	/**
@@ -82,26 +84,39 @@ var controller = require('./lib/disco_controller.js').controller,
 	*/
 	function sizeTable() {
 		var emulator = $('.emulator'),
-			dimensions = controller.getDimensions(),
-			xMax = dimensions.x,
-			yMax = dimensions.y,
-			styles = [],
-			height, width, cellWidth, cellHeight;
+				table = emulator.find('.grid'),
+				dimensions = disco.controller.getDimensions(),
+				xMax = dimensions.x,
+				yMax = dimensions.y,
+				styles = [],
+				height, width, cellWidth, cellHeight;
 
-		height = emulator.height();
-		width = emulator.width();
+		table.css({
+			'height': '100%',
+			'width': '100%',
+		});
 
-		// Determine the cell height to keep each cell square
-		cellWidth = width / dimensions.x;
-		cellHeight = height / dimensions.y;
-		if (cellWidth < cellHeight) {
-			cellHeight = cellWidth;
-		} else {
-			cellWidth = cellHeight;
+		if (xMax < yMax) {
+			table.css('width', table.outerHeight()/yMax);
+		}
+		else if (xMax > yMax) {
+			table.css('height', table.outerWidth()/xMax);
 		}
 
-		// Set styles
-		$('#grid-dimensions').html('table.grid td { width: '+ cellWidth +'px; height: '+ cellHeight +'px }');
+		// height = emulator.height();
+		// width = emulator.width();
+
+		// // Determine the cell height to keep each cell square
+		// cellWidth = width / dimensions.x;
+		// cellHeight = height / dimensions.y;
+		// if (cellWidth < cellHeight) {
+		// 	cellHeight = cellWidth;
+		// } else {
+		// 	cellWidth = cellHeight;
+		// }
+
+		// // Set styles
+		// $('#grid-dimensions').html('table.grid td { width: '+ cellWidth +'px; height: '+ cellHeight +'px }');
 	}
 
 
@@ -120,7 +135,7 @@ var controller = require('./lib/disco_controller.js').controller,
 	    var r = rgb[0] / 255,
 	        g = rgb[1] / 255,
 	        b = rgb[2] / 255;
-	  
+
 	    var max = Math.max(r, g, b), min = Math.min(r, g, b);
 		var h, s, l = (max + min) / 2;
 
@@ -144,8 +159,8 @@ var controller = require('./lib/disco_controller.js').controller,
 	}
 
 	/**
-		Get rid of dark colors. 
-		The floor has a white filter on it, so when the LEDs 
+		Get rid of dark colors.
+		The floor has a white filter on it, so when the LEDs
 		are off (i.e. #000000), the floor will be off-white, not black.
 
 		To do this, convert RGB to HSL and use the lightness value to determine the opacity of
@@ -156,15 +171,15 @@ var controller = require('./lib/disco_controller.js').controller,
 	*/
 	function normalizeColors(color) {
 		var hsla = rgbToHsl(color);
-  
+
 	  // Adjust opacity based on lightness
-	  // Anything below 60% should become more transparent because the 
+	  // Anything below 60% should become more transparent because the
 	  // floor tiles are white
 	  hsla[3] = 1;
 	  if (hsla[2] < 0.75) {
 	    hsla[3] = (hsla[2] / 0.75) + 0.05;
 	  }
-	  
+
 	  // Convert to percent
 	  hsla[1] = Math.round(hsla[1] * 100) +'%';
 	  hsla[2] = Math.round(hsla[2] * 100) +'%';
@@ -176,10 +191,10 @@ var controller = require('./lib/disco_controller.js').controller,
 		Update the floor as a one frame
 	*/
 	function updateFrame(){
-		var dimensions = controller.getDimensions(),
+		var dimensions = disco.controller.getDimensions(),
 			styleEl = document.getElementById('grid-frame'),
 			styles = [],
-			cells = controller.getCells(),
+			cells = disco.controller.getCells(),
 			color, cell;
 
 		for (var i = 0, len = cells.length; i < len; i++) {
@@ -196,21 +211,21 @@ var controller = require('./lib/disco_controller.js').controller,
 	}
 
 	// Update floor grid
-	controller.events.on('dimensions.changed', function(xMax, yMax){
+	disco.controller.events.on('dimensions.changed', function(xMax, yMax){
 		buildFloor(xMax, yMax);
 	});
 
 	// Start stop fade processing
-	controller.events.on('fadeFrame.start', function(){
+	disco.controller.events.on('fadeFrame.start', function(){
 		fadeProcessing = true;
 	});
-	controller.events.on('fadeFrame.end', function(){
+	disco.controller.events.on('fadeFrame.end', function(){
 		fadeProcessing = false;
 		// window.requestAnimationFrame(updateFrame);
 	});
 
 	// Update single floor cell
-	controller.events.on('cell.colorChanged', function emulatorSetColor(x, y, color){
+	disco.controller.events.on('cell.colorChanged', function emulatorSetColor(x, y, color){
 		var el = document.getElementById('cell-'+ x +'-'+ y);
 
 		if (!el) {
