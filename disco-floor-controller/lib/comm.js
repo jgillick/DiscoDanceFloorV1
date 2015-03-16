@@ -1,9 +1,19 @@
+/**
+
+	The communication interface between the dance floor
+	and the RS485 serial bus.
+
+*/
+
 'use strict';
 
 var EventEmitter  = require("events").EventEmitter,
 		util   			  = require("util"),
 		Serial 			  = require('serialport').SerialPort,
-		MessageParser = require('./serial_message_parser.js');
+		MessageParser = require('./serial_message_parser.js'),
+		discoCntrl    = require('./disco_controller.js').controller,
+		discoUtils 		= require('./utils.js'),
+		_             = require('underscore');
 
 const BAUD_RATE			      = 9600;
 const ACK_TIMEOUT         = 100;
@@ -24,7 +34,7 @@ var serialPort,
 		txBuffer,
 		rxBuffer,
 		stage = IDLE,
-		statuses = [],
+		statuses = {},
 		lastStatusAddr,
 		statusTimeout,
 		statusTries,
@@ -54,7 +64,8 @@ Comm.prototype = {
 		Start communicating with all the floor cells
 		over the serial port
 
-		@param {SerialPort} port The serial port to the RS485 bus
+		@param {String} port The serial port to the RS485 bus
+		@return SerialPort
 	*/
 	start: function (port){
 		nodeRegistration = [];
@@ -113,12 +124,9 @@ Comm.prototype = {
 				if (nodeRegistration.length) {
 					stage = STATUSING;
 					this.emit('done-addressing', nodeRegistration.length);
-					console.log('Done addressing. Found', nodeRegistration.length, 'floor cells');
-					return;
 				}
 				// Nothing found, continue
 				else {
-					console.log('No addresses found, try again');
 					this.addressing();
 				}
 			break;
@@ -136,15 +144,15 @@ Comm.prototype = {
 				process.nextTick(this.addressing.bind(this));
 			break;
 			case STATUSING:
-				console.log('STATUSING');
+				// console.log('STATUSING');
 				lastStatusAddr = MessageParser.MASTER_ADDRESS;
-				// process.nextTick(this.status.bind(this));
-				setTimeout(this.status.bind(this), 10);
+				process.nextTick(this.status.bind(this));
+				// setTimeout(this.status.bind(this), 10);
 			break;
 			case UPDATING:
-				console.log('UPDATING');
-				// process.nextTick(this.update.bind(this));
-				setTimeout(this.update.bind(this), 10);
+				// console.log('UPDATING');
+				process.nextTick(this.update.bind(this));
+				// setTimeout(this.update.bind(this), 10);
 			break;
 		}
 	},
@@ -184,13 +192,15 @@ Comm.prototype = {
 		// Register new address
 		else if (message && message.type == MessageParser.TYPE_ADDR) {
 			addr = message.getMessageBody()[0];
+
+			// New address must be larger than the last one added
 			if (addr > lastNodeAddr) {
 				txBuffer.stopSending();
 
-				// New address must be b{
+				nodeRegistration.push(addr);
+				discoCntrl.addCellWithAddress(addr);
 				console.log('Add node at address', addr);
 
-				nodeRegistration.push(addr);
 				lastNodeAddr = addr;
 				this.emit('new-node', addr);
 
@@ -229,11 +239,11 @@ Comm.prototype = {
 			sensor = message.getMessageBody()[0] & SENSOR_DETECT;
 			addr = message.srcAddress;
 
-			console.log("Got status from ", addr);
-
 			if (addr > lastStatusAddr) {
+
 				statusTries = 0;
 				lastStatusAddr = addr;
+				statuses[addr] = message.getMessageBody();
 
 				// Update retry timeout
 				clearTimeout(statusTimeout);
@@ -252,37 +262,52 @@ Comm.prototype = {
 		Handle the node update stage
 	*/
 	update: function() {
+		nodeRegistration.forEach(function(addr){
+			var cell = discoCntrl.getCellByAddress(addr),
+					status = statuses[addr];
 
-		// Set random color fades every 1.5 seconds
-		if (lastUpdate + 1500 < Date.now()) {
-			var data = [0,0,0,4], // 8 = 1 second fade (sent as number of 250ms increments)
-					maxValue = 120,
-					rgbSelect, tx;
+			// Could not find cell or status
+			if (!cell || !status) {
+				console.log('No cell or status for', addr, cell, status);
+				return;
+			}
+
+			// Process status and sync
+			if (!processStatus(addr, cell, status)) {
+				sendFloorCell(addr, cell);
+			}
+		});
+
+		// // Set random color fades every 1.5 seconds
+		// if (lastUpdate + 1500 < Date.now()) {
+		// 	var data = [0,0,0,4], // 8 = 1 second fade (sent as number of 250ms increments)
+		// 			maxValue = 120,
+		// 			rgbSelect, tx;
 
 
-			// Each node
-			nodeRegistration.forEach(function(addr){
-				tx = new MessageParser();
-				data[0] = 0;
-				data[1] = 0;
-				data[2] = 0;
+		// 	// Each node
+		// 	nodeRegistration.forEach(function(addr){
+		// 		tx = new MessageParser();
+		// 		data[0] = 0;
+		// 		data[1] = 0;
+		// 		data[2] = 0;
 
-				// Set a two colors to fade to
-				// (first can go from 0 - 120, secondary can go from 0 - 255)
-				for (var c = 0; c < 2; c++) {
-					rgbSelect = Math.floor(Math.random() * 3); // Which RGB color to set
-					if (c == 1) maxValue =	255;
-					data[rgbSelect] = Math.floor(Math.random() * maxValue);
-				}
+		// 		// Set a two colors to fade to
+		// 		// (first can go from 0 - 120, secondary can go from 0 - 255)
+		// 		for (var c = 0; c < 2; c++) {
+		// 			rgbSelect = Math.floor(Math.random() * 3); // Which RGB color to set
+		// 			if (c == 1) maxValue =	255;
+		// 			data[rgbSelect] = Math.floor(Math.random() * maxValue);
+		// 		}
 
-				tx.start(MessageParser.TYPE_FADE);
-				tx.setDestAddress(addr);
-				tx.write(data);
-				tx.send();
-			});
+		// 		tx.start(MessageParser.TYPE_FADE);
+		// 		tx.setDestAddress(addr);
+		// 		tx.write(data);
+		// 		tx.send();
+		// 	});
 
-			lastUpdate = Date.now();
-		}
+		// 	lastUpdate = Date.now();
+		// }
 
 		this.nextStage();
 	}
@@ -369,6 +394,88 @@ function sendStatusRequest() {
 }
 
 /**
+	Sends the values from FloorCell to the physical cell node
+
+	@private
+	@function sendFloorCell
+	@param {byte} addr The address of the node to update
+	@param {FloorCell} cell The object to get the cell state from
+	@return Promise
+*/
+function sendFloorCell(addr, cell) {
+	var tx = new MessageParser(),
+			type = (cell.isFading()) ? MessageParser.TYPE_FADE : MessageParser.TYPE_COLOR,
+			data = cell.getColor();
+
+	if (cell.isFading()) {
+		type = MessageParser.TYPE_FADE;
+		data = cell.getFadeColor().slice(0);
+		data.push(Math.round(cell.getFadeDuration() / 250));
+	}
+
+	tx.start(type);
+	tx.setDestAddress(addr);
+	tx.write(data);
+	return tx.send();
+}
+
+/**
+	Process the status received from on of the floor
+	nodes and sync it with the FloorCell that represents it.
+
+	Here's how it work:
+		* The FloorCell is the source of truth for the color & fading state of the node
+		* If the node color and the FloorCell color do not match, update the node
+		* If the fading status between the node and the Floor cell are different:
+		    + If the node's color is the same as the FloorCell's target color, tell the FloorCell the fade is complete
+		    + Otherwise, sync the node
+    * Update the FloorCell value to match the node's sensor value -- only if it has changed;
+
+	Does the FloorCell object match the status of
+	what was returned from the bus
+
+	@private
+	@function processStatus
+	@param {byte} addr The node address
+	@param {FloorCell} cell
+	@param {Array of bytes} status
+	@return {boolean} True if the node and FloorCell are in sync
+*/
+function processStatus(addr, cell, status) {
+	var hasFadeFlag = (status[0] & FADING),
+			sensorDetect = (status[0] & SENSOR_DETECT) ? 1 : 0,
+			color = cell.getColor(),
+			statusColor = status.slice(1, 4),
+			targetColor = (cell.isFading()) ? cell.getFadeColor() : color,
+			statusTargetColor = (hasFadeFlag) ? status.slice(4, 7) : statusColor;
+
+	// Set FloorCell value to match sensor value
+	if (sensorDetect != cell.getValue()) {
+		console.log('Detected change!');
+		cell.setValue(sensorDetect ? 1 : 0);
+	}
+
+	// No longer fading
+	if (hasFadeFlag && !cell.isFading()) {
+		console.log('Fading mismatch', cell.isFading(), status[0]);
+		return false;
+	}
+
+	// Colors mismatch
+	else if (!_.isEqual(targetColor, statusTargetColor)) {
+		console.log('Color mismatch', targetColor, statusTargetColor);
+		return false;
+	}
+
+	// Update color for fade step from the floor
+	if (cell.isFading() && !_.isEqual(color, statusColor)) {
+		cell.setColor(statusColor, !hasFadeFlag);
+	}
+
+	return true;
+}
+
+/**
 	Send an ACK message to a node address
 
 	@function sendACK
@@ -381,6 +488,5 @@ function sendACK(addr) {
   tx.setDestAddress(addr);
   return tx.send();
 }
-
 
 module.exports = new Comm();
