@@ -11,7 +11,8 @@ var EventEmitter  = require("events").EventEmitter,
 		util   			  = require("util"),
 		Serial 			  = require('serialport').SerialPort,
 		MessageParser = require('./serial_message_parser.js'),
-		discoCntrl    = require('./disco_controller.js').controller,
+		disco         = require('./disco_controller.js'),
+		FloorCell     = require('./floor_cell.js'),
 		discoUtils 		= require('./utils.js'),
 		_             = require('underscore');
 
@@ -41,7 +42,8 @@ var serialPort,
 		lastNodeAddr = MessageParser.MASTER_ADDRESS,
 		lastUpdate = 0,
 		addressingStageTimeout,
-		nodeRegistration;
+		nodeRegistration,
+		discoCntrl = disco.controller;
 
 
 // Set our address on the parser
@@ -262,9 +264,14 @@ Comm.prototype = {
 		Handle the node update stage
 	*/
 	update: function() {
+		var i = 0,
+				batches = [],
+				lastMessage;
+
 		nodeRegistration.forEach(function(addr){
 			var cell = discoCntrl.getCellByAddress(addr),
-					status = statuses[addr];
+					status = statuses[addr],
+					message;
 
 			// Could not find cell or status
 			if (!cell || !status) {
@@ -274,40 +281,29 @@ Comm.prototype = {
 
 			// Process status and sync
 			if (!processStatus(addr, cell, status)) {
-				sendFloorCell(addr, cell);
+				message = updateFloorCell(addr, cell, false);
+
+				// If this message is the same as the last, batch it
+				if (lastMessage
+					&& lastMessage.addressDestRange[1] == addr - 1
+					&& lastMessage.type == lastMessage.type
+					&& _.isEqual(lastMessage.getMessageBody(), message.getMessageBody())) {
+
+					lastMessage.addressDestRange[1] = addr;
+					console.log('Batched update!', lastMessage.addressDestRange);
+				}
+				// New message, no batch
+				else {
+					batches.push(message);
+					lastMessage = message;
+				}
 			}
 		});
 
-		// // Set random color fades every 1.5 seconds
-		// if (lastUpdate + 1500 < Date.now()) {
-		// 	var data = [0,0,0,4], // 8 = 1 second fade (sent as number of 250ms increments)
-		// 			maxValue = 120,
-		// 			rgbSelect, tx;
-
-
-		// 	// Each node
-		// 	nodeRegistration.forEach(function(addr){
-		// 		tx = new MessageParser();
-		// 		data[0] = 0;
-		// 		data[1] = 0;
-		// 		data[2] = 0;
-
-		// 		// Set a two colors to fade to
-		// 		// (first can go from 0 - 120, secondary can go from 0 - 255)
-		// 		for (var c = 0; c < 2; c++) {
-		// 			rgbSelect = Math.floor(Math.random() * 3); // Which RGB color to set
-		// 			if (c == 1) maxValue =	255;
-		// 			data[rgbSelect] = Math.floor(Math.random() * maxValue);
-		// 		}
-
-		// 		tx.start(MessageParser.TYPE_FADE);
-		// 		tx.setDestAddress(addr);
-		// 		tx.write(data);
-		// 		tx.send();
-		// 	});
-
-		// 	lastUpdate = Date.now();
-		// }
+		// Send message batches
+		batches.forEach(function(tx) {
+			tx.send();
+		});
 
 		this.nextStage();
 	}
@@ -397,12 +393,15 @@ function sendStatusRequest() {
 	Sends the values from FloorCell to the physical cell node
 
 	@private
-	@function sendFloorCell
+	@function updateFloorCell
 	@param {byte} addr The address of the node to update
 	@param {FloorCell} cell The object to get the cell state from
-	@return Promise
+	@param {boolean} noSend (optional) If true, it just sets up the MessageParger, but does not send
+	@return MessageParser
 */
-function sendFloorCell(addr, cell) {
+function updateFloorCell(addr, cell, noSend) {
+	if (disco.emulatedFloor) return Promise.resolve();
+
 	var tx = new MessageParser(),
 			type = (cell.isFading()) ? MessageParser.TYPE_FADE : MessageParser.TYPE_COLOR,
 			data = cell.getColor();
@@ -416,7 +415,11 @@ function sendFloorCell(addr, cell) {
 	tx.start(type);
 	tx.setDestAddress(addr);
 	tx.write(data);
-	return tx.send();
+
+	if (noSend !== false ) {
+		tx.send();
+	}
+	return tx;
 }
 
 /**
