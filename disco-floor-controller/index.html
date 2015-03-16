@@ -2,43 +2,45 @@
 <html>
 <head>
 	<title>Disco Dance Floor Controller</title>
-	<link rel="stylesheet" type="text/css" href="public/stylesheets/reset.css" /> 
-	<link rel="stylesheet" type="text/css" href="public/stylesheets/preview.css" /> 
 
 	<script type="text/javascript" src="javascript/frameworks/jquery-2.1.1.js"></script>
 	<script type="text/javascript" src="lib/emulated_floor.js"></script>
 	<script type="text/javascript" src="javascript/preview.js"></script>
 	<script type="text/javascript" src="javascript/serial.js"></script>
 
+	<link rel="stylesheet" type="text/css" href="public/stylesheets/reset.css" />
+	<link rel="stylesheet" type="text/css" href="public/stylesheets/preview.css" />
 	<style id="grid-dimensions"></style>
 	<style id="grid-frame"></style>
 <head>
 <body>
-	
+
 <div id="preview">
 	<div class="emulator">
 		<table class="grid">
 			<tbody></tbody>
 		</table>
-		<form class="dimensions">
-			<fieldset>
-				<legend>Floor Dimensions</legend>
-				<ul>
-					<li class="x-dimension">
-						<label>
-							<span>X</span>
-							<input type="text" id="floor-max-x" value="" />
-						</label>
-					</li>
-					<li class="y-dimension">
-						<label>
-							<span>Y</span>
-							<input type="text" id="floor-max-y" value="" />
-						</label>
-					</li>
-				</ul>
-			</fieldset>
-		</form>
+		<div class="status">
+			<form class="dimensions">
+				<fieldset>
+					<legend>Floor Dimensions</legend>
+					<ul>
+						<li class="x-dimension">
+							<label>
+								<span>X</span>
+								<input type="text" id="floor-max-x" value="" />
+							</label>
+						</li>
+						<li class="y-dimension">
+							<label>
+								<span>Y</span>
+								<input type="text" id="floor-max-y" value="" />
+							</label>
+						</li>
+					</ul>
+				</fieldset>
+			</form>
+		</div>
 	</div>
 	<section class="programs">
 		<h1>Programs</h1>
@@ -54,6 +56,7 @@
 <div id="serial-setup">
 	<div class="content">
 		<section class="selection">
+			<h1>Connect to floor</h1>
 			<fieldset>
 				<legend>Select Device</legend>
 				<select id="serial-ports-list">
@@ -69,7 +72,7 @@
 		<section class="connecting">
 			<h1>Connecting</h1>
 			<p class="status">
-				Registering floor cells...
+				Finding floor cells...
 			</p>
 		</section>
 	</div>
