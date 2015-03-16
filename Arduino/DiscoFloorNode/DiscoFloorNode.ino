@@ -16,8 +16,8 @@ uint8_t myAddress  = 0;
 boolean needsAck   = false;      // TRUE if we're waiting for an ACK
 
 // The RGB LEDs
-LEDFader rgb[3] = { LEDFader(LED_RED), 
-                    LEDFader(LED_GREEN), 
+LEDFader rgb[3] = { LEDFader(LED_RED),
+                    LEDFader(LED_GREEN),
                     LEDFader(LED_BLUE) };
 
 // Sensor
@@ -38,13 +38,13 @@ bool enabledState = false, // is the node enabled
      isMaster     = false; // is this mode the dumy master
 
 void setup() {
-  pinMode(NEXT_NODE,   OUTPUT);  
+  pinMode(NEXT_NODE,   OUTPUT);
   pinMode(TX_CONTROL,  OUTPUT);
   pinMode(NODE_STATUS, OUTPUT);
   pinMode(ENABLE_NODE, INPUT);
-  
+
   digitalWrite(TX_CONTROL, RS485Receive);
-  
+
   // Init serial communication
   Serial.begin(9600);
 
@@ -56,7 +56,7 @@ void setup() {
   isMaster = (digitalRead(ENABLE_MASTER) == HIGH);
   if (isMaster) {
     dummyMaster.setup();
-  } 
+  }
   else {
     delay(1000);
     Serial.println(F("I'm a node."));
@@ -82,7 +82,7 @@ void loop() {
   if (isMaster) {
     dummyMaster.loop();
     return;
-  } 
+  }
 #endif
 
   // Update non-blocking LED fade
@@ -105,7 +105,7 @@ void processMessage() {
   // No ID defined yet
   if (myAddress == 0) {
     setAddress();
-  } 
+  }
 
   // Messages to Master
   else if (rxBuffer.addressedToMaster()) {
@@ -202,17 +202,17 @@ void sendStatus() {
   txBuffer.setDestAddress(MASTER_ADDRESS);
   txBuffer.write(flag);
 
-  // Current color
-  txBuffer.write(rgb[0].get_value());
-  txBuffer.write(rgb[1].get_value());
-  txBuffer.write(rgb[2].get_value());
-
   // Target color
   if (fading){
     txBuffer.write(rgb[0].get_target_value());
     txBuffer.write(rgb[1].get_target_value());
-    txBuffer.write(rgb[2].get_target_value());    
+    txBuffer.write(rgb[2].get_target_value());
   }
+
+  // Current color
+  txBuffer.write(rgb[0].get_value());
+  txBuffer.write(rgb[1].get_value());
+  txBuffer.write(rgb[2].get_value());
 
   txBuffer.send();
 }
@@ -247,7 +247,7 @@ void handleFadeMessage() {
   if (len < 4) return;
 
   // Duration
-  // Last numbers are duration divided 
+  // Last numbers are duration divided
   // by FADE_DIVIDER (250) and added together
   duration = data[3] * FADE_DIVIDER;
   if (len > 4) {
