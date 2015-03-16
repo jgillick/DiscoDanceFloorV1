@@ -2,16 +2,22 @@
 
 'use strict';
 
-var SerialPort = require('serialport').SerialPort;
-var optimist = require('../node_modules/serialport/node_modules/optimist');
-var comm = require('../lib/comm.js');
+var SerialPort = require('serialport').SerialPort,
+    optimist = require('../node_modules/serialport/node_modules/optimist'),
+    comm = require('../lib/comm.js'),
+    disco = require('../lib/disco_controller.js');
 
+// Process Arguments
 var args = optimist
   .alias('h', 'help')
   .alias('h', '?')
-  .options('portname', {
-    alias: 'p',
+  .options('serialPort', {
+    alias: 's',
     describe: 'Name of serial port. See serialPortList.js for open serial ports.'
+  })
+  .options('program', {
+    alias: 'p',
+    describe: 'Name of the program to run.'
   })
   .argv;
 
@@ -20,11 +26,12 @@ if (args.help) {
   return process.exit(-1);
 }
 
-if (!args.portname) {
+if (!args.serialPort) {
   console.error('Serial port name is required.');
   return process.exit(-1);
 }
 
+// Exit program when user enters CNTRL + C
 process.stdin.resume();
 process.stdin.setRawMode(true);
 process.stdin.on('data', function (s) {
@@ -34,7 +41,24 @@ process.stdin.on('data', function (s) {
   }
 });
 
-var port = comm.start(args.portname);
+// Start floor
+var port;
+disco.emulatedFloor = false;
+disco.controller.setDimensions(0, 0);
+port = comm.start(args.serialPort);
 port.on('error', function (err) {
   console.log(err);
 });
+
+// Handle Comm events
+comm.on('done-addressing', function(found) {
+  console.log('Done addressing. Found '+ found +' floor cells');
+  if (args.program) {
+    disco.runProgram(args.program);
+  }
+});
+
+comm.on('fade-complete', function(addr) {
+  console.log('Fade complete for ', addr);
+});
+
