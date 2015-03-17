@@ -3,6 +3,6 @@
 .sass-cache
 
 node_modules
-./disco-floor-controller/public/stylesheets/
+/public/stylesheets/
 
 *.log
