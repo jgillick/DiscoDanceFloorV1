@@ -87,7 +87,7 @@ module.exports = {
 	fadeToColor: function(cell) {
 		if (!running) return;
 
-		var time = Math.random(Math.random() * 1000) + 1000,
+		var time = Math.random(Math.random() * 2000) + 2000,
 			 color = this.generateColor();
 
 		// Set fade to and from

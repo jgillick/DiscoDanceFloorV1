@@ -51,7 +51,7 @@ module.exports = {
 		// .then(function(){
 		// 	return cell.fadeToColor('C3090A', 2000)
 		// }.bind(this));
-		cell.fadeToColor([255, 0, 0], 1500);
+		cell.fadeToColor([255, 0, 0], 1000);
 	},
 
 	/**
@@ -59,7 +59,7 @@ module.exports = {
 	*/
 	flameOff: function(x, y) {
 		var cell = controller.getCell(x, y);
-		cell.fadeToColor([0,0,0], 2000);
+		cell.fadeToColor([0,0,0], 1000);
 	}
 
 };
