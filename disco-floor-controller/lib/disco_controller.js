@@ -5,7 +5,8 @@ var fs = require('fs'),
 		events = require('events'),
 		util = require('util'),
 		discoUtils = require('./utils.js'),
-		FloorCell = require('./floor_cell.js');
+		FloorCell = require('./floor_cell.js'),
+		Promise = require("bluebird");
 
 var eventEmitter = new events.EventEmitter(),
 	controller,
@@ -51,16 +52,39 @@ module.exports.emulatedFloor = true;
 
 	@method runProgram
 	@param {String} name The name of the program file to run
+	@return Promise
 */
 module.exports.runProgram = function(name){
+	var shutdown, timeout,
+			promiseResolver = Promise.pending();
+
 	if (!name.match(/\.js$/)) {
 		name = name +'.js';
 	}
 
-	program = require('../programs/'+ name);
-	program.init(controller).then(function(){
-		program.run();
+	function start() {
+		try{
+			program = require('../programs/'+ name);
+			program.init(controller).then(function(){
+				promiseResolver.resolve();
+				program.run();
+			});
+		} catch(e) {
+			promiseResolver.reject(e.message);
+		}
+	}
+
+	// Shutdown the last program before starting the new one
+	shutdown = (program) ? program.shutdown() : Promise.resolve();
+	shutdown.then(function(){
+		clearTimeout(timeout);
+		start();
 	});
+
+	// Failsafe timeout, in case shutdown function does not complete in 5 seconds
+	timeout = setTimeout(start, 5000);
+
+	return promiseResolver.promise;
 };
 
 /**
@@ -464,6 +488,26 @@ var DiscoController = function(x, y){
 		return cells[index] || null;
 	};
 
+	/**
+		Make a global change to all floor cells
+
+		@method changeAllCells
+		@params {Array of bytes} color The RGB color
+		@params {int} fadeDuration (optional) If set, the fade duration to get to that color
+		@return Promise
+	*/
+	this.changeAllCells = function(color, fadeDuration) {
+
+		for (var i = 0, len = cells.length; i < len; i++) {
+			if (fadeDuration) {
+				cells[i].fadeToColor(color, fadeDuration);
+			} else {
+				cells[i].setColor(color);
+			}
+		}
+
+		return cells[0].getFadePromise() || Promise.resolve();
+	};
 
 	/**
 		Start the fade loop which will animate any

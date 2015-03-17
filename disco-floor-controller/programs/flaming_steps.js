@@ -1,3 +1,5 @@
+'use strict';
+
 var Promise = require("bluebird");
 
 var burning = [],
@@ -20,8 +22,7 @@ module.exports = {
 		Shutdown this program and clear memory
 	*/
 	shutdown: function(){
-		controller = null;
-		return Promise.resolve();
+		return controller.changeAllCells([0,0,0], 2000);
 	},
 
 	/**
@@ -50,7 +51,7 @@ module.exports = {
 		// .then(function(){
 		// 	return cell.fadeToColor('C3090A', 2000)
 		// }.bind(this));
-		cell.fadeToColor('C3090A', 1500)
+		cell.fadeToColor([255, 0, 0], 1500);
 	},
 
 	/**
@@ -58,14 +59,7 @@ module.exports = {
 	*/
 	flameOff: function(x, y) {
 		var cell = controller.getCell(x, y);
-		cell.fadeToColor('000000', 4000)
-	},
-
-	/**
-		Progress to the next step of burning
-	*/
-	nextStep: function(x, y){
-
+		cell.fadeToColor([0,0,0], 2000);
 	}
 
 };

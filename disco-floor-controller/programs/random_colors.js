@@ -2,7 +2,8 @@
 
 var Promise = require("bluebird");
 
-var floorController = null;
+var floorController = null,
+		running = false;
 
 module.exports = {
 
@@ -13,6 +14,7 @@ module.exports = {
 		Setup the program
 	*/
 	init: function(controller){
+		running = true;
 		floorController = controller;
 		return Promise.resolve();
 	},
@@ -21,12 +23,8 @@ module.exports = {
 		Shutdown this program and clear memory
 	*/
 	shutdown: function(){
-		floorController = null;
-
-		// Stop fade rotation
-		this.fadeToColor = function(){};
-
-		return Promise.resolve();
+		running = false;
+		return floorController.changeAllCells([0,0,0], 2000);
 	},
 
 	/**
@@ -43,7 +41,9 @@ module.exports = {
 		Generate a random color
 	*/
 	generateColor: function(){
-		var color, total;
+		var color,
+				maxValue = 255,
+				random = Math.floor(Math.round() * 4);
 
 		// If the sum of all three colors is less than 200, it will be too
 		// light to see
@@ -55,10 +55,28 @@ module.exports = {
 		// 	total = color.reduce(function(a, b) { return a + b});
 		// } while(total < 200)
 
-		color = [ Math.round(Math.random() * 256),
-				  Math.round(Math.random() * 256),
-				  Math.round(Math.random() * 256)
-				];
+
+		// Fade off or on, 1 in 3 times
+		if (Math.floor(Math.round() * 3) === 1) {
+			if (Math.floor(Math.round() * 1) === 0) {
+				color = [0,0,0];
+			} else {
+				color = [255,255,255];
+			}
+		}
+		// Fade two of the RGB colors
+		else {
+			color = [0,0,0];
+			for (var c = 0; c < 2; c++) {
+				var rgbSelect = Math.floor(Math.random() * 3); // Which RGB color to set
+				if (c == 1) maxValue =	125;
+				color[rgbSelect] = Math.floor(Math.random() * maxValue);
+			}
+			// color = [ Math.round(Math.random() * 256),
+			// 	  Math.round(Math.random() * 256),
+			// 	  Math.round(Math.random() * 256)
+			// 	];
+		}
 
 		return color;
 	},
@@ -67,6 +85,8 @@ module.exports = {
 		Have a cell fade to a random color
 	*/
 	fadeToColor: function(cell) {
+		if (!running) return;
+
 		var time = Math.random(Math.random() * 1000) + 1000,
 			 color = this.generateColor();
 
