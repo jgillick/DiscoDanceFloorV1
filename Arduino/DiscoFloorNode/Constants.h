@@ -1,11 +1,11 @@
 
 // Commands codes
-#define TYPE_RESET        0x10 // Reset node
 #define TYPE_ACK          0x01 // Acknowledge command
 #define TYPE_ADDR         0x02 // Announce address
 #define TYPE_COLOR        0x04 // Set color
 #define TYPE_FADE         0x05 // Set fade
 #define TYPE_STATUS       0x06 // Set or Get node status
+#define TYPE_RESET        0x10 // Reset node
 
 // Flags
 #define FADING           B001

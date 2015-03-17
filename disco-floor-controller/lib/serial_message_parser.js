@@ -29,12 +29,12 @@ const MSG_ESC = '\\'.charCodeAt(0);	 // Escape character
 const MSG_ALL = 0x00;                // The wildcard address used to target all nodes
 
 // Message types
-const TYPE_NULL	  = 0x00;
-const TYPE_RESET	= 0x10; // Reset node
-const TYPE_ACK		= 0x01; // Acknowledge command
-const TYPE_ADDR	  = 0x02; // Announce address
-const TYPE_COLOR	= 0x04; // Set color
-const TYPE_FADE	  = 0x05; // Set fade
+const TYPE_NULL   = 0x00;
+const TYPE_RESET  = 0x10; // Reset node
+const TYPE_ACK    = 0x01; // Acknowledge command
+const TYPE_ADDR   = 0x02; // Announce address
+const TYPE_COLOR  = 0x04; // Set color
+const TYPE_FADE   = 0x05; // Set fade
 const TYPE_STATUS = 0x06; // Set or Get node status
 
 // Message parsing status
@@ -46,6 +46,8 @@ const MSG_STATE_RDY = 0x80;	// message ready
 const MSG_STATE_ABT = 0x81;	// abnormal termination
 const MSG_STATE_BOF = 0x82;	// buffer over flow
 
+// When to timeout an incoming message
+const RECEIVE_TIMEOUT = 500;
 
 var myAddress,
 		serialPort,
@@ -136,6 +138,11 @@ MessageParser.prototype = {
 	*/
 	_sendTimer: null,
 
+	/**
+		When to timeout the current incoming message
+	*/
+	_receiveTimeout: 0,
+
 	// Debugging buffers
 	_fullBuffer: [],
 	_fullBufferChars: [],
@@ -152,7 +159,7 @@ MessageParser.prototype = {
 		this.stopSending();
 		this.type = type;
 
-		if (type == TYPE_NULL) {
+		if (type === undefined || type == TYPE_NULL) {
 			this._state = MSG_STATE_IDL;
 		} else {
 			this._state = MSG_STATE_ACT;
@@ -162,7 +169,10 @@ MessageParser.prototype = {
 
 		this.srcAddress = 0;
 		this.addressDestRange = [];
-		this.setDestAddress(destLower, destUpper);
+
+		if (destLower !== undefined) {
+			this.setDestAddress(destLower, destUpper);
+		}
 
 		this._headerPos = 0;
 		this._buffer = [];
@@ -258,6 +268,7 @@ MessageParser.prototype = {
 
 		// Add to buffer
 		this._buffer.push(c);
+		this._state = MSG_STATE_RDY;
 	},
 
 	/**
@@ -284,19 +295,39 @@ MessageParser.prototype = {
 			return this._state;
 		}
 
+		// Previous message timed out
+	  // if (this._receiveTimeout < Date.now()) {
+	  //   this.reset();
+	  // }
+
 		// Escape characer
 		if (this._escaped) {
 			this._escaped = false;
+
 			if (this._state == MSG_STATE_ACT) {
 			 this._buffer.push(c);
 			 return this._state;
+			}
+			else if (this._state == MSG_STATE_HDR) {
+				return this.processHeader(c);
 			}
 		}
 
 		// Start of message
 		else if(c == MSG_SOM) {
+			// if (this._fullBuffer.length > 1) {
+			// 	console.log('EXISTING BUFFER:');
+
+			// 	this._fullBufferChars.forEach(function(b, i){
+			// 		b = (b == '\n') ? '\\n' : b;
+			// 		console.log('\t', b, '\t', this._fullBuffer[i]);
+			// 	}.bind(this));
+			// 	// console.log('Buffer:\t', this._fullBuffer);
+			// 	// console.log('C Buff:\t', this._fullBufferChars);
+			// }
 			this.reset();
 			this._state = MSG_STATE_HDR;
+			// this._receiveTimeout = Date.now() + RECEIVE_TIMEOUT;
 			this._fullBuffer.push(c);
 			this._fullBufferChars.push(String.fromCharCode(c));
 		}
@@ -322,13 +353,14 @@ MessageParser.prototype = {
 					this._state = MSG_STATE_RDY;
 				} else {
 					// Debug
-					// console.log('CHECKSUMS MISMATCH: ', receivedChecksum, ' != ', calcedChecksum);
-					// console.log('\tType:', this.getTypeAsString()+',\t',
-					// 						'From:', this.normalizeAddress(this.srcAddress) +',\t',
-					// 						'To:', this.normalizeAddress(this.addressDestRange[0]),
-					// 						'-', this.normalizeAddress(this.addressDestRange[0]));
-					// console.log(this._fullBuffer.join('\t'));
-					// console.log(this._fullBufferChars.join('\t'));
+					console.log('CHECKSUMS MISMATCH: ', this.getStateAsString(), receivedChecksum, ' != ', calcedChecksum);
+					console.log('Type:', this.getTypeAsString()+',\t',
+											'From:', this.normalizeAddress(this.srcAddress) +',\t',
+											'To:', this.normalizeAddress(this.addressDestRange[0]),
+											'-', this.normalizeAddress(this.addressDestRange[0]));
+
+					console.log(this._fullBuffer.join('\t'));
+					console.log(this._fullBufferChars.join('\t'));
 
 					this._state = MSG_STATE_ABT;
 				}
@@ -402,7 +434,7 @@ MessageParser.prototype = {
 
 	  // Move onto the body of the message
 	  if (this._headerPos >= 4) {
-	    return this._state = MSG_STATE_ACT;
+	    this._state = MSG_STATE_ACT;
 	  }
 	  return this._state;
 	},
@@ -425,9 +457,7 @@ MessageParser.prototype = {
 			if (this.addressDestRange[0] === undefined || this.addressDestRange[1] === undefined)
 				return reject('The destination address has not been defined yet. See setDestAddress(<byte>, [<byte>])');
 
-			// Start sending
 			this.srcAddress = myAddress;
-			data.push(MSG_SOM);
 
 			// Header
 			data.push(this.addressDestRange[0]);
@@ -435,16 +465,19 @@ MessageParser.prototype = {
 			data.push(myAddress);
 			data.push(this.type);
 
-			// Add message body and escape reserved bytes
-			this._buffer.forEach(function(c, i){
-				if (escapeChars.indexOf(c) > -1) {
-					data.push(MSG_ESC);
-				}
-				data.push(c);
-			});
-
-			// End of message
+			// Add message body and checksum
+			data = data.concat(this._buffer);
 			data.push(this.calculateChecksum());
+
+			// Escape reserved characters
+			for(var i = data.length - 1; i >= 0; i--) {
+				if (~escapeChars.indexOf(data[i])) {
+					data.splice(i, 0, MSG_ESC);
+				}
+			}
+
+			// Wrap message
+			data.unshift(MSG_SOM);
 			data.push(MSG_EOM);
 
 			// Send
@@ -609,6 +642,13 @@ function crc_checksum(crc, data){
 		}
 	}
 
+	// Array or bytes
+	else if (typeof data == 'object' && data.length) {
+		for (i = 0; i < data.length; i++) {
+			crc = crc_checksum(crc, data[i]);
+		}
+	}
+
 	// Number
 	else if (typeof data == 'number') {
 		crc = crc ^ data;
@@ -638,3 +678,7 @@ module.exports.TYPE_ADDR   = TYPE_ADDR;
 module.exports.TYPE_COLOR  = TYPE_COLOR;
 module.exports.TYPE_FADE   = TYPE_FADE;
 module.exports.TYPE_STATUS = TYPE_STATUS;
+
+module.exports.MSG_SOM = MSG_SOM;
+module.exports.MSG_EOM = MSG_EOM;
+module.exports.MSG_ESC = MSG_ESC;

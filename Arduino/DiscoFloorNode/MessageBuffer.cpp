@@ -14,6 +14,7 @@ void MessageBuffer::start(uint8_t messageType) {
     messageState = MSG_STATE_IDL;
   } else {
     messageState = MSG_STATE_ACT;
+    receiveTimeout = millis() + RECEIVE_TIMEOUT;
   }
 
   sentAt = 0;
@@ -94,7 +95,14 @@ int MessageBuffer::getBodyLen() {
   return bufferPos;
 }
 
-uint8_t MessageBuffer::addToBuffer(uint8_t c) {
+uint8_t MessageBuffer::write(uint8_t* buf, uint8_t len) {
+  for(int i = 0; i < len; i++) {
+    write(buf[i]);
+  }
+  return messageState;
+}
+
+uint8_t MessageBuffer::write(uint8_t c) {
   if (messageState >= MSG_STATE_RDY) return messageState;
 
   buffer[bufferPos++] = c;
@@ -135,25 +143,34 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
 
   // Move onto the body of the message
   if (headerPos >= 4) {
-    return messageState = MSG_STATE_ACT;  
+    return messageState = MSG_STATE_ACT;
   }
   return messageState;
 }
 
-uint8_t MessageBuffer::write(uint8_t c) { 
+uint8_t MessageBuffer::parse(uint8_t c) {
+  long now = millis();
+
+  // Previous message timeout
+  if (receiveTimeout < now) {
+    reset();
+  }
 
   // Escape characer
   if (escaped) {
     escaped = false;
     if (messageState == MSG_STATE_ACT) {
-      addToBuffer(c);
-      return messageState;
+      return write(c);
+    }
+    else if (messageState == MSG_STATE_HDR) {
+      return processHeader(c);
     }
   }
 
   // Start of message
   else if(c == MSG_SOM) {
     reset();
+    receiveTimeout = now + RECEIVE_TIMEOUT;
     messageState = MSG_STATE_HDR;
   }
 
@@ -177,15 +194,16 @@ uint8_t MessageBuffer::write(uint8_t c) {
       buffer[bufferPos] = '\0';
       if (calculateChecksum() != checksum) {
         Serial.print("D:");
-        Serial.write(addressDestRange[0]);Serial.print(',');
-        Serial.write(addressDestRange[1]);Serial.print(',');
-        Serial.write(srcAddress);Serial.print(',');
-        Serial.write(type);Serial.print('B:');
+        Serial.write(addressDestRange[0]);Serial.write(',');
+        Serial.write(addressDestRange[1]);Serial.write(',');
+        Serial.write(srcAddress);Serial.write(',');
+        Serial.write(type);
+        Serial.write(':');
         for(int i = 0; i < bufferPos; i++ ){
-          Serial.write(buffer[i]);Serial.print(',');
+          Serial.write(buffer[i]);Serial.write(',');
         }
         Serial.print(F("CHECKSUMS MISMATCH: "));
-        Serial.write(checksum); Serial.print("!="); Serial.write(calculateChecksum());
+        Serial.write(checksum); Serial.write('!'); Serial.write(calculateChecksum());
         return messageState = MSG_STATE_ABT;
       }
 
@@ -200,10 +218,18 @@ uint8_t MessageBuffer::write(uint8_t c) {
     if (c == MSG_ESC) {
       escaped = true;
     } else {
-      return addToBuffer(c);
+      return write(c);
     }
   }
 
+  return messageState;
+}
+
+uint8_t MessageBuffer::read() {
+  digitalWrite(txControl, RS485Receive);
+  while (Serial.available() > 0) {
+    parse((uint8_t)Serial.read());
+  }
   return messageState;
 }
 
@@ -213,68 +239,67 @@ uint8_t MessageBuffer::calculateChecksum() {
   uint8_t checksum = 0;
   if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return 0;
 
-  checksum = _crc_ibutton_update(checksum, addressDestRange[0]);
-  checksum = _crc_ibutton_update(checksum, addressDestRange[1]);
-  checksum = _crc_ibutton_update(checksum, srcAddress);
-  checksum = _crc_ibutton_update(checksum, type);
+  checksum = crc_checksum(checksum, addressDestRange[0]);
+  checksum = crc_checksum(checksum, addressDestRange[1]);
+  checksum = crc_checksum(checksum, srcAddress);
+  checksum = crc_checksum(checksum, type);
   for(int i = 0; i < bufferPos; i++ ){
-    checksum = _crc_ibutton_update(checksum, buffer[i]);
+    checksum = crc_checksum(checksum, buffer[i]);
   }
 
   return checksum;
 }
 
-uint8_t MessageBuffer::write(uint8_t* buf, uint8_t len) {
-  for(int i = 0; i < len; i++) {
-    write(buf[i]);
+void MessageBuffer::sendChar(uint8_t c) {
+
+  // Escape
+  if (c == MSG_SOM || c == MSG_EOM || c == MSG_ESC) {
+    Serial.write(MSG_ESC);
   }
-  return messageState;
+
+  Serial.write(c);
 }
 
-uint8_t MessageBuffer::read() {
-  digitalWrite(txControl, RS485Receive);
-  while (Serial.available() > 0) {
-    write((uint8_t)Serial.read());
-  }
-  return messageState; 
-}
-
-uint8_t MessageBuffer::send() {
-  uint8_t sent = 0;
-
-  if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return 0;
-  if (myAddress == 0) return 0;
+void MessageBuffer::send() {
+  if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return;
+  if (myAddress == 0) return;
 
   // Start sending
   srcAddress = myAddress;
   digitalWrite(txControl, RS485Transmit);
 
-  Serial.print(MSG_SOM); sent++;
+  Serial.print(MSG_SOM);
 
   // Headers
-  Serial.write(addressDestRange[0]); sent++;
-  Serial.write(addressDestRange[1]); sent++;
-  Serial.write(srcAddress);          sent++;
-  Serial.write(type);                sent++;
+  sendChar(addressDestRange[0]);
+  sendChar(addressDestRange[1]);
+  sendChar(srcAddress);
+  sendChar(type);
 
   // Add message body and escape reserved bytes
   for(int i = 0; i < bufferPos; i++ ){
-    if (buffer[i] == MSG_SOM || buffer[i] == MSG_EOM || buffer[i] == MSG_ESC) {
-      Serial.write(MSG_ESC);  
-    }
-    Serial.write(buffer[i]);
+    sendChar(buffer[i]);
   }
-  sent += bufferPos - 1;
 
   // End of messageState
-  Serial.write(calculateChecksum());
+  sendChar(calculateChecksum());
   Serial.print(MSG_EOM);
-  sent += 2;
   Serial.flush();
   sentAt = millis();
 
   // Set back to receive
   digitalWrite(txControl, RS485Receive);
+}
 
-  return sent;
+uint8_t MessageBuffer::crc_checksum(uint8_t crc, uint8_t data) {
+  // From http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html#ga37b2f691ebbd917e36e40b096f78d996
+  uint8_t i;
+  crc = crc ^ data;
+  for (i = 0; i < 8; i++) {
+    if (crc & 0x01)
+      crc = (crc >> 1) ^ 0x8C;
+    else
+      crc >>= 1;
+  }
+  return crc;
 }

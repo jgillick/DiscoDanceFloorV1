@@ -7,7 +7,7 @@
   >{to}{from}{type}{body}{checksum}\n
 
   >          - The start of a message
-  {to}       - Two bytes that make up the destination address range the message is going to (inclusive). 
+  {to}       - Two bytes that make up the destination address range the message is going to (inclusive).
                If the message is for one node, that address is both bytes
   {from}     - The address of the node the message is from
   {type}     - The message type (set LED, get sensor value, etc)
@@ -17,7 +17,7 @@
 
   Addressing
   -----------
-  All all communication is between the master and nodes. Nodes never communicate 
+  All all communication is between the master and nodes. Nodes never communicate
   with eachother.
 
   Messages directly to nodes will be assumed to be sent from Master (0x0).
@@ -39,8 +39,7 @@
 
 #ifndef MessageBuffer_H_
 #define MessageBuffer_H_
-  
-#include <util/crc16.h>
+
 #include <Arduino.h>
 #include "Constants.h"
 
@@ -52,8 +51,11 @@
 #define MSG_ESC         '\\'  // Escape character
 #define MSG_ALL         0x00  // The wildcard address used to target all nodes
 
+// When to timeout an incoming message
+#define RECEIVE_TIMEOUT 500
+
 // Maximum size of the message buffer
-#define MSG_BUFFER_LEN  10    
+#define MSG_BUFFER_LEN  10
 
 // Message parsing status
 #define MSG_STATE_IDL  0x00  // no data received
@@ -62,11 +64,12 @@
 #define MSG_STATE_IGN  0x40  // ignore message
 #define MSG_STATE_RDY  0x80  // message ready
 #define MSG_STATE_ABT  0x81  // abnormal termination
-#define MSG_STATE_BOF  0x82  // buffer over flow 
+#define MSG_STATE_BOF  0x82  // buffer over flow
+#define MSG_STATE_MTO  0x83  // message timeout
 
 class MessageBuffer {
-  private: 
-    
+  private:
+
     uint8_t buffer[MSG_BUFFER_LEN + 1];
     uint8_t  type,
              myAddress,
@@ -76,23 +79,30 @@ class MessageBuffer {
              txControl,
              messageState;
     bool escaped;
+    long receiveTimeout;
 
     // The range of addresses this message is for
     // `toRange[0]` and `toRange[0]` are inclusive, both addresses are included in the range.
     // When `toRange[1]` is '-', the message is addressed to everything from `toRange[0]` forward.
     uint8_t addressDestRange[2];
 
-    // Add a single character to the message buffer (this skips message processing)
-    uint8_t addToBuffer(uint8_t);
-
     // Process the header from the buffer
     uint8_t processHeader(uint8_t);
 
+    // Set message type
     void setType(uint8_t);
+
+    // Calculate the checksum for the current message
     uint8_t calculateChecksum();
+
+    // Send a single character, and escape it if needed
+    void sendChar(uint8_t);
+
+    // Update a crc checksum with a new byte
+    uint8_t crc_checksum(uint8_t, uint8_t);
   public:
     MessageBuffer(uint8_t);
-    
+
     // Always set to false for new messages. The consumer can set this to false to indicate the message has been dealt with
     bool isNew;
 
@@ -101,7 +111,7 @@ class MessageBuffer {
 
     // The time the current message was sent
     long sentAt;
-    
+
     // If the message is complete
     bool isReady();
 
@@ -117,7 +127,7 @@ class MessageBuffer {
     // Get the upper end of the destination range ('*' means everything after lower range)
     uint8_t getUpperDestRange();
 
-    // Filter all incoming messages for this address and 
+    // Filter all incoming messages for this address and
     // use this as the src address of all outgoing messages
     void setMyAddress(uint8_t);
 
@@ -145,20 +155,23 @@ class MessageBuffer {
     // Start a new message of a type
     void start(uint8_t type);
 
-    // Write a character to the message
-    // If addresses are not set, this will attempt to parse the entire message from start to finish
-    // Returns the message status
+    // Write a character to the message body
     uint8_t write(uint8_t);
 
-    // Write a buffer of characters to the message
-    uint8_t write(uint8_t*, uint8_t);
+    // Write an array of characters to the message body
+    uint8_t write(uint8_t *buf, uint8_t len);
+
+    // Parse a new character into the message. This will parse
+    // the message from starting character (>) to ending character (\n) and
+    // automatically process the header and message body along the way.
+    uint8_t parse(uint8_t);
 
     // Read from the serial object and parse the message.
     // Returns the message status
     uint8_t read();
-    
-    // Send the entire message to the Serial stream and returns the number of bytes sent
-    uint8_t send();
+
+    // Send the entire message to the Serial stream
+    void send();
 };
 
 #endif MessageBuffer_H_
