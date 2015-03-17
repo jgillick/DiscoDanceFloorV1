@@ -16,7 +16,7 @@ var EventEmitter  = require("events").EventEmitter,
 		discoUtils 		= require('./utils.js'),
 		_             = require('underscore');
 
-const BAUD_RATE			      = 9600;
+const BAUD_RATE			      = 57600;
 const ACK_TIMEOUT         = 100;
 const STATUS_TIMEOUT      = 500;
 const ADDRESSING_TIMEOUT  = 1000;
@@ -240,6 +240,7 @@ Comm.prototype = {
 		else if (message && message.type == MessageParser.TYPE_STATUS) {
 			sensor = message.getMessageBody()[0] & SENSOR_DETECT;
 			addr = message.srcAddress;
+			// console.log('Status received from ', addr);
 
 			if (addr > lastStatusAddr) {
 
@@ -275,7 +276,6 @@ Comm.prototype = {
 
 			// Could not find cell or status
 			if (!cell || !status) {
-				console.log('No cell or status for', addr, cell, status);
 				return;
 			}
 
@@ -286,11 +286,11 @@ Comm.prototype = {
 				// If this message is the same as the last, batch it
 				if (lastMessage
 					&& lastMessage.addressDestRange[1] == addr - 1
-					&& lastMessage.type == lastMessage.type
+					&& lastMessage.type == message.type
 					&& _.isEqual(lastMessage.getMessageBody(), message.getMessageBody())) {
 
 					lastMessage.addressDestRange[1] = addr;
-					console.log('Batched update!', lastMessage.addressDestRange);
+					console.log('Batched update!', lastMessage.addressDestRange, message.type, lastMessage.getMessageBody(), message.getMessageBody());
 				}
 				// New message, no batch
 				else {
@@ -367,13 +367,13 @@ function sendStatusRequest() {
 
 	// If we've failed to get status at least twice, skip this node
   if (statusTries >= 2) {
-    console.log('No status received from', lastStatusAddr + 1, 'moving on');
+    console.log('No status received from '+ (lastStatusAddr + 1));
     lastStatusAddr++;
     statusTries = 0;
   }
 
   // We're out of nodes
-  if (lastStatusAddr + 1 >= lastNodeAddr) {
+  if (lastStatusAddr >= lastNodeAddr) {
   	comm.nextStage();
     return false;
   }
@@ -408,7 +408,7 @@ function updateFloorCell(addr, cell, noSend) {
 
 	if (cell.isFading()) {
 		type = MessageParser.TYPE_FADE;
-		data = cell.getFadeColor().slice(0);
+		data = cell.getFadeColor();
 		data.push(Math.round(cell.getFadeDuration() / 250));
 	}
 
@@ -454,24 +454,31 @@ function processStatus(addr, cell, status) {
 
 	// Set FloorCell value to match sensor value
 	if (sensorDetect != cell.getValue()) {
-		console.log('Detected change!');
+		console.log('Detected change: '+ sensorDetect);
 		cell.setValue(sensorDetect ? 1 : 0);
+		return false;
 	}
 
-	// No longer fading
+	// Stop fading node
 	if (hasFadeFlag && !cell.isFading()) {
 		console.log('Fading mismatch', cell.isFading(), status[0]);
 		return false;
 	}
 
-	// Colors mismatch
+	// Node finished fading, update state
+	else if (!hasFadeFlag && cell.isFading() && _.isEqual(statusColor, targetColor)) {
+		cell.stopFade();
+	}
+
+	// Colors don't match
 	else if (!_.isEqual(targetColor, statusTargetColor)) {
-		console.log('Color mismatch', targetColor, statusTargetColor);
+		// console.log('Color mismatch', addr, targetColor, statusTargetColor);
 		return false;
 	}
 
 	// Update color for fade step from the floor
-	if (cell.isFading() && !_.isEqual(color, statusColor)) {
+	else if (cell.isFading() && !_.isEqual(color, statusColor)) {
+		// console.log('Update FadeCell');
 		cell.setColor(statusColor, !hasFadeFlag);
 	}
 
