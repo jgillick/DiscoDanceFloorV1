@@ -1,6 +1,6 @@
 {
-  "name": "disco-floor-controller",
-  "description": "The controller for a step responsive disco dance floor",
+  "name": "Disco Cntroller",
+  "description": "The master controller for an interactive disco dance floor",
   "repository": {
     "type": "git",
     "url": "https://github.com/jgillick/DiscoDanceFloor"
