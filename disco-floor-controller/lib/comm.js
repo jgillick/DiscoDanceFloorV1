@@ -18,7 +18,7 @@ var EventEmitter  = require("events").EventEmitter,
 
 const BAUD_RATE			      = 57600;
 const ACK_TIMEOUT         = 100;
-const STATUS_TIMEOUT      = 500;
+const STATUS_TIMEOUT      = 50;
 const ADDRESSING_TIMEOUT  = 1000;
 
 // Program stages
@@ -43,7 +43,9 @@ var serialPort,
 		lastUpdate = 0,
 		addressingStageTimeout,
 		nodeRegistration,
-		discoCntrl = disco.controller;
+		discoCntrl = disco.controller,
+		lastStage = 0,
+		stageTimer = 0;
 
 
 // Set our address on the parser
@@ -112,6 +114,8 @@ Comm.prototype = {
 		@method nextStage
 	*/
 	nextStage: function() {
+		var now = Date.now();
+
 		if (txBuffer) {
 			txBuffer.reset();
 			txBuffer = null;
@@ -139,6 +143,15 @@ Comm.prototype = {
 				stage = STATUSING;
 			break;
 		}
+
+		// DEBUG - Show how long the last stage took
+		// if (lastStage != stage) {
+		// 	if (lastStage) {
+		// 		console.log(stringForStage(lastStage), ' took', (now - stageTimer) +'ms');
+		// 	}
+		// 	stageTimer = now;
+		// 	lastStage = stage;
+		// }
 
 		// Setup and call the new status handler on the next tick of the event loop
 		switch(stage) {
@@ -243,14 +256,19 @@ Comm.prototype = {
 			// console.log('Status received from ', addr);
 
 			if (addr > lastStatusAddr) {
-
 				statusTries = 0;
 				lastStatusAddr = addr;
 				statuses[addr] = message.getMessageBody();
-
-				// Update retry timeout
 				clearTimeout(statusTimeout);
-				statusTimeout = setTimeout(sendStatusRequest, STATUS_TIMEOUT);
+
+				// No more nodes
+				if (lastStatusAddr >= lastNodeAddr) {
+					this.nextStage();
+				}
+				// Update retry timeout
+				else {
+					statusTimeout = setTimeout(sendStatusRequest, STATUS_TIMEOUT);
+				}
 			}
 		}
 
@@ -311,6 +329,25 @@ Comm.prototype = {
 };
 Comm.prototype.__proto__ = EventEmitter.prototype;
 var comm = new Comm();
+
+/**
+	Return a string for the STAGE constant
+
+	@function stringForStage
+	@param {int} stage
+*/
+function stringForStage(stage) {
+	switch (stage) {
+		case ADDRESSING:
+			return "ADDRESSING";
+		case STATUSING:
+			return "STATUSING";
+		case UPDATING:
+			return "UPDATING";
+		default:
+			return "UNKNOWN";
+	}
+}
 
 /**
 	A custom SerialPort parser that runs incoming data through the
