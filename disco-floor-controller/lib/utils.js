@@ -1,6 +1,8 @@
+'use strict';
+
 
 /**
-	Convert a 3 - 6 character color HEX code to 
+	Convert a 3 - 6 character color HEX code to
 	RGB interger values from 0 - 255
 
 	@method hexToRGB
@@ -15,7 +17,7 @@ module.exports.hexToRGB = function(hex) {
 		case 3:
 			rgb = /^([a-f\d])([a-f\d])([a-f\d])$/i.exec(hex);
 			break;
-		case 6: 
+		case 6:
 			rgb = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 			break;
 	}
@@ -34,9 +36,9 @@ module.exports.hexToRGB = function(hex) {
 
 		rgb[i] = parseInt(rgb[i], 16);
 	}
-	
-	return rgb;
-}
+
+	return rgb.slice(0,3);
+};
 
 
 /**
@@ -63,6 +65,6 @@ module.exports.rgbToHex = function(red, green, blue) {
 	}
 
 	return fullHex;
-}
+};
 
 

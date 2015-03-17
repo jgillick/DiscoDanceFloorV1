@@ -176,8 +176,8 @@ var disco = require('./lib/disco_controller.js'),
 	  // Anything below 60% should become more transparent because the
 	  // floor tiles are white
 	  hsla[3] = 1;
-	  if (hsla[2] < 0.75) {
-	    hsla[3] = (hsla[2] / 0.75) + 0.05;
+	  if (hsla[2] < 0.6) {
+	    hsla[3] = (hsla[2] / 0.6) + 0.05;
 	  }
 
 	  // Convert to percent

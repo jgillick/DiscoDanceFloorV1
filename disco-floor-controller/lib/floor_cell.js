@@ -131,7 +131,7 @@ function FloorCell (xPos, yPos, discoController) {
 		@return {Array} RGB color array
 	*/
 	this.getColor = function() {
-		return color;
+		return color.slice(0);
 	};
 
 	/**
@@ -171,7 +171,7 @@ function FloorCell (xPos, yPos, discoController) {
 		@return {Array} RGB color array
 	*/
 	this.getFadeColor = function(){
-		return fadeColor;
+		return fadeColor.slice(0);
 	};
 
 	/**
@@ -219,7 +219,7 @@ function FloorCell (xPos, yPos, discoController) {
 	*/
 	this.getFadePromise = function() {
 		if (mode == FloorCell.MODE_NORMAL) {
-			return fadePromise;
+			return fadePromise.promise;
 		}
 		return null;
 	};

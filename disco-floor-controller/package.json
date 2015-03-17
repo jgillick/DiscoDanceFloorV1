@@ -12,6 +12,7 @@
     "bluebird": "*",
     "pubsub-js": "*",
     "underscore": "*",
-    "serialport": "*"
+    "serialport": "*",
+    "optimist": "*"
   }
 }

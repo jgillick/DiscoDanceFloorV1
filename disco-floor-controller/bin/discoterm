@@ -3,7 +3,7 @@
 'use strict';
 
 var SerialPort = require('serialport').SerialPort,
-    optimist = require('../node_modules/serialport/node_modules/optimist'),
+    optimist = require('optimist'),
     comm = require('../lib/comm.js'),
     disco = require('../lib/disco_controller.js');
 

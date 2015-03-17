@@ -48,7 +48,7 @@ If you see errors about not being able to find 'serialport', you might have to r
 
 That should fix it.
 
-## Writing Programs
+## How to write a floor program
 TBD
 
 ## How the controller works
