@@ -12,8 +12,11 @@
 #include "TestMaster.h"
 #endif
 
-uint8_t myAddress  = 0;
-boolean needsAck   = false;      // TRUE if we're waiting for an ACK
+// long lastPing = 0;
+uint8_t myAddress    = 0;
+boolean needsAck     = false, // TRUE if we're waiting for an ACK
+        enabledState = false, // is the node enabled
+        isMaster     = false; // is this mode the dumy master
 
 // The RGB LEDs
 LEDFader rgb[3] = { LEDFader(LED_RED),
@@ -22,7 +25,6 @@ LEDFader rgb[3] = { LEDFader(LED_RED),
 
 // Sensor
 CapacitiveSensor sensor = CapacitiveSensor(SENSOR_SEND, SENSOR_TOUCH);
-uint8_t sensorThreshold = 100; // The minimum sensor value needed to be true
 
 // Message buffers
 MessageBuffer txBuffer(TX_CONTROL);
@@ -34,9 +36,6 @@ SoftwareSerial debugSerial(SSERIAL_DEBUG_RX, SSERIAL_DEBUG_TX);
 TestMaster     dummyMaster(&rxBuffer, &txBuffer, &debugSerial);
 #endif
 
-bool enabledState = false, // is the node enabled
-     isMaster     = false; // is this mode the dumy master
-
 void setup() {
   pinMode(NEXT_NODE,   OUTPUT);
   pinMode(TX_CONTROL,  OUTPUT);
@@ -46,7 +45,7 @@ void setup() {
   digitalWrite(TX_CONTROL, RS485Receive);
 
   // Init serial communication
-  Serial.begin(9600);
+  Serial.begin(57600);
 
   // This is the master node
 #ifdef DUMMY_MASTER
@@ -76,6 +75,12 @@ void reset() {
 
 void loop() {
   long now = millis();
+
+  // Send deubbging ping
+  // if (lastPing + 1000 < now) {
+  //   Serial.print("PING");
+  //   lastPing = now;
+  // }
 
 #ifdef DUMMY_MASTER
   // Skip to TestMater loop
@@ -202,6 +207,11 @@ void sendStatus() {
   txBuffer.setDestAddress(MASTER_ADDRESS);
   txBuffer.write(flag);
 
+  // Current color
+  txBuffer.write(rgb[0].get_value());
+  txBuffer.write(rgb[1].get_value());
+  txBuffer.write(rgb[2].get_value());
+
   // Target color
   if (fading){
     txBuffer.write(rgb[0].get_target_value());
@@ -209,17 +219,12 @@ void sendStatus() {
     txBuffer.write(rgb[2].get_target_value());
   }
 
-  // Current color
-  txBuffer.write(rgb[0].get_value());
-  txBuffer.write(rgb[1].get_value());
-  txBuffer.write(rgb[2].get_value());
-
   txBuffer.send();
 }
 
 // 1 if sensor registers someone, 0 if not
 bool sensorValue() {
-  return (sensor.capacitiveSensor(30) >= sensorThreshold);
+  return (sensor.capacitiveSensor(30) >= 100);
 }
 
 // Set the LED color
