@@ -28,7 +28,7 @@
 #define LED_GREEN        9
 #define LED_BLUE         10
 
-#define ACK_TIMEOUT      500  // How many milliseconds to wait for an ACK
+#define ACK_TIMEOUT      10   // How many milliseconds to wait for an ACK
 
 #define FADE_DIVIDER     250  // What to divide the duration by before sending
 

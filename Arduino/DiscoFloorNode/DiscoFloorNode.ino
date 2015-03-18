@@ -13,10 +13,12 @@
 #endif
 
 // long lastPing = 0;
-uint8_t myAddress    = 0;
-boolean needsAck     = false, // TRUE if we're waiting for an ACK
-        enabledState = false, // is the node enabled
-        isMaster     = false; // is this mode the dumy master
+uint8_t myAddress       = 0;
+boolean needsAck        = false, // TRUE if we're waiting for an ACK
+        enabledState    = false, // is the node enabled
+        isMaster        = false, // is this mode the dumy master
+        gotSensorValue  = false,
+        lastSensorValue = false;
 
 // The RGB LEDs
 LEDFader rgb[3] = { LEDFader(LED_RED),
@@ -180,10 +182,15 @@ void masterMessage() {
 
   switch(rxBuffer.getType()) {
 
-    // If the previous node sent it's status to mater, send ours next.
     case TYPE_STATUS:
+      // Preload sensor value (since we're up soon and the call is blocking)
+      if (rxBuffer.getSourceAddress() < myAddress && !gotSensorValue) {
+        lastSensorValue = sensorValue();
+        gotSensorValue = true;
+      }
+
+      // If the previous node sent it's status to mater, send ours next.
       if (rxBuffer.getSourceAddress() + 1 == myAddress) {
-        // Serial.println(F("Send Status (from queue)"));
         sendStatus();
       }
     break;
@@ -195,11 +202,15 @@ void sendStatus() {
   uint8_t flag = 0;
   bool fading = isFading();
 
+  if (!gotSensorValue) {
+    lastSensorValue = sensorValue();
+  }
+
   // Define cell flags
   if (fading) {
     flag |= FADING;
   }
-  if (sensorValue()) {
+  if (lastSensorValue) {
     flag |= SENSOR_DETECT;
   }
 
@@ -220,9 +231,10 @@ void sendStatus() {
   }
 
   txBuffer.send();
+  gotSensorValue = false;
 }
 
-// 1 if sensor registers someone, 0 if not
+// 1 if sensor detects someone
 bool sensorValue() {
   return (sensor.capacitiveSensor(30) >= 100);
 }

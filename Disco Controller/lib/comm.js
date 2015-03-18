@@ -17,7 +17,7 @@ var EventEmitter  = require("events").EventEmitter,
 		_             = require('underscore');
 
 const BAUD_RATE			      = 57600;
-const ACK_TIMEOUT         = 100;
+const ACK_TIMEOUT         = 50;
 const STATUS_TIMEOUT      = 50;
 const ADDRESSING_TIMEOUT  = 1000;
 
