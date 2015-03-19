@@ -1,7 +1,7 @@
 Disco Floor Node
 ================
 
-Code for a single dance floor node. It handles sending and 
+Code for a single dance floor node. It handles sending and
 receiving message via RS485 to and from the master node.
 
 For a simple test setup, you can make one of the nodes the "master"
@@ -30,7 +30,7 @@ a node registration and a series of simple programs.
 
 ### RS485 chip (MAX485 or ISL8487E)
 
-I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816) chip 
+I'm using the [Intersil ISL8487E](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816) chip
 which is pin compatible with MAS485, but cheaper. Both pins 2 and 3 (RE & DE) can be wired together and then connected
 to pin 7 of the floor node.
 
@@ -73,3 +73,11 @@ connected to this pin, it will dump these statements out to serial.
 
 In order to make the libraries available to the horrible Arduino IDE for compiling, put everything in the libraries directory
 in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
+
+## BOM
+
+A work in progress of...
+
+ * ATMega168 - [$1.11 @ 100](http://www.mouser.com/ProductDetail/Atmel/ATMEGA168PB-AU/?qs=sGAEpiMZZMu9ReDVvI6ax8DxQ%252bQivSYSPREPHokDdWBsFWHIf38bWQ%3d%3d)
+ * Intersil ISL8487E RS485 Transceiver - [$0.82 @ 100](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816)
+ * LEDs

@@ -16,7 +16,7 @@ var EventEmitter  = require("events").EventEmitter,
 		discoUtils 		= require('./utils.js'),
 		_             = require('underscore');
 
-const BAUD_RATE			      = 57600;
+const BAUD_RATE			      = 250000;
 const ACK_TIMEOUT         = 50;
 const STATUS_TIMEOUT      = 50;
 const ADDRESSING_TIMEOUT  = 1000;

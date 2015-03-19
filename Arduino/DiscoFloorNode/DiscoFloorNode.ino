@@ -47,7 +47,7 @@ void setup() {
   digitalWrite(TX_CONTROL, RS485Receive);
 
   // Init serial communication
-  Serial.begin(57600);
+  Serial.begin(250000);
 
   // This is the master node
 #ifdef DUMMY_MASTER
