@@ -60,9 +60,6 @@ MessageParser.setMyAddress(MessageParser.MASTER_ADDRESS);
 */
 function Comm(){
 	EventEmitter.call(this);
-}
-// util.inherits(Comm, EventEmitter);
-Comm.prototype = {
 
 	/**
 		Start communicating with all the floor cells
@@ -71,7 +68,7 @@ Comm.prototype = {
 		@param {String} port The serial port to the RS485 bus
 		@return SerialPort
 	*/
-	start: function (port){
+	this.start = function (port){
 		nodeRegistration = [];
 
 		serialPort = new Serial(port, {
@@ -101,7 +98,7 @@ Comm.prototype = {
 		}.bind(this));
 
 		return serialPort;
-	},
+	};
 
 	/**
 		Move onto the next stage:
@@ -113,7 +110,7 @@ Comm.prototype = {
 
 		@method nextStage
 	*/
-	nextStage: function() {
+	this.nextStage = function() {
 		var now = Date.now();
 
 		if (txBuffer) {
@@ -129,6 +126,7 @@ Comm.prototype = {
 			case ADDRESSING:
 				if (nodeRegistration.length) {
 					stage = STATUSING;
+
 					this.emit('done-addressing', nodeRegistration.length);
 				}
 				// Nothing found, continue
@@ -170,14 +168,14 @@ Comm.prototype = {
 				// setTimeout(this.update.bind(this), 10);
 			break;
 		}
-	},
+	};
 
 	/**
 		Pass the most recent message to the correct stage.
 		For example, all messages received during the addressing stage
 		will be sent to the `addressing` method.
 	*/
-	handleMessage: function(message) {
+	this.handleMessage = function(message) {
 		switch(stage) {
 			case ADDRESSING:
 				this.addressing(message);
@@ -186,7 +184,7 @@ Comm.prototype = {
 				this.status(message);
 			break;
 		}
-	},
+	};
 
 
 	/**
@@ -195,7 +193,7 @@ Comm.prototype = {
 		@method addressing
 		@param {MessageParser} message (optional) The most recent message recieved
 	*/
-	addressing: function(message) {
+	this.addressing = function(message) {
 		var addr;
 
 		// Start sending address requests
@@ -233,7 +231,7 @@ Comm.prototype = {
 				console.log('Invalid address:', addr);
 			}
 		}
-	},
+	};
 
 	/**
 		Handle the status stage
@@ -241,7 +239,7 @@ Comm.prototype = {
 		@method status
 		@param {MessageParser} message (optional) The most recent message recieved while in this stage
 	*/
-	status: function(message) {
+	this.status = function(message) {
 		var sensor, addr;
 
 		// All statuses received, move on
@@ -277,12 +275,12 @@ Comm.prototype = {
 			statusTries = 0;
 			txBuffer = sendStatusRequest();
 		}
-	},
+	};
 
 	/**
 		Handle the node update stage
 	*/
-	update: function() {
+	this.update = function() {
 		var i = 0,
 				batches = [],
 				lastMessage;
@@ -308,7 +306,6 @@ Comm.prototype = {
 					&& _.isEqual(lastMessage.getMessageBody(), message.getMessageBody())) {
 
 					lastMessage.addressDestRange[1] = addr;
-					console.log('Batched update!', lastMessage.addressDestRange, message.type, lastMessage.getMessageBody(), message.getMessageBody());
 				}
 				// New message, no batch
 				else {
@@ -324,10 +321,9 @@ Comm.prototype = {
 		});
 
 		this.nextStage();
-	}
-
-};
-Comm.prototype.__proto__ = EventEmitter.prototype;
+	};
+}
+util.inherits(Comm, EventEmitter);
 var comm = new Comm();
 
 /**
