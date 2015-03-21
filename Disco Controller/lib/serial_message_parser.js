@@ -12,7 +12,7 @@
   {from}     - The address of the node the message is from
   {type}     - The message type (set LED, get sensor value, etc)
   {body}     - The body of the message
-  {checksum} - (not yet implemented) A 2 byte fletcher16 checksum
+  {checksum} - A 1-byte checksum
   \n         - Marks the end of the message
 
 	@param {int} myAddress The address of this node
@@ -296,9 +296,9 @@ MessageParser.prototype = {
 		}
 
 		// Previous message timed out
-	  // if (this._receiveTimeout < Date.now()) {
-	  //   this.reset();
-	  // }
+	  if (this._receiveTimeout < Date.now()) {
+	    this.reset();
+	  }
 
 		// Escape characer
 		if (this._escaped) {
@@ -315,19 +315,20 @@ MessageParser.prototype = {
 
 		// Start of message
 		else if(c == MSG_SOM) {
-			// if (this._fullBuffer.length > 1) {
-			// 	console.log('EXISTING BUFFER:');
+			if (this._fullBuffer.length > 1) {
 
-			// 	this._fullBufferChars.forEach(function(b, i){
-			// 		b = (b == '\n') ? '\\n' : b;
-			// 		console.log('\t', b, '\t', this._fullBuffer[i]);
-			// 	}.bind(this));
-			// 	// console.log('Buffer:\t', this._fullBuffer);
-			// 	// console.log('C Buff:\t', this._fullBufferChars);
-			// }
+				var debug = this._fullBuffer.slice(0, -1).map(function(b, i){
+					b = (~[MSG_SOM, MSG_EOM, MSG_ESC].indexOf(b)) ? this._fullBufferChars[i] : b;
+					b = (b == '\n') ? '\\n' : b;
+					b = (b == '\\') ? '\\' : b;
+					return b;
+				}.bind(this));
+				console.log('EXISTING BUFFER:', debug.join(' '));
+			}
+
 			this.reset();
 			this._state = MSG_STATE_HDR;
-			// this._receiveTimeout = Date.now() + RECEIVE_TIMEOUT;
+			this._receiveTimeout = Date.now() + RECEIVE_TIMEOUT;
 			this._fullBuffer.push(c);
 			this._fullBufferChars.push(String.fromCharCode(c));
 		}

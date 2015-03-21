@@ -110,6 +110,21 @@ body {
 				}
 			}
 		}
+
+		.frame-rate {
+			display: none;
+			text-align: center;
+			line-height: 40px;
+			color: #999;
+		}
+	}
+	&.connected .emulator .status{
+		.dimensions {
+			display: none;
+		}
+		.frame-rate {
+			display: block;
+		}
 	}
 	.grid {
 		box-sizing: border-box;
