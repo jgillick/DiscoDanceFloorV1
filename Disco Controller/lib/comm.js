@@ -22,10 +22,10 @@ const STATUS_TIMEOUT      = 50;
 const ADDRESSING_TIMEOUT  = 1000;
 
 // Program stages
-const IDLE                = 0x00;
-const ADDRESSING          = 0x01;
-const STATUSING           = 0x02;
-const UPDATING            = 0x03;
+const IDLE                = 'idle';
+const ADDRESSING          = 'addressing';
+const STATUSING           = 'statusing';
+const UPDATING            = 'updating';
 
 // Status flags
 const FADING           		= 0x01;
@@ -142,14 +142,15 @@ function Comm(){
 			break;
 		}
 
-		// DEBUG - Show how long the last stage took
-		// if (lastStage != stage) {
+		// Declare stage change
+		if (lastStage != stage) {
+			this.emit('stage-change', stage, lastStage);
 		// 	if (lastStage) {
 		// 		console.log(stringForStage(lastStage), ' took', (now - stageTimer) +'ms');
 		// 	}
 		// 	stageTimer = now;
-		// 	lastStage = stage;
-		// }
+			lastStage = stage;
+		}
 
 		// Setup and call the new status handler on the next tick of the event loop
 		switch(stage) {

@@ -6,6 +6,9 @@ var disco 		 = require('./lib/disco_controller.js'),
 
 var controller = disco.controller;
 
+// Focus the main window
+window.focus();
+
 /*
 	Init the page
 */
@@ -75,6 +78,7 @@ function serialSetup(){
 		var el = $('#serial-setup'),
 				status = el.find('p.status'),
 				port = $('#serial-ports-list').val(),
+				cycles = 0,
 				foundNodes = 0;
 
 		// Connect
@@ -100,9 +104,21 @@ function serialSetup(){
 				status.html('No floor cells were found.');
 				return;
 			}
+			$('#preview').addClass('connected');
 			$('#serial-setup').addClass('closed');
-			$('.status .dimensions').css('display', 'none');
 		});
+
+		// Frame rate
+		comm.on('stage-change', function(newStage, oldStage) {
+			if (oldStage == 'updating') {
+				cycles++;
+			}
+		});
+		setInterval(function() {
+			var fps = Math.floor(cycles / 2);
+			$('.status .frame-rate .rate').html(fps);
+			cycles = 0;
+		}, 2000);
 
 	});
 }
