@@ -402,7 +402,13 @@ var DiscoController = function(x, y){
 
 		var sqrt = Math.sqrt(cells.length),
 				x = Math.floor(sqrt),
-				y = Math.ceil(sqrt);
+				y = Math.ceil(sqrt),
+				diff = cells.length - (y * x);
+
+		// Add extra rows for a not equal square
+		if (diff > 0) {
+			y += Math.ceil(diff / x);
+		}
 
 		this.setDimensions(x, y);
 		return dimensions;
