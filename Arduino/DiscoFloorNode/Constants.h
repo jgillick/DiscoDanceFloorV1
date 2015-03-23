@@ -12,12 +12,12 @@
 #define SENSOR_DETECT    B010
 
 // PINS
-#define ENABLE_MASTER    2
+#define TX_CONTROL       2    // RS485 TX Enable
 #define SENSOR_SEND      3    // Connect a resistor from this pin to SENSOR_OUT
 #define SENSOR_TOUCH     4    // Connected to sensor area
 #define NEXT_NODE        5    // Enables the next node so it can register itself
 #define ENABLE_NODE      6    // Sets ID when HIGH
-#define TX_CONTROL       7    // RS485 TX Enable
+#define ENABLE_MASTER    7
 #define NODE_STATUS      8
 
 // For master debugging

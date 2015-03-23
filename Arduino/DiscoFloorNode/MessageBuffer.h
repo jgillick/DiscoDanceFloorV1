@@ -12,7 +12,7 @@
   {from}     - The address of the node the message is from
   {type}     - The message type (set LED, get sensor value, etc)
   {body}     - The body of the message
-  {checksum} - (not yet implemented) A 2 byte fletcher16 checksum
+  {checksum} - A 1-byte checksum
   \n         - Marks the end of the message
 
   Addressing
@@ -102,9 +102,6 @@ class MessageBuffer {
     uint8_t crc_checksum(uint8_t, uint8_t);
   public:
     MessageBuffer(uint8_t);
-
-    // Always set to false for new messages. The consumer can set this to false to indicate the message has been dealt with
-    bool isNew;
 
     // The message type
     uint8_t getType();

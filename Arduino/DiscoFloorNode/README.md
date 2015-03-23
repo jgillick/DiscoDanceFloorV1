@@ -15,12 +15,12 @@ a node registration and a series of simple programs.
 ```
 0:   To pin 1 of RS485 chip (RO)
 1:   To pin 4 of RS485 chip (DI)
-2:   To '-' for nodes, '+' for master
+2:   To both TX/RX enable pins of RS485 chip (pins 2 & 3)
 3:   Connect to pin 4 with 1M resistor
 4:   To capacitive touch sensor area (eg, bare wire, sheet of aluminum foil, etc)
 5:   To pin 6 of next node
 6:   From pin 5 of the previous node or master
-7:   To both TX/RX enable pins of RS485 chip (pins 2 & 3)
+7:   To '-' for nodes, '+' for master
 9:   To green pin of RGB LED
 10:  To blue pin of RGB LED
 11:  To red pin of RGB LED
@@ -36,8 +36,8 @@ to pin 7 of the floor node.
 
 ```
 1:   To pin 0 (RX) of floor node
-2:   To pin 7 of floor node
-3:   To pin 7 of floor node
+2:   To pin 2 of floor node
+3:   To pin 2 of floor node
 4:   To pin 1 (TX) of floor node
 5:   To 5V
 6:   Bus A/Y
@@ -62,12 +62,6 @@ to pin 7 of the floor node.
   2. Differnet color program: Sets all LEDs to different solid colors.
   3. Fade program: Fade all LEDs to different colors.
   4. Repeat
-
-
-## Debugging
-
-All nodes output serial debugging statements to pin 13 (4800 baud). If pin 12 of the master node is
-connected to this pin, it will dump these statements out to serial.
 
 ## Libraries
 

@@ -21,7 +21,6 @@ void MessageBuffer::start(uint8_t messageType) {
   escaped = false;
   bufferPos = 0;
   headerPos = 0;
-  isNew = true;
 
   srcAddress = 0;
   addressDestRange[0] = 0;
@@ -73,8 +72,8 @@ bool MessageBuffer::addressedToMe() {
   if (myAddress == 0) return false;
 
   // Match range
-  if (addressDestRange[1] == MSG_ALL && addressDestRange[0] >= myAddress) return true;
-  if (addressDestRange[0] >= myAddress && addressDestRange[0] <= myAddress) return true;
+  if (addressDestRange[1] == MSG_ALL && addressDestRange[0] <= myAddress) return true;
+  if (addressDestRange[0] <= myAddress && addressDestRange[1] >= myAddress) return true;
 
   return false;
 }
@@ -105,13 +104,14 @@ uint8_t MessageBuffer::write(uint8_t* buf, uint8_t len) {
 uint8_t MessageBuffer::write(uint8_t c) {
   if (messageState >= MSG_STATE_RDY) return messageState;
 
+  // Buffer over flow
+  if (bufferPos + 1 >= MSG_BUFFER_LEN) {
+    return messageState = MSG_STATE_BOF;
+  }
+
   buffer[bufferPos++] = c;
   buffer[bufferPos]   = '\0'; // Null terminator
 
-  // Buffer over flow
-  if (bufferPos == MSG_BUFFER_LEN - 1) {
-    messageState = MSG_STATE_BOF;
-  }
   return messageState;
 }
 
@@ -186,24 +186,24 @@ uint8_t MessageBuffer::parse(uint8_t c) {
 
   // End of message
   else if (c == MSG_EOM) {
-    if(messageState == MSG_STATE_ACT) {
-      isNew = true;
+    if(messageState == MSG_STATE_ACT && bufferPos > 0) {
 
       // Compare checksum
       uint8_t checksum = buffer[--bufferPos];
       buffer[bufferPos] = '\0';
       if (calculateChecksum() != checksum) {
-        Serial.print("D:");
-        Serial.write(addressDestRange[0]);Serial.write(',');
-        Serial.write(addressDestRange[1]);Serial.write(',');
-        Serial.write(srcAddress);Serial.write(',');
-        Serial.write(type);
-        Serial.write(':');
-        for(int i = 0; i < bufferPos; i++ ){
-          Serial.write(buffer[i]);Serial.write(',');
-        }
-        Serial.print(F("CHECKSUMS MISMATCH: "));
+        // Serial.print(F("D:"));
+        // Serial.write(addressDestRange[0]);Serial.write(',');
+        // Serial.write(addressDestRange[1]);Serial.write(',');
+        // Serial.write(srcAddress);Serial.write(',');
+        // Serial.write(type);
+        // Serial.write(':');
+        // for(int i = 0; i < bufferPos; i++ ){
+        //   Serial.write(buffer[i]);Serial.write(',');
+        // }
+        Serial.print(F("CM!"));
         Serial.write(checksum); Serial.write('!'); Serial.write(calculateChecksum());
+
         return messageState = MSG_STATE_ABT;
       }
 
