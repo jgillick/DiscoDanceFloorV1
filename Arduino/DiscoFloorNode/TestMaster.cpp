@@ -1,10 +1,9 @@
 #include "TestMaster.h"
 
-TestMaster::TestMaster(MessageBuffer *rx, MessageBuffer *tx, SoftwareSerial *serial) {
+TestMaster::TestMaster(MessageBuffer *rx, MessageBuffer *tx) {
   stage       = ADDRESSING;
   rxBuffer    = rx;
   txBuffer    = tx;
-  debugSerial = serial;
 
   myAddress        = 1;
   programTime      = 0;
@@ -33,21 +32,6 @@ void TestMaster::setup() {
 void TestMaster::loop() {
   long now = millis();
   rxBuffer->read();
-
-  // Print Debug
-  if (debugSerial->available()) {
-    char c;
-    delay(10);
-    Serial.print(F("#: "));
-    while(debugSerial->available()) {
-      if (c == '\n') {
-        Serial.print(F("#: "));
-      }
-      c = debugSerial->read();
-      Serial.print(c);
-    }
-    if (c != '\n') Serial.print(F("\n"));
-  }
 
   // Process stage
   switch(stage) {
@@ -91,9 +75,9 @@ void TestMaster::addressing(long now) {
       // Query for the next address
       sendAddress();
       lastAddrRXTime = millis();
-    } 
+    }
     else {
-      Serial.print(F("Invalid address: ")); 
+      Serial.print(F("Invalid address: "));
       Serial.print(addr);
     }
   }
@@ -102,7 +86,7 @@ void TestMaster::addressing(long now) {
   if (lastAddrRXTime > 0 && lastAddrRXTime + ADDRESSING_TIMEOUT < now) {
     Serial.print(lastNodeAddress - myAddress);
     Serial.println(F(" node(s) found"));
-    
+
     if (!firstNodeAddress) {
       Serial.println(F("No nodes detected"));
       goIdle();
@@ -238,7 +222,7 @@ void TestMaster::updateNodes(long now) {
       currentProgram = wrap(++currentProgram, PROGRAM_NUM - 1);
       // Serial.print(F("Update to program: "));
       // Serial.println(currentProgram);
-    } 
+    }
 
     programTXTime = 0;
     programTime = millis();
@@ -326,8 +310,8 @@ void TestMaster::programFadeColors(bool setup, long now) {
       data[0] = 0;
       data[1] = 0;
       data[2] = 0;
-      
-      // Set a two colors to fade to 
+
+      // Set a two colors to fade to
       // (first can go from 0 - 120, secondary can go from 0 - 255)
       for (int c = 0; c < 2; c++) {
         rgbSelect = random(0, 3); // Which RGB color to set
@@ -338,9 +322,9 @@ void TestMaster::programFadeColors(bool setup, long now) {
       // Serial.print(F("Send Fade to "));
       // Serial.print(i); Serial.print(F(": "));
       // Serial.print(data[0]); Serial.print(F(","));
-      // Serial.print(data[1]); Serial.print(F(",")); 
-      // Serial.print(data[2]); 
-      // Serial.println(F(" in 1000ms")); 
+      // Serial.print(data[1]); Serial.print(F(","));
+      // Serial.print(data[2]);
+      // Serial.println(F(" in 1000ms"));
 
       txBuffer->start(TYPE_FADE);
       txBuffer->setDestAddress(i);

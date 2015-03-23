@@ -1,6 +1,6 @@
 /*
   A dummy master program to be run on another arduino.
-  This will run a few test progams after successfully 
+  This will run a few test progams after successfully
   registering all floor nodes.
 
   Wiring for this should be the same as any other node, except
@@ -11,7 +11,6 @@
 #define TestMaster_H_
 
 #include <Arduino.h>
-#include <SoftwareSerial.h>
 #include "MessageBuffer.h"
 #include "Constants.h"
 
@@ -49,7 +48,6 @@ private:
 
   MessageBuffer  *txBuffer;
   MessageBuffer  *rxBuffer;
-  SoftwareSerial *debugSerial;
 
   void processMessage();
   void addressing(long);
@@ -72,7 +70,7 @@ private:
     return val;
   }
 public:
-  TestMaster(MessageBuffer *rx, MessageBuffer *tx, SoftwareSerial *serial);
+  TestMaster(MessageBuffer *rx, MessageBuffer *tx);
   void setup();
   void loop();
 };
