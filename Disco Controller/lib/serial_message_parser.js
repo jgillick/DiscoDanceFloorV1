@@ -284,9 +284,6 @@ MessageParser.prototype = {
 
 		if (typeof c == 'undefined') return this._state;
 
-		this._fullBuffer.push(c);
-		this._fullBufferChars.push(String.fromCharCode(c));
-
 		// String or buffer of data
 		if (c.length) {
 			for (var i = 0; i < c.length; i++) {
@@ -294,6 +291,9 @@ MessageParser.prototype = {
 			}
 			return this._state;
 		}
+
+		this._fullBuffer.push(c);
+		this._fullBufferChars.push(String.fromCharCode(c));
 
 		// Previous message timed out
 	  if (this._receiveTimeout < Date.now()) {
