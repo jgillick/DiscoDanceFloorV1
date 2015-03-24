@@ -61,8 +61,8 @@
 #define MSG_STATE_IDL  0x00  // no data received
 #define MSG_STATE_HDR  0x10  // collecting header
 #define MSG_STATE_ACT  0x20  // message active
-#define MSG_STATE_IGN  0x40  // ignore message
-#define MSG_STATE_RDY  0x80  // message ready
+#define MSG_STATE_RDY  0x30  // message ready
+#define MSG_STATE_IGN  0x80  // ignore message
 #define MSG_STATE_ABT  0x81  // abnormal termination
 #define MSG_STATE_BOF  0x82  // buffer over flow
 #define MSG_STATE_MTO  0x83  // message timeout

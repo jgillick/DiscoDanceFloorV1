@@ -141,6 +141,11 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
   }
   headerPos++;
 
+  // Not addressed to us or master, ignore the rest of it
+  if (!addressedToMe() && !addressedToMaster()) {
+    return messageState = MSG_STATE_IGN;
+  }
+
   // Move onto the body of the message
   if (headerPos >= 4) {
     return messageState = MSG_STATE_ACT;
