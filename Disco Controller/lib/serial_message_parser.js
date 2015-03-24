@@ -316,14 +316,7 @@ MessageParser.prototype = {
 		// Start of message
 		else if(c == MSG_SOM) {
 			if (this._fullBuffer.length > 1) {
-
-				var debug = this._fullBuffer.slice(0, -1).map(function(b, i){
-					b = (~[MSG_SOM, MSG_EOM, MSG_ESC].indexOf(b)) ? this._fullBufferChars[i] : b;
-					b = (b == '\n') ? '\\n' : b;
-					b = (b == '\\') ? '\\' : b;
-					return b;
-				}.bind(this));
-				console.log('EXISTING BUFFER:', debug.join(' '));
+				console.log('EXISTING BUFFER:', this.dumpBuffer());
 			}
 
 			this.reset();
@@ -354,14 +347,8 @@ MessageParser.prototype = {
 					this._state = MSG_STATE_RDY;
 				} else {
 					// Debug
-					console.log('CHECKSUMS MISMATCH: ', this.getStateAsString(), receivedChecksum, ' != ', calcedChecksum);
-					console.log('Type:', this.getTypeAsString()+',\t',
-											'From:', this.normalizeAddress(this.srcAddress) +',\t',
-											'To:', this.normalizeAddress(this.addressDestRange[0]),
-											'-', this.normalizeAddress(this.addressDestRange[0]));
-
-					console.log(this._fullBuffer.join('\t'));
-					console.log(this._fullBufferChars.join('\t'));
+					console.log('CHECKSUMS MISMATCH: ', receivedChecksum, ' != ', calcedChecksum);
+					console.log(this.dumpBuffer());
 
 					this._state = MSG_STATE_ABT;
 				}
@@ -623,7 +610,24 @@ MessageParser.prototype = {
 				return 'MASTER';
 		}
 		return addr;
+	},
+
+	/**
+		Get the full buffer as a normalized string
+
+		@method dumpBuffer
+	*/
+	dumpBuffer: function() {
+		var debug = this._fullBuffer.map(function(b, i){
+			b = (~[MSG_SOM, MSG_EOM, MSG_ESC].indexOf(b)) ? this._fullBufferChars[i] : b;
+			b = (b == '\n') ? '\\n' : b;
+			b = (b == '\\') ? '\\' : b;
+			return b;
+		}.bind(this));
+
+		return debug.join(' ');
 	}
+
 };
 
 /**
