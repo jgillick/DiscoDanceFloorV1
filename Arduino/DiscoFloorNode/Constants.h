@@ -20,17 +20,23 @@
 #define ENABLE_MASTER    7
 #define NODE_STATUS      8
 
-// For master debugging
-#define SSERIAL_DEBUG_RX 12   // Debug SoftwareSerial RX line
-#define SSERIAL_DEBUG_TX 13   // Debug SoftwareSerial TX line
-
+// RGB LED Pins
 #define LED_RED          11
 #define LED_GREEN        9
 #define LED_BLUE         10
 
-#define ACK_TIMEOUT      10   // How many milliseconds to wait for an ACK
+// For master debugging
+#define SSERIAL_DEBUG_RX 12   // Debug SoftwareSerial RX line
+#define SSERIAL_DEBUG_TX 13   // Debug SoftwareSerial TX line
 
-#define FADE_DIVIDER     250  // What to divide the duration by before sending
 
+// RX/TX enable
 #define RS485Transmit    HIGH
 #define RS485Receive     LOW
+
+// EEPROM Addresses
+#define EEPROM_CELL_ADDR 0
+
+// Everything else
+#define ACK_TIMEOUT      10   // How many milliseconds to wait for an ACK
+#define FADE_DIVIDER     250  // What to divide the duration by before sending

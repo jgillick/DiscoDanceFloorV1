@@ -7,16 +7,18 @@
 #include "MessageBuffer.h"
 #include "Constants.h"
 
-#ifdef DUMMY_MASTER
-#include <SoftwareSerial.h>
-#include "TestMaster.h"
-#endif
+#include <EEPROM.h>
+#include <avr/wdt.h>
 
-// long lastPing = 0;
+// #ifdef DUMMY_MASTER
+// #include "TestMaster.h"
+// #endif
+
+long lastPing = 0;
+uint8_t ledOn = 1;
 uint8_t myAddress       = 0;
 boolean needsAck        = false, // TRUE if we're waiting for an ACK
         enabledState    = false, // is the node enabled
-        isMaster        = false, // is this mode the dumy master
         gotSensorValue  = false,
         lastSensorValue = false;
 
@@ -33,10 +35,10 @@ MessageBuffer txBuffer(TX_CONTROL);
 MessageBuffer rxBuffer(TX_CONTROL);
 
 // Testing
-#ifdef DUMMY_MASTER
-SoftwareSerial debugSerial(SSERIAL_DEBUG_RX, SSERIAL_DEBUG_TX);
-TestMaster     dummyMaster(&rxBuffer, &txBuffer, &debugSerial);
-#endif
+// #ifdef DUMMY_MASTER
+// boolean isMaster = false;
+// TestMaster     dummyMaster(&rxBuffer, &txBuffer);
+// #endif
 
 void setup() {
   pinMode(NEXT_NODE,   OUTPUT);
@@ -48,6 +50,9 @@ void setup() {
 
   // Init serial communication
   Serial.begin(250000);
+
+  // Reboot if the node stalls for 1 second
+  wdt_enable(WDTO_2S);
 
   // This is the master node
 #ifdef DUMMY_MASTER
@@ -63,26 +68,23 @@ void setup() {
     Serial.println(F("I'm a node."));
   }
 #endif
-  digitalWrite(NODE_STATUS, HIGH);
-}
 
-void reset() {
-  myAddress = 0;
-  txBuffer.setMyAddress(0);
-  rxBuffer.setMyAddress(0);
-  txBuffer.reset();
-  rxBuffer.reset();
-  digitalWrite(NEXT_NODE, LOW);
+  digitalWrite(NODE_STATUS, HIGH);
 }
 
 void loop() {
   long now = millis();
 
+  // The program is still alive
+  wdt_reset();
+
   // Send deubbging ping
-  // if (lastPing + 1000 < now) {
-  //   Serial.print("PING");
-  //   lastPing = now;
-  // }
+  if (lastPing + 500 < now) {
+    // Serial.print(F("P")); delay(1);
+    digitalWrite(NODE_STATUS, ledOn);
+    ledOn = (ledOn == 0) ? 1 : 0;
+    lastPing = now;
+  }
 
 #ifdef DUMMY_MASTER
   // Skip to TestMater loop
@@ -111,6 +113,8 @@ void processMessage() {
 
   // No ID defined yet
   if (myAddress == 0) {
+    // Serial.print(F("A"));
+    // Serial.write(myAddress); delay(1);
     setAddress();
   }
 
@@ -133,17 +137,19 @@ void processACK() {
 
   // Address set, tell next node to set address
   if (txBuffer.getType() == TYPE_ADDR) {
-    digitalWrite(NEXT_NODE, HIGH);
+    addressConfirmed();
   }
+}
+
+// Out address has been confirmed, enable the next node
+void addressConfirmed() {
+  EEPROM.write(EEPROM_CELL_ADDR, myAddress);
+  digitalWrite(NEXT_NODE, HIGH);
 }
 
 // Process messages addressed to me
 void myMessage() {
-
   switch(rxBuffer.getType()) {
-    case TYPE_RESET:
-      reset();
-    break;
     case TYPE_ACK:
       processACK();
     break;
@@ -155,8 +161,14 @@ void myMessage() {
     break;
     case TYPE_STATUS:
       if (rxBuffer.getLowerDestRange() == myAddress) {
-        // Serial.println(F("Send Status (direct address)"));
+        // Serial.print(F("S!")); delay(1);
         sendStatus();
+      }
+      // Preload sensor value, since we're up soon and the call is blocking.
+      // TODO: Replace with non-blocking lib
+      else if (!gotSensorValue){
+        lastSensorValue = sensorValue();
+        gotSensorValue = true;
       }
     break;
     case TYPE_ADDR:
@@ -170,7 +182,7 @@ void myMessage() {
         // We didn't hear master's ACK
         else if (rxBuffer.getBody()[0] == myAddress) {
           needsAck = false;
-          digitalWrite(NEXT_NODE, HIGH);
+          addressConfirmed();
         }
       }
     break;
@@ -179,18 +191,14 @@ void myMessage() {
 
 // Observe any messages are going to master
 void masterMessage() {
+  uint8_t src = rxBuffer.getSourceAddress();
 
   switch(rxBuffer.getType()) {
-
     case TYPE_STATUS:
-      // Preload sensor value (since we're up soon and the call is blocking)
-      if (rxBuffer.getSourceAddress() < myAddress && !gotSensorValue) {
-        lastSensorValue = sensorValue();
-        gotSensorValue = true;
-      }
-
       // If the previous node sent it's status to mater, send ours next.
-      if (rxBuffer.getSourceAddress() + 1 == myAddress) {
+      if (src + 1 == myAddress) {
+        // Serial.print(F("S~")); delay(1);
+        delay(5);
         sendStatus();
       }
     break;
@@ -199,6 +207,7 @@ void masterMessage() {
 
 // Send node status to master
 void sendStatus() {
+
   uint8_t flag = 0;
   bool fading = isFading();
 
@@ -280,7 +289,24 @@ void handleFadeMessage() {
 
 // Set an address if one hasn't been defined yet
 void setAddress() {
-  int enabled = digitalRead(ENABLE_NODE);
+  uint8_t addr,
+          enabled = digitalRead(ENABLE_NODE);
+
+  // Must have crashed and rebotted because  we're enabled,
+  // and the RX message is past the addressing stage
+  // Get address from the EEPROM
+  if (enabled == HIGH && rxBuffer.getType() > TYPE_ADDR) {
+    addr = EEPROM.read(EEPROM_CELL_ADDR);
+    if (addr > 0 && addr < 255) {
+      myAddress = addr;
+      txBuffer.setMyAddress(myAddress);
+      rxBuffer.setMyAddress(myAddress);
+      return;
+    }
+    else {
+      addr = 0;
+    }
+  }
 
   // Just enabled, clear RX and wait for next address (in case current RX is stale)
   if (enabled == HIGH && enabledState == false) {
@@ -290,7 +316,7 @@ void setAddress() {
 
   // Set address
   else if (enabled == HIGH && rxBuffer.getType() == TYPE_ADDR) {
-    uint8_t addr = (uint8_t)rxBuffer.getBody()[0];
+    addr = (uint8_t)rxBuffer.getBody()[0];
 
     // Valid addresses are greater than MASTER
     if (addr >= MASTER_ADDRESS) {
@@ -331,31 +357,3 @@ void fadeToColor(int time, uint8_t red, uint8_t green, uint8_t blue) {
   rgb[1].fade(green, time);
   rgb[2].fade(blue, time);
 }
-
-// void printMsgState(uint8_t state) {
-//   Serial.print(state, HEX);
-//   Serial.print(F(": "));
-//   switch(state) {
-//     case MSG_STATE_IDL:
-//       Serial.println(F("IDL"));
-//     break;
-//     case MSG_STATE_HDR:
-//       Serial.println(F("HDR"));
-//     break;
-//     case MSG_STATE_ACT:
-//       Serial.println(F("ACT"));
-//     break;
-//     case MSG_STATE_IGN:
-//       Serial.println(F("IGN"));
-//     break;
-//     case MSG_STATE_RDY:
-//       Serial.println(F("RDY"));
-//     break;
-//     case MSG_STATE_ABT:
-//       Serial.println(F("ABT"));
-//     break;
-//     default:
-//       Serial.println(F("OTHER"));
-//   }
-//   delay(500);
-// }
