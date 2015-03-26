@@ -12,6 +12,8 @@ a node registration and a series of simple programs.
 
 ### Arduino
 
+(see Circuit Diagrams below)
+
 ```
 0:   To pin 1 of RS485 chip (RO)
 1:   To pin 4 of RS485 chip (DI)
@@ -75,6 +77,12 @@ How the test master communicated with the floor cells
 
 In order to make the libraries available to the horrible Arduino IDE for compiling, put everything in the libraries directory
 in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
+
+## Circuit Diagrams
+
+### Bare Atmega168
+![Schematic](/Arduino/DiscoFloorNode/circuit/DiscoFloor_schem.png)
+![BreadBoard](/Arduino/DiscoFloorNode/circuit/DiscoFloor_breadboard.png)
 
 ## BOM
 
