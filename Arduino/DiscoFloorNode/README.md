@@ -20,7 +20,6 @@ a node registration and a series of simple programs.
 4:   To capacitive touch sensor area (eg, bare wire, sheet of aluminum foil, etc)
 5:   To pin 6 of next node
 6:   From pin 5 of the previous node or master
-7:   To '-' for nodes, '+' for master
 9:   To green pin of RGB LED
 10:  To blue pin of RGB LED
 11:  To red pin of RGB LED
@@ -45,7 +44,16 @@ to pin 7 of the floor node.
 8:   To common
 ```
 
-## Test Master Flow
+## Test Master (deprecated)
+
+You can make at Atmega the master, instead of communicating with the computer. This can be one way of testing the floor cells and the communication bus.
+
+1. Compile program with `DUMMY_MASTER` defined (and make sure those blocks are uncommented)
+2. Connect pin 7 to VCC on the master node and GND on all floor cell nodes.
+
+### Test Master Flow
+
+How the test master communicated with the floor cells
 
 1. Enable first floor node (pin 5 HIGH)
 2. Ask for the node's address (repeat message after ACK_TIMEOUT)
