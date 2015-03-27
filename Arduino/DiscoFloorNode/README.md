@@ -84,6 +84,9 @@ in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
 ![Schematic](/Arduino/DiscoFloorNode/circuit/DiscoFloor_schem.png)
 ![BreadBoard](/Arduino/DiscoFloorNode/circuit/DiscoFloor_breadboard.png)
 
+### Using Arduino
+![Arduino](/Arduino/DiscoFloorNode/circuit/DiscoFloor_Arduino_breadboard.png)
+
 ## BOM
 
 A work in progress of...
