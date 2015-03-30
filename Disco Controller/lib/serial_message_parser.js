@@ -315,9 +315,9 @@ MessageParser.prototype = {
 
 		// Start of message
 		else if(c == MSG_SOM) {
-			if (this._fullBuffer.length > 1) {
-				console.log('EXISTING BUFFER:', this.dumpBuffer());
-			}
+			// if (this._fullBuffer.length > 1) {
+			// 	console.log('EXISTING BUFFER:', this.dumpBuffer());
+			// }
 
 			this.reset();
 			this._state = MSG_STATE_HDR;

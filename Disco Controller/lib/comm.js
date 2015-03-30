@@ -488,7 +488,7 @@ function processStatus(addr, cell, status) {
 
 	// Set FloorCell value to match sensor value
 	if (sensorDetect != cell.getValue()) {
-		console.log('Detected change: '+ sensorDetect);
+		console.log('Detected change: '+ sensorDetect +' on '+ addr);
 		cell.setValue(sensorDetect ? 1 : 0);
 		return false;
 	}
