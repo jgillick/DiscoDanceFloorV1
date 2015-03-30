@@ -85,7 +85,7 @@ in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
 ![BreadBoard](/Arduino/DiscoFloorNode/circuit/DiscoFloor_breadboard.png)
 
 ### Using Arduino
-![Arduino](/Arduino/DiscoFloorNode/circuit/DiscoFloor_Arduino_breadboard.png)
+![Arduino](/Arduino/DiscoFloorNode/circuit/Arduino_breadboard.png)
 
 ## Bare Atmega168 and Fuse Bits
 (note to self)
@@ -96,9 +96,15 @@ avrdude -p m168 -c usbtiny -e -U lfuse:w:0xff:m -U hfuse:w:0xdd:m -U efuse:w:0x0
 This assumes you're using the USBTiny programmer.
 
 ## BOM
-
-A work in progress of...
+The BOM for each floor cell. This is still a work in progress...
 
  * ATMega168 - [$1.11 @ 100](http://www.mouser.com/ProductDetail/Atmel/ATMEGA168PB-AU/?qs=sGAEpiMZZMu9ReDVvI6ax8DxQ%252bQivSYSPREPHokDdWBsFWHIf38bWQ%3d%3d)
+ * IQS211 Capacitive Sensor - [$0.25 @ 100](http://www.mouser.com/ProductDetail/Azoteq/IQS211-00000000-TSR/?qs=sGAEpiMZZMsgNhPy3wz0s8Jk1JcR4n4y3Mm342ZDVxo%3d)
  * Intersil ISL8487E RS485 Transceiver - [$0.82 @ 100](http://www.digikey.com/product-detail/en/ISL8487EIBZ/ISL8487EIBZ-ND/1034816)
- * LEDs
+ * 6 - 8 LEDs, Cree CLP6C - [$0.476 @ 900](http://www.mouser.com/Search/ProductDetail.aspx?R=CLP6C-FKB-CK1P1G1BB7R3R3virtualkey57280000virtualkey941-P6CFKBCK1P1G17R3), [datasheet](http://media.digikey.com/pdf/Data%20Sheets/CREE%20Power/CLP6C-FKB.pdf)
+
+The floor will have 144 cells plus 16 spares (one 4' x 4' section), totally 160 cells.
+
+ ### Alternate part options
+
+ * ATTiny88 - [$0.576 @ 100](http://www.mouser.com/ProductDetail/Atmel/ATTINY88-MU/?qs=sGAEpiMZZMu9ReDVvI6axzXTfdp%252beU5qfpRN1%252bDV8GM%3d)
