@@ -25,10 +25,6 @@
 #define LED_GREEN        9
 #define LED_BLUE         10
 
-// For master debugging
-#define SSERIAL_DEBUG_RX 12   // Debug SoftwareSerial RX line
-#define SSERIAL_DEBUG_TX 13   // Debug SoftwareSerial TX line
-
 // RX/TX enable
 #define RS485Transmit    HIGH
 #define RS485Receive     LOW
