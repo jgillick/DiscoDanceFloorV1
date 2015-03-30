@@ -29,7 +29,6 @@
 #define SSERIAL_DEBUG_RX 12   // Debug SoftwareSerial RX line
 #define SSERIAL_DEBUG_TX 13   // Debug SoftwareSerial TX line
 
-
 // RX/TX enable
 #define RS485Transmit    HIGH
 #define RS485Receive     LOW
@@ -38,5 +37,7 @@
 #define EEPROM_CELL_ADDR 0
 
 // Everything else
-#define ACK_TIMEOUT      10   // How many milliseconds to wait for an ACK
-#define FADE_DIVIDER     250  // What to divide the duration by before sending
+#define SENSOR_THRESHOLD    100  // The value the capactive sensor must cross to register as ON
+#define ACK_TIMEOUT         10   // How many milliseconds to wait for an ACK
+#define FADE_DIVIDER        250  // What to divide the duration by before sending
+

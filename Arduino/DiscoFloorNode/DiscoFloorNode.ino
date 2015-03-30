@@ -245,7 +245,7 @@ void sendStatus() {
 
 // 1 if sensor detects someone
 bool sensorValue() {
-  return (sensor.capacitiveSensor(30) >= 100);
+  return (sensor.capacitiveSensor(30) >= SENSOR_THRESHOLD);
 }
 
 // Set the LED color
