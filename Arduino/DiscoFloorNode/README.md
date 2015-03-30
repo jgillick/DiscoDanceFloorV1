@@ -84,6 +84,14 @@ in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
 ![Schematic](/Arduino/DiscoFloorNode/circuit/DiscoFloor_schem.png)
 ![BreadBoard](/Arduino/DiscoFloorNode/circuit/DiscoFloor_breadboard.png)
 
+## Bare Atmega168 and Fuse Bits
+(note to self)
+If you're using a bare Atmega168, you'll have to first set the fuse bits, otherwise it will run verrrrrry slow:
+```
+avrdude -p m168 -c usbtiny -e -U lfuse:w:0xff:m -U hfuse:w:0xdd:m -U efuse:w:0x00:m
+```
+This assumes you're using the USBTiny programmer.
+
 ## BOM
 
 A work in progress of...
