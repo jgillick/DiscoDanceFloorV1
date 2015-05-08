@@ -27,7 +27,7 @@ var disco = require('./lib/disco_controller.js'),
 		$('table.grid').mousedown(function(evt){
 			if (evt.target.nodeName != "TD") return;
 
-			var td = $(evt.target);
+			var td = $(evt.target),
 				x = parseInt(td.attr('data-x')),
 				y = parseInt(td.attr('data-y')),
 				cell = disco.controller.getCell(x, y);
@@ -97,26 +97,11 @@ var disco = require('./lib/disco_controller.js'),
 		});
 
 		if (xMax < yMax) {
-			table.css('width', table.outerHeight()/yMax);
+			table.css('width', table.outerHeight());
 		}
 		else if (xMax > yMax) {
-			table.css('height', table.outerWidth()/xMax);
+			table.css('height', table.outerWidth());
 		}
-
-		// height = emulator.height();
-		// width = emulator.width();
-
-		// // Determine the cell height to keep each cell square
-		// cellWidth = width / dimensions.x;
-		// cellHeight = height / dimensions.y;
-		// if (cellWidth < cellHeight) {
-		// 	cellHeight = cellWidth;
-		// } else {
-		// 	cellWidth = cellHeight;
-		// }
-
-		// // Set styles
-		// $('#grid-dimensions').html('table.grid td { width: '+ cellWidth +'px; height: '+ cellHeight +'px }');
 	}
 
 
@@ -191,8 +176,7 @@ var disco = require('./lib/disco_controller.js'),
 		Update the floor as a one frame
 	*/
 	function updateFrame(){
-		var dimensions = disco.controller.getDimensions(),
-			styleEl = document.getElementById('grid-frame'),
+		var styleEl = document.getElementById('grid-frame'),
 			styles = [],
 			cells = disco.controller.getCells(),
 			color, cell;
