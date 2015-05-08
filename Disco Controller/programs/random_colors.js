@@ -7,8 +7,12 @@ var floorController = null,
 
 module.exports = {
 
-	name: 'Random Colors',
-	description: "Fades random colors across the floor.",
+	info: {
+		name: 'Random Colors',
+		description: "Fades random colors across the floor.",
+		interactive: false,
+		miniumumTime: 2
+	},
 
 	/**
 		Setup the program

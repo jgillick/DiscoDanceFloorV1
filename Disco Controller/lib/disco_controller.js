@@ -114,8 +114,8 @@ module.exports.getProgramList = function(){
 
 			// Sort by name
 			programs = programs.sort(function(a, b){
-				a = a.name.toLowerCase();
-				b = b.name.toLowerCase();
+				a = a.info.name.toLowerCase();
+				b = b.info.name.toLowerCase();
 
 				if (a < b) {
 					return -1;
@@ -529,6 +529,6 @@ var DiscoController = function(x, y){
 };
 
 // Init a new controller
-controller = new DiscoController(6, 6);
+controller = new DiscoController(12, 12);
 module.exports.controller = controller;
 

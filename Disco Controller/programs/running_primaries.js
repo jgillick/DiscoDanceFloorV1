@@ -10,8 +10,12 @@ var floorController = null,
 
 module.exports = {
 
-	name: 'Running Primaries',
-	description: "Fades in primary colors, chasing from one cell to the next",
+	info: {
+		name: 'Running Primaries',
+		description: "Fades in primary colors, chasing from one cell to the next",
+		interactive: false,
+		miniumumTime: 2
+	},
 
 	/**
 		Setup the program

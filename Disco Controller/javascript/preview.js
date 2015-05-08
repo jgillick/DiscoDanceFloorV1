@@ -26,7 +26,7 @@ $(document).ready(function(){
 			var item = document.createElement('option');
 
 			item.value = program.file;
-			item.text = program.name;
+			item.text = program.info.name;
 
 			list.append(item);
 		});
