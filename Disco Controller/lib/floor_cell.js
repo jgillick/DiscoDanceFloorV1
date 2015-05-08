@@ -144,7 +144,7 @@ function FloorCell (xPos, yPos, discoController) {
 		@return {Promise} which will resolve when the fade is complete
 	*/
 	this.fadeToColor = function(color, duration) {
-		if (typeof color == "string") {
+		if (typeof color == 'string') {
 			color = discoUtils.hexToRGB(color);
 		}
 

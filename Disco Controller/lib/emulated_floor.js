@@ -87,9 +87,7 @@ var disco = require('./lib/disco_controller.js'),
 				table = emulator.find('.grid'),
 				dimensions = disco.controller.getDimensions(),
 				xMax = dimensions.x,
-				yMax = dimensions.y,
-				styles = [],
-				height, width, cellWidth, cellHeight;
+				yMax = dimensions.y;
 
 		table.css({
 			'height': '100%',
