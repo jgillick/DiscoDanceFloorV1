@@ -13,7 +13,7 @@ module.exports = {
 			name: 'Step Trails',
 			description: 'Lights up each step and slowly fades out when stepped off.',
 			interactive: true,
-			miniumumTime: 3
+			miniumumTime: 1
 	},
 
 	/**

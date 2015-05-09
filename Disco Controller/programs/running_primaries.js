@@ -14,7 +14,7 @@ module.exports = {
 		name: 'Running Primaries',
 		description: "Fades in primary colors, chasing from one cell to the next",
 		interactive: false,
-		miniumumTime: 2
+		miniumumTime: 0.5
 	},
 
 	/**

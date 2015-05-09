@@ -9,9 +9,9 @@ module.exports = {
 
 	info: {
 		name: 'Random Colors',
-		description: "Fades random colors across the floor.",
+		description: 'Fades random colors across the floor.',
 		interactive: false,
-		miniumumTime: 2
+		miniumumTime: 0.5
 	},
 
 	/**
