@@ -11,6 +11,9 @@
 #include <Arduino.h>
 #include <avr/interrupt.h>
 
+#define CT_WITH_INPUT_INT
+// #define CT_WITH_TIMER_INT
+
 #define CT_SAMPLE_SIZE   20     // how many samples taken to determine the value
 #define CT_FILTER_SIZE   10     // how many readings to use for smoothing filter
 #define CT_CAL_TIMEOUT   5000   // minimum milliseconds between value calibration
@@ -77,6 +80,7 @@ struct CapTouchParams {
           filterIndex;
 
   long value,
+       start,
        samplesTotal,
        baseline;
 
@@ -91,6 +95,5 @@ struct CapTouchParams {
 
 // For QuickSelect function
 #define SWAP(a,b) temp=(a);(a)=(b);(b)=temp;
-
 
 #endif CapacitiveTouch_h

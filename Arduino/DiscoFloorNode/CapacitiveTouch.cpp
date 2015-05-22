@@ -1,4 +1,4 @@
-#include "CapSense2.h"
+#include "CapacitiveTouch.h"
 
 volatile CapTouchParams captouchparams;
 
@@ -21,6 +21,19 @@ CapacitiveTouch::CapacitiveTouch(int sendPin, int sensorPin)
 
 void CapacitiveTouch::begin()
 {
+
+#ifdef CT_WITH_INPUT_INT
+  // Setup input interrupt
+  sei();
+  EIMSK |= (1 << INT0);
+  EICRA |= (1 << ISC00);
+  // TCCR1A = 0 ;           // Normal counting mode
+  // TIMSK1 |= _BV(ICIE1);  // enable input capture interrupt
+
+  captouchparams.start = micros();
+#endif
+
+#ifdef CT_WITH_TIMER_INT
   // Setup timer interrupt
   cli();
   TCCR2B = (1 << CS20);              // No prescaling
@@ -28,11 +41,15 @@ void CapacitiveTouch::begin()
   TCNT2 = 0;
   TIMSK2 = (1 << OCIE2A);            // Enable timer interupt
   sei();
+#endif
 
   // Start collecting data
   calibrate();
   captouchparams.timeoutTime = millis() + captouchparams.timeoutMilliseconds;
   captouchparams.calibrateTime = millis() + captouchparams.calibrateMilliseconds;
+
+  // Charge
+  digitalWrite(captouchparams.sendPin, HIGH);
 }
 
 long CapacitiveTouch::sensorValue()
@@ -81,7 +98,68 @@ void CapacitiveTouch::calibrate()
   captouchparams.baseline = 0x0FFFFFFFL;
 }
 
+// Input capture interrupt
+#ifdef CT_WITH_INPUT_INT
+ISR(INT0_vect) {
+  long now;
+  int senseState = digitalRead(captouchparams.sensorPin);
+
+  if (captouchparams.state != senseState) {
+    captouchparams.state = senseState;
+
+    switch (senseState) {
+      case HIGH:
+        captouchparams.samplesTotal = micros() - captouchparams.start;
+
+        // Reset
+        pinMode(captouchparams.sensorPin, OUTPUT);
+        digitalWrite(captouchparams.sensorPin, HIGH);
+        pinMode(captouchparams.sensorPin, INPUT);
+
+        // Discharge
+        captouchparams.start = micros();
+        digitalWrite(captouchparams.sendPin, LOW);
+      break;
+      case LOW:
+        now = millis();
+        captouchparams.samplesTotal += micros() - captouchparams.start;
+
+        // Reset baseline if calibrate time has elapsed and samples is less than 10% of baseline
+        // so we don't calibrate while the sensor is being touched.
+        if (now >= captouchparams.calibrateTime && abs(captouchparams.samplesTotal - captouchparams.baseline) < (int)(.10 * (float)captouchparams.baseline) ) {
+          captouchparams.baseline = 0x0FFFFFFFL;
+          captouchparams.calibrateTime = now + captouchparams.calibrateMilliseconds;
+        }
+
+        // Update baseline
+        if (captouchparams.samplesTotal > 0 && captouchparams.samplesTotal < captouchparams.baseline) {
+          captouchparams.baseline = captouchparams.samplesTotal;
+        }
+
+        captouchparams.value = captouchparams.samplesTotal - captouchparams.baseline;
+        captouchparams.samplesTotal = 0;
+
+        // Add new value to filter array
+        captouchparams.filerValues[captouchparams.filterIndex++] = captouchparams.value;
+        if (captouchparams.filterIndex >= CT_FILTER_SIZE) {
+          captouchparams.filterIndex = 0;
+        }
+
+        // Reset
+        pinMode(captouchparams.sensorPin, OUTPUT);
+        digitalWrite(captouchparams.sensorPin, LOW);
+        pinMode(captouchparams.sensorPin, INPUT);
+
+        // Charge
+        captouchparams.start = micros();
+        digitalWrite(captouchparams.sendPin, HIGH);
+    }
+  }
+}
+#endif CT_WITH_INPUT_INT
+
 // TIMER which regularly checks the sensor value
+#ifdef CT_WITH_TIMER_INT
 ISR(TIMER2_COMPA_vect)
 {
 
@@ -175,6 +253,7 @@ ISR(TIMER2_COMPA_vect)
     }
   }
 }
+#endif CT_WITH_TIMER_INT
 
 // Find the element at index k, if the array was sorted.
 // From http://www.stat.cmu.edu/~ryantibs/median/quickselect.c
