@@ -92,33 +92,5 @@ struct CapTouchParams {
 // For QuickSelect function
 #define SWAP(a,b) temp=(a);(a)=(b);(b)=temp;
 
-/**
-  Timer macros copied and modified from the Arduino IRremote library
-*/
-#ifdef F_CPU
-#define SYSCLOCK F_CPU     // main Arduino clock
-#else
-#define SYSCLOCK 16000000  // main Arduino clock
-#endif
-
-#define TIMER_ENABLE_INTR    (TIMSK2 = _BV(OCIE2A))
-#define TIMER_DISABLE_INTR   (TIMSK2 = 0)
-#define TIMER_COUNT_TOP      (SYSCLOCK * USECPERTICK / 1000000)
-
-#if (TIMER_COUNT_TOP < 256)
-#define TIMER_CONFIG_NORMAL() ({ \
-  TCCR2A = _BV(WGM21); \
-  TCCR2B = _BV(CS20); \
-  OCR2A = TIMER_COUNT_TOP; \
-  TCNT2 = 0; \
-})
-#else
-#define TIMER_CONFIG_NORMAL() ({ \
-  TCCR2A = _BV(WGM21); \
-  TCCR2B = _BV(CS21); \
-  OCR2A = TIMER_COUNT_TOP / 8; \
-  TCNT2 = 0; \
-})
-#endif (TIMER_COUNT_TOP < 256)
 
 #endif CapacitiveTouch_h
