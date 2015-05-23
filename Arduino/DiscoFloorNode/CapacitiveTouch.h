@@ -20,10 +20,11 @@ Choose which type of interrupt you want to use for sensing:
 #define CT_WITH_TIMER_INT
 
 
-#define CT_SAMPLE_SIZE   20     // how many samples taken to determine the value
-#define CT_FILTER_SIZE   10     // how many readings to use for smoothing filter
-#define CT_CAL_TIMEOUT   5000   // minimum milliseconds between value calibration
-#define CT_SENSE_TIMEOUT 5      // milliseconds before sensor read times out
+#define CT_SAMPLE_SIZE       20     // how many samples taken to determine the value
+#define CT_FILTER_SIZE       10     // how many readings to use for smoothing filter
+#define CT_CAL_TIMEOUT       5000   // minimum milliseconds between value calibration
+#define CT_SENSE_TIMEOUT     5      // milliseconds before sensor read times out
+#define CT_THRESHOLD_PERCENT 0.015  // When the sensor value goes x% over the baseline, it's seen as a touch event.
 
 
 /**
@@ -62,6 +63,10 @@ public:
   //  * default = CT_CAL_TIMEOUT (5000)
   void setCalibrationTimeout(unsigned long calibrateMilliseconds);
 
+  // When the sensor value goes x% over the baseline, it's seen as a touch event.
+  // The value should be a percent defined as a decimal. i.e 5% = 0.05
+  void setThreshold(float percent);
+
   // Force a new calibration
   void calibrate();
 
@@ -77,6 +82,8 @@ private:
   State struct that will be used in the AVR timer
 */
 struct CapTouchParams {
+  float threshold;
+
   uint8_t ticks,
           state,
           sendPin,

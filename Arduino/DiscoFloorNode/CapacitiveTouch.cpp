@@ -14,6 +14,7 @@ CapacitiveTouch::CapacitiveTouch(int sendPin, int sensorPin)
   ctparams.sendPin = sendPin;
   ctparams.sensorPin = sensorPin;
 
+  ctparams.threshold = CT_THRESHOLD_PERCENT;
   ctparams.numSamples = CT_SAMPLE_SIZE;
   ctparams.calibrateMilliseconds = CT_CAL_TIMEOUT;
   ctparams.timeoutMilliseconds = CT_SENSE_TIMEOUT;
@@ -113,6 +114,11 @@ void CapacitiveTouch::setTimeout(unsigned long timeoutMilliseconds)
 void CapacitiveTouch::setCalibrationTimeout(unsigned long calibrateMilliseconds)
 {
   ctparams.calibrateMilliseconds = calibrateMilliseconds;
+}
+
+void CapacitiveTouch::setThreshold(float percent)
+{
+  ctparams.threshold = percent;
 }
 
 void CapacitiveTouch::calibrate()
