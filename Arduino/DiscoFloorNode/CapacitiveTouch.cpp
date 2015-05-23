@@ -1,39 +1,56 @@
 #include "CapacitiveTouch.h"
 
-volatile CapTouchParams captouchparams;
+volatile CapTouchParams ctparams;
+
+long CapacitiveTouch::baseline() {
+  return ctparams.baseline;
+}
 
 CapacitiveTouch::CapacitiveTouch(int sendPin, int sensorPin)
 {
   pinMode(sendPin, OUTPUT);
   pinMode(sensorPin, INPUT);
 
-  captouchparams.sendPin = sendPin;
-  captouchparams.sensorPin = sensorPin;
+  ctparams.sendPin = sendPin;
+  ctparams.sensorPin = sensorPin;
 
-  captouchparams.numSamples = CT_SAMPLE_SIZE;
-  captouchparams.calibrateMilliseconds = CT_CAL_TIMEOUT;
-  captouchparams.timeoutMilliseconds = CT_SENSE_TIMEOUT;
+  ctparams.numSamples = CT_SAMPLE_SIZE;
+  ctparams.calibrateMilliseconds = CT_CAL_TIMEOUT;
+  ctparams.timeoutMilliseconds = CT_SENSE_TIMEOUT;
 
-  captouchparams.sampleIndex = 0;
-  captouchparams.filterIndex = 0;
-  captouchparams.samplesTotal = 0;
+  ctparams.sampleIndex = 0;
+  ctparams.filterIndex = 0;
+  ctparams.samplesTotal = 0;
 }
 
 void CapacitiveTouch::begin()
 {
+  // Reset pins
+  pinMode(ctparams.sendPin, OUTPUT);
+  pinMode(ctparams.sensorPin, INPUT);
+  digitalWrite(ctparams.sendPin, LOW);
+  delayMicroseconds(10);
 
-#ifdef CT_WITH_INPUT_INT
+  // Calibrate and start charging
+  calibrate();
+  ctparams.timeoutTime = millis() + ctparams.timeoutMilliseconds;
+  digitalWrite(ctparams.sendPin, HIGH);
+
+// If using logic change interrupt
+#ifdef CT_WITH_LOGIC_INT
+  ctparams.start = 0; // make the first reading a wash for calibration
+
   // Setup input interrupt
   sei();
   EIMSK |= (1 << INT0);
   EICRA |= (1 << ISC00);
   // TCCR1A = 0 ;           // Normal counting mode
   // TIMSK1 |= _BV(ICIE1);  // enable input capture interrupt
-
-  captouchparams.start = micros();
 #endif
 
 #ifdef CT_WITH_TIMER_INT
+  ctparams.samplesTotal = ctparams.baseline; // make the first reading a wash for calibration
+
   // Setup timer interrupt
   cli();
   TCCR2B = (1 << CS20);              // No prescaling
@@ -42,121 +59,133 @@ void CapacitiveTouch::begin()
   TIMSK2 = (1 << OCIE2A);            // Enable timer interupt
   sei();
 #endif
-
-  // Start collecting data
-  calibrate();
-  captouchparams.timeoutTime = millis() + captouchparams.timeoutMilliseconds;
-  captouchparams.calibrateTime = millis() + captouchparams.calibrateMilliseconds;
-
-  // Charge
-  digitalWrite(captouchparams.sendPin, HIGH);
 }
 
 long CapacitiveTouch::sensorValue()
 {
-  return captouchparams.value;
+  return ctparams.value;
 }
 
 long CapacitiveTouch::filteredValue()
 {
   int len = 0;
   unsigned long sum = 0;
-  long median = quickselect((long *)captouchparams.filerValues, CT_FILTER_SIZE, CT_FILTER_SIZE / 2),
+  long median = quickselect((long *)ctparams.filerValues, CT_FILTER_SIZE, CT_FILTER_SIZE / 2),
        lowVal = median - (median * .15),
        highVal = median + (median * .15),
        value;
 
   // Add up all values within 15% of the median
   for (int i = 0; i < CT_FILTER_SIZE; i++){
-    value = captouchparams.filerValues[i];
-    if (value > lowVal && value < highVal) {
+    value = ctparams.filerValues[i];
+    if (value > lowVal && value < highVal)
+    {
       sum += value;
       len++;
     }
   }
 
-  return (sum <= 0) ? sum : sum / len;
+  // Get average
+  value = 0;
+  if (sum >= 0)
+  {
+    value = sum/len;
+  }
+
+  // Within 1.5% of baseline, return zero
+  if (value < (int)(.015 * (float)ctparams.baseline) )
+  {
+    return 0;
+  }
+  return value;
 }
 
 void CapacitiveTouch::setSampleSize(unsigned int sampleSize)
 {
-  captouchparams.numSamples = sampleSize;
+  ctparams.numSamples = sampleSize;
 }
 
 void CapacitiveTouch::setTimeout(unsigned long timeoutMilliseconds)
 {
-  captouchparams.timeoutMilliseconds = timeoutMilliseconds;
+  ctparams.timeoutMilliseconds = timeoutMilliseconds;
 }
 
 void CapacitiveTouch::setCalibrationTimeout(unsigned long calibrateMilliseconds)
 {
-  captouchparams.calibrateMilliseconds = calibrateMilliseconds;
+  ctparams.calibrateMilliseconds = calibrateMilliseconds;
 }
 
 void CapacitiveTouch::calibrate()
 {
-  captouchparams.baseline = 0x0FFFFFFFL;
+  ctparams.baseline = 0x0FFFFFFFL;
+  ctparams.calibrateTime = millis() + ctparams.calibrateMilliseconds;
 }
 
-// Input capture interrupt
-#ifdef CT_WITH_INPUT_INT
-ISR(INT0_vect) {
+// Logic interrupt handler
+#ifdef CT_WITH_LOGIC_INT
+ISR(INT0_vect)
+{
   long now;
-  int senseState = digitalRead(captouchparams.sensorPin);
+  int senseState = digitalRead(ctparams.sensorPin);
 
-  if (captouchparams.state != senseState) {
-    captouchparams.state = senseState;
+  if (ctparams.state != senseState)
+  {
+    ctparams.state = senseState;
 
-    switch (senseState) {
+    switch (senseState)
+    {
       case HIGH:
-        captouchparams.samplesTotal = micros() - captouchparams.start;
+        ctparams.samplesTotal = micros() - ctparams.start;
 
         // Reset
-        pinMode(captouchparams.sensorPin, OUTPUT);
-        digitalWrite(captouchparams.sensorPin, HIGH);
-        pinMode(captouchparams.sensorPin, INPUT);
+        pinMode(ctparams.sensorPin, OUTPUT);
+        digitalWrite(ctparams.sensorPin, HIGH);
+        pinMode(ctparams.sensorPin, INPUT);
 
         // Discharge
-        captouchparams.start = micros();
-        digitalWrite(captouchparams.sendPin, LOW);
+        ctparams.start = micros();
+        digitalWrite(ctparams.sendPin, LOW);
       break;
       case LOW:
         now = millis();
-        captouchparams.samplesTotal += micros() - captouchparams.start;
+        ctparams.samplesTotal += micros() - ctparams.start;
 
-        // Reset baseline if calibrate time has elapsed and samples is less than 10% of baseline
+        // Reset baseline if calibrate time has elapsed and samples is less than 5% of baseline
         // so we don't calibrate while the sensor is being touched.
-        if (now >= captouchparams.calibrateTime && abs(captouchparams.samplesTotal - captouchparams.baseline) < (int)(.10 * (float)captouchparams.baseline) ) {
-          captouchparams.baseline = 0x0FFFFFFFL;
-          captouchparams.calibrateTime = now + captouchparams.calibrateMilliseconds;
+        if (now >= ctparams.calibrateTime && abs(ctparams.samplesTotal - ctparams.baseline) < (int)(.05 * (float)ctparams.baseline) )
+        {
+          ctparams.baseline = 0x0FFFFFFFL;
+          ctparams.calibrateTime = now + ctparams.calibrateMilliseconds;
         }
 
         // Update baseline
-        if (captouchparams.samplesTotal > 0 && captouchparams.samplesTotal < captouchparams.baseline) {
-          captouchparams.baseline = captouchparams.samplesTotal;
+        if (ctparams.samplesTotal > 0 && ctparams.samplesTotal < ctparams.baseline)
+        {
+          ctparams.baseline = ctparams.samplesTotal;
         }
 
-        captouchparams.value = captouchparams.samplesTotal - captouchparams.baseline;
-        captouchparams.samplesTotal = 0;
+        ctparams.value = ctparams.samplesTotal - ctparams.baseline;
+        ctparams.samplesTotal = 0;
 
         // Add new value to filter array
-        captouchparams.filerValues[captouchparams.filterIndex++] = captouchparams.value;
-        if (captouchparams.filterIndex >= CT_FILTER_SIZE) {
-          captouchparams.filterIndex = 0;
+        ctparams.filerValues[ctparams.filterIndex++] = ctparams.value;
+        if (ctparams.filterIndex >= CT_FILTER_SIZE)
+        {
+          ctparams.filterIndex = 0;
         }
 
         // Reset
-        pinMode(captouchparams.sensorPin, OUTPUT);
-        digitalWrite(captouchparams.sensorPin, LOW);
-        pinMode(captouchparams.sensorPin, INPUT);
+        pinMode(ctparams.sensorPin, OUTPUT);
+        digitalWrite(ctparams.sensorPin, LOW);
+        pinMode(ctparams.sensorPin, INPUT);
 
         // Charge
-        captouchparams.start = micros();
-        digitalWrite(captouchparams.sendPin, HIGH);
+        ctparams.start = micros();
+        digitalWrite(ctparams.sendPin, HIGH);
     }
   }
 }
-#endif CT_WITH_INPUT_INT
+#endif CT_WITH_LOGIC_INT
 
 // TIMER which regularly checks the sensor value
 #ifdef CT_WITH_TIMER_INT
@@ -164,92 +193,94 @@ ISR(TIMER2_COMPA_vect)
 {
 
   long now = millis();
-  int senseState = digitalRead(captouchparams.sensorPin),
+  int senseState = digitalRead(ctparams.sensorPin),
       filter = 0;
 
-  captouchparams.ticks++;
+  ctparams.ticks++;
 
   // State changed
-  if (captouchparams.state != senseState)
+  if (ctparams.state != senseState)
   {
-    captouchparams.state = senseState;
+    ctparams.state = senseState;
 
     switch (senseState)
     {
       case HIGH:
         // Reset pins
-        pinMode(captouchparams.sensorPin, OUTPUT);
-        digitalWrite(captouchparams.sensorPin, HIGH);
+        pinMode(ctparams.sensorPin, OUTPUT);
+        digitalWrite(ctparams.sensorPin, HIGH);
         // delayMicroseconds(10);
-        pinMode(captouchparams.sensorPin, INPUT);
+        pinMode(ctparams.sensorPin, INPUT);
 
         // Start discharge
-        digitalWrite(captouchparams.sendPin, LOW);
+        digitalWrite(ctparams.sendPin, LOW);
       break;
 
       case LOW:
-        captouchparams.samplesTotal += captouchparams.ticks;
+        ctparams.samplesTotal += ctparams.ticks;
 
         // Reset samples value
-        captouchparams.sampleIndex++;
-        if (captouchparams.sampleIndex >= captouchparams.numSamples)
+        ctparams.sampleIndex++;
+        if (ctparams.sampleIndex >= ctparams.numSamples)
         {
-          captouchparams.sampleIndex = 0;
+          ctparams.sampleIndex = 0;
 
-          // Reset baseline if calibrate time has elapsed and samples is less than 10% of baseline
+          // Reset baseline if calibrate time has elapsed and samples is less than 5% of baseline
           // so we don't calibrate while the sensor is being touched.
-          if (now >= captouchparams.calibrateTime && abs(captouchparams.samplesTotal - captouchparams.baseline) < (int)(.10 * (float)captouchparams.baseline) )
+          if (now >= ctparams.calibrateTime && abs(ctparams.samplesTotal - ctparams.baseline) < (int)(.05 * (float)ctparams.baseline) )
           {
-            captouchparams.baseline = 0x0FFFFFFFL;
-            captouchparams.calibrateTime = now + captouchparams.calibrateMilliseconds;
+            ctparams.baseline = 0x0FFFFFFFL;
+            ctparams.calibrateTime = now + ctparams.calibrateMilliseconds;
           }
 
           // Update baseline
-          if (captouchparams.samplesTotal > 0 && captouchparams.samplesTotal < captouchparams.baseline)
+          if (ctparams.samplesTotal > 0 && ctparams.samplesTotal < ctparams.baseline)
           {
-            captouchparams.baseline = captouchparams.samplesTotal;
+            ctparams.baseline = ctparams.samplesTotal;
           }
 
           // Set value
           filter = 1;
-          captouchparams.value = captouchparams.samplesTotal - captouchparams.baseline;
-          captouchparams.samplesTotal = 0;
+          ctparams.value = ctparams.samplesTotal - ctparams.baseline;
+          ctparams.samplesTotal = 0;
         }
 
         // Reset
-        pinMode(captouchparams.sensorPin, OUTPUT);
-        digitalWrite(captouchparams.sensorPin, LOW);
-        pinMode(captouchparams.sensorPin, INPUT);
+        pinMode(ctparams.sensorPin, OUTPUT);
+        digitalWrite(ctparams.sensorPin, LOW);
+        pinMode(ctparams.sensorPin, INPUT);
 
         // Start charge sensor
-        captouchparams.ticks = 0;
-        captouchparams.timeoutTime = millis() + captouchparams.timeoutMilliseconds;
-        digitalWrite(captouchparams.sendPin, HIGH);
+        ctparams.ticks = 0;
+        ctparams.timeoutTime = millis() + ctparams.timeoutMilliseconds;
+        digitalWrite(ctparams.sendPin, HIGH);
       break;
     }
   }
   // Timed out, try again
-  else if (now >= captouchparams.timeoutTime)
+  else if (now >= ctparams.timeoutTime)
   {
     // Reset
-    digitalWrite(captouchparams.sendPin, LOW);
-    pinMode(captouchparams.sensorPin, OUTPUT);
-    digitalWrite(captouchparams.sensorPin, LOW);
-    pinMode(captouchparams.sensorPin, INPUT);
+    digitalWrite(ctparams.sendPin, LOW);
+    pinMode(ctparams.sensorPin, OUTPUT);
+    digitalWrite(ctparams.sensorPin, LOW);
+    pinMode(ctparams.sensorPin, INPUT);
 
     // Try again
     filter = 1;
-    captouchparams.value = -2;
-    captouchparams.ticks = 0;
-    captouchparams.timeoutTime = millis() + captouchparams.timeoutMilliseconds;
-    digitalWrite(captouchparams.sendPin, HIGH);
+    ctparams.value = -2;
+    ctparams.ticks = 0;
+    ctparams.timeoutTime = millis() + ctparams.timeoutMilliseconds;
+    digitalWrite(ctparams.sendPin, HIGH);
   }
 
   // Add new value to filter array
-  if (filter) {
-    captouchparams.filerValues[captouchparams.filterIndex++] = captouchparams.value;
-    if (captouchparams.filterIndex >= CT_FILTER_SIZE) {
-      captouchparams.filterIndex = 0;
+  if (filter)
+  {
+    ctparams.filerValues[ctparams.filterIndex++] = ctparams.value;
+    if (ctparams.filterIndex >= CT_FILTER_SIZE)
+    {
+      ctparams.filterIndex = 0;
     }
   }
 }
@@ -257,7 +288,8 @@ ISR(TIMER2_COMPA_vect)
 
 // Find the element at index k, if the array was sorted.
 // From http://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-long CapacitiveTouch::quickselect(long *arr, int len, int k) {
+long CapacitiveTouch::quickselect(long *arr, int len, int k)
+{
   unsigned long i,ir,j,l,mid;
   long a,temp;
 
