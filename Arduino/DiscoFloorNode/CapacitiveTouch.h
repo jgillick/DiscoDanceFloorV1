@@ -13,19 +13,19 @@
 
 /**
 Choose which type of interrupt you want to use for sensing:
-  + Logic Interrupt
   + Timer Interrupt
 */
-// #define CT_WITH_LOGIC_INT
 #define CT_WITH_TIMER_INT
 
+#define CT_SAMPLE_SIZE       30     // how many samples taken to determine the value
+#define CT_FILTER_SIZE       4      // how many readings to use for smoothing filter
+#define CT_SENSE_TIMEOUT     100    // milliseconds before sensor read times out
+#define CT_THRESHOLD_PERCENT 0.02   // When the sensor value goes x% over the baseline, it's seen as a touch event.
 
-#define CT_SAMPLE_SIZE       20     // how many samples taken to determine the value
-#define CT_FILTER_SIZE       10     // how many readings to use for smoothing filter
-#define CT_CAL_TIMEOUT       5000   // minimum milliseconds between value calibration
-#define CT_SENSE_TIMEOUT     5      // milliseconds before sensor read times out
-#define CT_THRESHOLD_PERCENT 0.015  // When the sensor value goes x% over the baseline, it's seen as a touch event.
-
+#define CT_CAL_TIMEOUT_MIN   2000    // Minimum milliseconds between baseline calibrations
+#define CT_CAL_TIMEOUT_MAX   9000    // Maximum milliseconds between baseline calibrations
+#define CT_BASELINE_SMOOTH   0.01    // Recalibrate baseline if sensor value is within x% of current baseline
+#define CT_BASELINE_LIMIT    0.05    // Calibrate baseline if sensor is not above x% of baseline
 
 /**
   Main class
@@ -63,6 +63,9 @@ public:
   //  * default = CT_CAL_TIMEOUT (5000)
   void setCalibrationTimeout(unsigned long calibrateMilliseconds);
 
+  // Set the maximum number of milliseconds between value calibrations
+  void setMaxCalibrationTimeout(unsigned long calibrateMilliseconds);
+
   // When the sensor value goes x% over the baseline, it's seen as a touch event.
   // The value should be a percent defined as a decimal. i.e 5% = 0.05
   void setThreshold(float percent);
@@ -71,11 +74,6 @@ public:
   void calibrate();
 
   long baseline();
-
-private:
-  // Find the element at index k, if the array was sorted.
-  // From http://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-  long quickselect(long *arr, int len, int k);
 };
 
 /**
@@ -97,8 +95,10 @@ struct CapTouchParams {
        samplesTotal,
        baseline;
 
-  unsigned long calibrateTime,
-                calibrateMilliseconds,
+  unsigned long calibrateTimeMin,
+                calibrateTimeMax,
+                calibrateMillisecondsMin,
+                calibrateMillisecondsMax,
                 timeoutTime,
                 timeoutMilliseconds;
 
