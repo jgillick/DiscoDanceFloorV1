@@ -1,29 +1,21 @@
 #include "CapacitiveTouch.h"
 
 volatile CapTouchParams ctp;
-void addValue(uint32_t rawValue);
-long quickselect(long *arr, int len, int k);
+void setValue(uint32_t rawValue);
 
-long CapacitiveTouch::baseline() {
-  return ctp.baseline;
-}
-
-CapacitiveTouch::CapacitiveTouch(int sendPin, int sensorPin) {
+CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
   pinMode(sendPin, OUTPUT);
   pinMode(sensorPin, INPUT);
 
   ctp.sendPin = sendPin;
   ctp.sensorPin = sensorPin;
 
-  ctp.threshold = CT_THRESHOLD_PERCENT;
-  ctp.numSamples = CT_SAMPLE_SIZE;
-  ctp.timeoutMilliseconds = CT_SENSE_TIMEOUT;
-  ctp.calibrateMillisecondsMin = CT_CAL_TIMEOUT_MIN;
-  ctp.calibrateMillisecondsMax = CT_CAL_TIMEOUT_MAX;
+  setSampleSize(CT_SAMPLE_SIZE);
+  setTimeout(CT_SENSE_TIMEOUT);
+  setCalibrationTimeout(CT_CAL_TIMEOUT_MIN, CT_CAL_TIMEOUT_MAX);
+  baselineTuning(CT_BASELINE_LIMIT, CT_BASELINE_SMOOTH);
 
   ctp.sampleIndex = 0;
-  ctp.filterIndex = 0;
-  ctp.samplesTotal = 0;
 }
 
 void CapacitiveTouch::begin() {
@@ -38,20 +30,7 @@ void CapacitiveTouch::begin() {
   ctp.timeoutTime = millis() + ctp.timeoutMilliseconds;
   digitalWrite(ctp.sendPin, HIGH);
 
-// If using logic change interrupt
-#ifdef CT_WITH_LOGIC_INT
-  ctp.start = 0; // make the first reading a wash for calibration
-
-  // Setup input interrupt
-  sei();
-  EIMSK |= (1 << INT0);
-  EICRA |= (1 << ISC00);
-  // TCCR1A = 0 ;           // Normal counting mode
-  // TIMSK1 |= _BV(ICIE1);  // enable input capture interrupt
-#endif
-
 #ifdef CT_WITH_TIMER_INT
-  ctp.samplesTotal = ctp.baseline; // make the first reading a wash for calibration
 
   // Setup timer interrupt
   cli();
@@ -63,64 +42,37 @@ void CapacitiveTouch::begin() {
 #endif
 }
 
-long CapacitiveTouch::sensorValue() {
+int32_t CapacitiveTouch::sensorValue() {
   return ctp.value;
 }
 
-long CapacitiveTouch::filteredValue() {
-  int len = 0;
-  unsigned long sum = 0;
-  long median = quickselect((long *)ctp.filerValues, CT_FILTER_SIZE, CT_FILTER_SIZE / 2),
-       lowVal = median - (median * .15),
-       highVal = median + (median * .15),
-       value;
-
-  return median;
-
-  // Add up all values within 15% of the median
-  for (int i = 0; i < CT_FILTER_SIZE; i++){
-    value = ctp.filerValues[i];
-    if (value > lowVal && value < highVal) {
-      sum += value;
-      len++;
-    }
-  }
-
-  // Get average
-  value = 0;
-  if (sum >= 0) {
-    value = sum/len;
-  }
-
-  // Anything below the threshold is 0
-  if (value < (int)(ctp.threshold * (float)ctp.baseline) ) {
-    return 0;
-  }
-  return value;
+int32_t CapacitiveTouch::baseline() {
+  return ctp.baseline;
 }
 
-void CapacitiveTouch::setSampleSize(unsigned int sampleSize) {
+void CapacitiveTouch::setSampleSize(uint8_t sampleSize) {
   ctp.numSamples = sampleSize;
 }
 
-void CapacitiveTouch::setTimeout(unsigned long timeoutMilliseconds) {
+void CapacitiveTouch::setTimeout(uint32_t timeoutMilliseconds) {
   ctp.timeoutMilliseconds = timeoutMilliseconds;
 }
 
-void CapacitiveTouch::setCalibrationTimeout(unsigned long calibrateMilliseconds) {
-  ctp.calibrateMillisecondsMin = calibrateMilliseconds;
+void CapacitiveTouch::setCalibrationTimeout(uint32_t minMilliseconds) {
+  ctp.calibrateMillisecondsMin = minMilliseconds;
+}
+void CapacitiveTouch::setCalibrationTimeout(uint32_t minMilliseconds, uint32_t maxMilliseconds) {
+  setCalibrationTimeout(minMilliseconds);
+  ctp.calibrateMillisecondsMax = maxMilliseconds;
 }
 
-void setMaxCalibrationTimeout(unsigned long calibrateMilliseconds) {
-  ctp.calibrateMillisecondsMax = calibrateMilliseconds;
-}
-
-void CapacitiveTouch::setThreshold(float percent) {
-  ctp.threshold = percent;
+void CapacitiveTouch::baselineTuning(float limit, float smoothing) {
+  ctp.baselineLimit = limit;
+  ctp.baselineSmoothing = smoothing;
 }
 
 void CapacitiveTouch::calibrate() {
-  ctp.baseline = 0;
+  ctp.baseline = 0x0FFFFFFFL;
   ctp.calibrateTimeMin = millis() + ctp.calibrateMillisecondsMin;
   ctp.calibrateTimeMax = millis() + ctp.calibrateMillisecondsMax;
 }
@@ -150,13 +102,12 @@ ISR(TIMER2_COMPA_vect) {
       break;
 
       case LOW:
-        ctp.samplesTotal += ctp.ticks;
         ctp.sampleIndex++;
 
         // Collected all samples, process
         if (ctp.sampleIndex >= ctp.numSamples) {
-          addValue(ctp.samplesTotal);
-          ctp.samplesTotal = 0;
+          setValue(ctp.ticks);
+          ctp.ticks = 0;
           ctp.sampleIndex = 0;
         }
 
@@ -166,7 +117,7 @@ ISR(TIMER2_COMPA_vect) {
         pinMode(ctp.sensorPin, INPUT);
 
         // Start charge sensor
-        ctp.ticks = 0;
+        // ctp.ticks = 0;
         ctp.timeoutTime = millis() + ctp.timeoutMilliseconds;
         digitalWrite(ctp.sendPin, HIGH);
       break;
@@ -182,11 +133,10 @@ ISR(TIMER2_COMPA_vect) {
     pinMode(ctp.sensorPin, INPUT);
 
     // Log value
-    addValue(-200);
+    setValue(-200);
 
     // Try again
     ctp.sampleIndex = 0;
-    ctp.samplesTotal = 0;
     ctp.ticks = 0;
     ctp.timeoutTime = millis() + ctp.timeoutMilliseconds;
     digitalWrite(ctp.sendPin, HIGH);
@@ -194,18 +144,19 @@ ISR(TIMER2_COMPA_vect) {
 }
 #endif CT_WITH_TIMER_INT
 
-void addValue(uint32_t rawValue) {
+// Set the sensor value
+void setValue(uint32_t rawValue) {
   uint32_t now = millis();
 
   // Update baseline
-  if (rawValue < ctp.baseline || ctp.baseline == 0) {
+  if (rawValue < ctp.baseline) {
     ctp.baseline = rawValue;
   }
   // Dynamically calibrate baseline, if it's not being tripped
-  else if (rawValue > 0 && abs(rawValue - ctp.baseline) < (CT_BASELINE_LIMIT * ctp.baseline)) {
+  else if (rawValue > 0 && abs(rawValue - ctp.baseline) < (ctp.baselineLimit * ctp.baseline)) {
 
     // If value is within x% of baseline
-    if(rawValue < ctp.baseline || abs(rawValue - ctp.baseline) < CT_BASELINE_SMOOTH * ctp.baseline) {
+    if(rawValue < ctp.baseline || abs(rawValue - ctp.baseline) < ctp.baselineSmoothing * ctp.baseline) {
       ctp.baseline = rawValue;
     }
 
@@ -225,54 +176,4 @@ void addValue(uint32_t rawValue) {
 
   // Set value
   ctp.value = rawValue - ctp.baseline;
-
-  // Add to filter array
-  ctp.filerValues[ctp.filterIndex++] = ctp.value;
-  if (ctp.filterIndex >= CT_FILTER_SIZE) {
-    ctp.filterIndex = 0;
-  }
-}
-
-// Find the element at index k, if the array was sorted.
-// From http://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-long quickselect(long *arr, int len, int k) {
-  unsigned long i,ir,j,l,mid;
-  long a,temp;
-
-  l=0;
-  ir= len - 1;
-  for(;;) {
-    if (ir <= l+1) {
-      if (ir == l+1 && arr[ir] < arr[l]) {
-        SWAP(arr[l],arr[ir]);
-      }
-      return arr[k];
-    }
-    else {
-      mid=(l+ir) >> 1;
-      SWAP(arr[mid],arr[l+1]);
-      if (arr[l] > arr[ir]) {
-        SWAP(arr[l],arr[ir]);
-      }
-      if (arr[l+1] > arr[ir]) {
-        SWAP(arr[l+1],arr[ir]);
-      }
-      if (arr[l] > arr[l+1]) {
-        SWAP(arr[l],arr[l+1]);
-      }
-      i=l+1;
-      j=ir;
-      a=arr[l+1];
-      for (;;) {
-        do i++; while (arr[i] < a);
-        do j--; while (arr[j] > a);
-        if (j < i) break;
-        SWAP(arr[i],arr[j]);
-      }
-      arr[l+1]=arr[j];
-      arr[j]=a;
-      if (j >= k) ir=j-1;
-      if (j <= k) l=i;
-    }
-  }
 }
