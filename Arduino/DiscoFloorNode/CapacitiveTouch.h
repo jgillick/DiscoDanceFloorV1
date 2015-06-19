@@ -11,14 +11,15 @@
 #include <Arduino.h>
 #include <avr/interrupt.h>
 
-#define CT_SAMPLE_SIZE       15     // how many samples taken to determine the value
+#define CT_SAMPLE_SIZE       20     // how many samples taken to determine the value
 #define CT_SENSE_TIMEOUT     100    // milliseconds before sensor read times out
 #define CT_THRESHOLD_PERCENT 0.05   // When the sensor value goes x% over the baseline, it's seen as a touch event.
 
 #define CT_CAL_TIMEOUT_MIN   2000    // Minimum milliseconds between baseline calibrations
 #define CT_CAL_TIMEOUT_MAX   9000    // Maximum milliseconds between baseline calibrations
-#define CT_BASELINE_LIMIT    0.05    // Calibrate baseline if sensor is below x% of baseline
-#define CT_BASELINE_SMOOTH   0.005   // Set baseline to sensor value, if it's within x% of current baseline
+
+#define CT_KALMAN_PROCESS_NOISE    1
+#define CT_KALMAN_SENSOR_NOISE     20
 
 /**
   Main class
@@ -33,14 +34,22 @@ public:
   // Start reading capacitive sensor
   void begin();
 
+  // Get the raw unfiltered sensor value
+  int32_t rawValue();
+
   // Get the sensor value
   int32_t sensorValue();
 
-  // Set the number of samples are taken to determin the sensor value
-  // A higher number usually means better precision. This doesn't have much to do
-  // with filtering, it simply adds all the samples together to generate the value.
-  //  * default = CT_SAMPLE_SIZE (20)
-  void setSampleSize(uint8_t sampleSize);
+  // Return the baseline value seen as zero
+  int32_t baseline();
+
+  // Set the gain to detect at a greater distance.
+  // This will return a larger range of valuea and can produce more noise.
+  void setGain(uint8_t gain);
+
+  // Tune the Kalman filter values
+  // See: http://interactive-matter.eu/blog/2009/12/18/filtering-sensor-data-with-a-kalman-filter/
+  void filterTuning(double processNoise, double sensorNoise, uint8_t startValue);
 
   // Set the number of milliseconds between value calibrations
   //  * minMilliseconds: How long between calibrations, as long as a touch event is not suspected (see baselineTuning)
@@ -48,33 +57,30 @@ public:
   void setCalibrationTimeout(uint32_t minMilliseconds);
   void setCalibrationTimeout(uint32_t minMilliseconds, uint32_t maxMilliseconds);
 
-  // These two decimal % values (0.0 - 1.0) help to let the baseline adjust over time.
-  //  * limit: If a new value is x% over baseline, do not move baseline (assumed a touch event)
-  //  * smoothing: If a new value is below the limit but within x% of baseline, set baseline to this value
-  void baselineTuning(float limit, float smoothing);
-
   // Force a new calibration
   void calibrate();
-
-  int32_t baseline();
 };
 
 /**
   State struct that will be used in the AVR timer
 */
 struct CapTouchParams {
-  float baselineLimit,
-        baselineSmoothing;
 
-  uint8_t pulseDone,
-          sendPin,
+  // Kalman filter
+  double q, r, x, p, k;
+
+  uint8_t sendPin,
           sensorPin,
-          numSamples,
+          pulseDone,
           sampleIndex,
           valueReady,
           overflows;
 
-  int32_t value,
+  int32_t gain,
+          gainTotal,
+          gainIndex,
+          value,
+          rawValue,
           baseline;
 
   uint32_t pulseTime,
@@ -82,8 +88,7 @@ struct CapTouchParams {
            calibrateTimeMax,
            calibrateMillisecondsMin,
            calibrateMillisecondsMax;
-
-  int32_t samples[CT_SAMPLE_SIZE];
 };
+
 
 #endif CapacitiveTouch_h

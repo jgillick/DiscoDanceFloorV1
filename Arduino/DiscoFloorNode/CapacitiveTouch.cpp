@@ -3,12 +3,14 @@
 volatile CapTouchParams ctp;
 void getNextSensorValue();
 
+// Timer interrupt macros
 #define ENABLE_TIMER() { \
   TCNT2 = 0; \
   TIMSK2 = (1 << TOIE2); \
 }
 #define DISABLE_TIMER() TIMSK2 = 0
 
+// Input capture unit macros
 #define ENABLE_ICU() { \
   TIMSK1 = 1 << ICIE1 | 1 << TOIE1; \
   TCCR1B |= (1 << CS10); \
@@ -26,12 +28,18 @@ CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
   pinMode(sendPin, OUTPUT);
   pinMode(sensorPin, INPUT);
 
+  ctp.gain = 0;
   ctp.sendPin = sendPin;
   ctp.sensorPin = sensorPin;
 
-  setSampleSize(CT_SAMPLE_SIZE);
+  // Kalman filter
+  ctp.q = CT_KALMAN_PROCESS_NOISE;
+  ctp.r = CT_KALMAN_SENSOR_NOISE;
+  ctp.x = 0;
+  ctp.p = 0;
+  ctp.k = 0;
+
   setCalibrationTimeout(CT_CAL_TIMEOUT_MIN, CT_CAL_TIMEOUT_MAX);
-  baselineTuning(CT_BASELINE_LIMIT, CT_BASELINE_SMOOTH);
 
   ctp.sampleIndex = 0;
 }
@@ -39,6 +47,10 @@ CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
 void CapacitiveTouch::begin() {
   ctp.valueReady = false;
   calibrate();
+
+  ctp.rawValue = 0;
+  ctp.gainIndex = 0;
+  ctp.gainTotal = 0;
 
   // Reset pins
   pinMode(ctp.sendPin, OUTPUT);
@@ -63,6 +75,10 @@ void CapacitiveTouch::begin() {
   getNextSensorValue();
 }
 
+int32_t CapacitiveTouch::rawValue() {
+  return ctp.rawValue;
+}
+
 int32_t CapacitiveTouch::sensorValue() {
   return (ctp.valueReady) ? ctp.value : 0;
 }
@@ -71,8 +87,14 @@ int32_t CapacitiveTouch::baseline() {
   return ctp.baseline;
 }
 
-void CapacitiveTouch::setSampleSize(uint8_t sampleSize) {
-  ctp.numSamples = sampleSize;
+void CapacitiveTouch::setGain(uint8_t gain) {
+  ctp.gain = gain;
+}
+
+void CapacitiveTouch::filterTuning(double processNoise, double sensorNoise, uint8_t startValue) {
+  ctp.q = processNoise;
+  ctp.r = sensorNoise;
+  ctp.x = startValue;
 }
 
 void CapacitiveTouch::setCalibrationTimeout(uint32_t minMilliseconds) {
@@ -81,11 +103,6 @@ void CapacitiveTouch::setCalibrationTimeout(uint32_t minMilliseconds) {
 void CapacitiveTouch::setCalibrationTimeout(uint32_t minMilliseconds, uint32_t maxMilliseconds) {
   setCalibrationTimeout(minMilliseconds);
   ctp.calibrateMillisecondsMax = maxMilliseconds;
-}
-
-void CapacitiveTouch::baselineTuning(float limit, float smoothing) {
-  ctp.baselineLimit = limit;
-  ctp.baselineSmoothing = smoothing;
 }
 
 void CapacitiveTouch::calibrate() {
@@ -142,38 +159,59 @@ ISR(TIMER2_OVF_vect) {
   DISABLE_TIMER();
   sei();
 
-  // Add samples to array
-  ctp.samples[ctp.sampleIndex++] = ctp.pulseTime;
-  if (ctp.sampleIndex == CT_SAMPLE_SIZE) {
-    ctp.sampleIndex = 0;
-    ctp.valueReady = true;
-  }
+  ctp.rawValue = ctp.pulseTime;
+  ctp.gainTotal += ctp.pulseTime;
+  ctp.gainIndex++;
 
-  // Filter samples array
-  if (ctp.valueReady) {
-    uint32_t sum = 0,
-             now = millis();
+  if (ctp.gainIndex > ctp.gain) {
+    // Serial.println(ctp.gainTotal);
 
-    for (int i = 0; i < CT_SAMPLE_SIZE; i++){
-      sum += ctp.samples[i];
+    // Kalman filter adapted from:
+    // http://interactive-matter.eu/blog/2009/12/18/filtering-sensor-data-with-a-kalman-filter/
+    ctp.p = ctp.p + ctp.q;
+    ctp.k = ctp.p / (ctp.p + ctp.r);
+    ctp.x = ctp.x + ctp.k * (ctp.gainTotal - ctp.x);
+    ctp.p = (1 - ctp.k) * ctp.p;
+
+    // Reset gain
+    ctp.gainIndex = 0;
+    ctp.gainTotal = 0;
+
+    // It takes about 50 samples for the value to be stable
+    if (!ctp.valueReady) {
+      ctp.sampleIndex++;
+      if (ctp.sampleIndex >= 50) {
+        ctp.valueReady = true;
+      }
     }
 
-    // Update baseline
-    if (sum < ctp.baseline) {
-      ctp.baseline = sum;
+    // Process value and baseline
+    else {
+      uint32_t now = millis();
+
+      // Update baseline
+      if (ctp.x < ctp.baseline) {
+        ctp.baseline = ctp.x;
+      }
+      // Calibrate baseline, if sensor is not being touched
+      else if (now >= ctp.calibrateTimeMin && abs(ctp.x - ctp.baseline) < (CT_THRESHOLD_PERCENT * ctp.baseline)) {
+        ctp.baseline = ctp.x;
+        ctp.calibrateTimeMin = now + ctp.calibrateMillisecondsMin;
+        ctp.calibrateTimeMax = now + ctp.calibrateMillisecondsMax;
+      }
+      // Force calibration
+      else if (now >= ctp.calibrateTimeMax) {
+        ctp.baseline = ctp.x;
+        ctp.calibrateTimeMin = now + ctp.calibrateMillisecondsMin;
+        ctp.calibrateTimeMax = now + ctp.calibrateMillisecondsMax;
+      }
+      ctp.value = ctp.x - ctp.baseline;
     }
-    // Calibrate baseline, if sensor is not being touched
-    else if (now >= ctp.calibrateTimeMin && abs(sum - ctp.baseline) < (0.05 * ctp.baseline)) {
-      ctp.baseline = sum;
-      ctp.calibrateTimeMin = now + ctp.calibrateMillisecondsMin;
-    }
-    ctp.value = sum - ctp.baseline;
   }
 
   // Start all over again
   getNextSensorValue();
 }
-
 
 // Collect the next sensor value
 void getNextSensorValue() {
@@ -183,38 +221,4 @@ void getNextSensorValue() {
   ctp.pulseDone = false;
   ENABLE_ICU();
   digitalWrite(ctp.sendPin, HIGH);
-}
-
-// Set the sensor value
-void setValue(uint32_t rawValue) {
-  uint32_t now = millis();
-
-  // Update baseline
-  if (rawValue < ctp.baseline) {
-    ctp.baseline = rawValue;
-  }
-  // Dynamically calibrate baseline, if it's not being tripped
-  else if (rawValue > 0 && abs(rawValue - ctp.baseline) < (ctp.baselineLimit * ctp.baseline)) {
-
-    // If value is within x% of baseline
-    if(rawValue < ctp.baseline || abs(rawValue - ctp.baseline) < ctp.baselineSmoothing * ctp.baseline) {
-      ctp.baseline = rawValue;
-    }
-
-    // Recalibrate
-    else if (now >= ctp.calibrateTimeMin) {
-      ctp.baseline = rawValue;
-      ctp.calibrateTimeMin = now + ctp.calibrateMillisecondsMin;
-      ctp.calibrateTimeMax = now + ctp.calibrateMillisecondsMax;
-    }
-  }
-  // Forced recalibration
-  else if (now >= ctp.calibrateTimeMax) {
-    ctp.baseline = rawValue;
-    ctp.calibrateTimeMin = now + ctp.calibrateMillisecondsMin;
-    ctp.calibrateTimeMax = now + ctp.calibrateMillisecondsMax;
-  }
-
-  // Set value
-  ctp.value = rawValue - ctp.baseline;
 }
