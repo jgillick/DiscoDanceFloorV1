@@ -11,13 +11,7 @@
 #include <Arduino.h>
 #include <avr/interrupt.h>
 
-/**
-Choose which type of interrupt you want to use for sensing:
-  + Timer Interrupt
-*/
-#define CT_WITH_TIMER_INT
-
-#define CT_SAMPLE_SIZE       30     // how many samples taken to determine the value
+#define CT_SAMPLE_SIZE       15     // how many samples taken to determine the value
 #define CT_SENSE_TIMEOUT     100    // milliseconds before sensor read times out
 #define CT_THRESHOLD_PERCENT 0.05   // When the sensor value goes x% over the baseline, it's seen as a touch event.
 
@@ -48,12 +42,6 @@ public:
   //  * default = CT_SAMPLE_SIZE (20)
   void setSampleSize(uint8_t sampleSize);
 
-  // How many milliseconds until the sensor read times out.
-  // If a timeout occurs the value will be -2. You should check your
-  // connections and make sure that the resistor value is not too high.
-  //  * default = CT_SENSE_TIMEOUT (5)
-  void setTimeout(uint32_t timeoutMilliseconds);
-
   // Set the number of milliseconds between value calibrations
   //  * minMilliseconds: How long between calibrations, as long as a touch event is not suspected (see baselineTuning)
   //  * maxMilliseconds: Force a calibration after this number of milliseconds
@@ -78,23 +66,24 @@ struct CapTouchParams {
   float baselineLimit,
         baselineSmoothing;
 
-  uint8_t state,
+  uint8_t pulseDone,
           sendPin,
           sensorPin,
           numSamples,
-          sampleIndex;
+          sampleIndex,
+          valueReady,
+          overflows;
 
   int32_t value,
           baseline;
 
-  uint32_t ticks,
+  uint32_t pulseTime,
            calibrateTimeMin,
            calibrateTimeMax,
            calibrateMillisecondsMin,
-           calibrateMillisecondsMax,
-           timeoutTime,
-           timeoutMilliseconds;
+           calibrateMillisecondsMax;
 
+  int32_t samples[CT_SAMPLE_SIZE];
 };
 
 #endif CapacitiveTouch_h

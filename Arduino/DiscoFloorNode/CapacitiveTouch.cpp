@@ -1,7 +1,26 @@
 #include "CapacitiveTouch.h"
 
 volatile CapTouchParams ctp;
-void setValue(uint32_t rawValue);
+void getNextSensorValue();
+
+#define ENABLE_TIMER() { \
+  TCNT2 = 0; \
+  TIMSK2 = (1 << TOIE2); \
+}
+#define DISABLE_TIMER() TIMSK2 = 0
+
+#define ENABLE_ICU() { \
+  TIMSK1 = 1 << ICIE1 | 1 << TOIE1; \
+  TCCR1B |= (1 << CS10); \
+  TCCR1A = 0; \
+  TCNT1 = 0; \
+}
+#define DISABLE_ICU() { \
+  ctp.overflows = 0; \
+  TCCR1B &= ~(1 << CS10); \
+  TCNT1 = 0;     \
+  TIMSK1 = 0;    \
+}
 
 CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
   pinMode(sendPin, OUTPUT);
@@ -11,7 +30,6 @@ CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
   ctp.sensorPin = sensorPin;
 
   setSampleSize(CT_SAMPLE_SIZE);
-  setTimeout(CT_SENSE_TIMEOUT);
   setCalibrationTimeout(CT_CAL_TIMEOUT_MIN, CT_CAL_TIMEOUT_MAX);
   baselineTuning(CT_BASELINE_LIMIT, CT_BASELINE_SMOOTH);
 
@@ -19,31 +37,34 @@ CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
 }
 
 void CapacitiveTouch::begin() {
+  ctp.valueReady = false;
+  calibrate();
+
   // Reset pins
   pinMode(ctp.sendPin, OUTPUT);
   pinMode(ctp.sensorPin, INPUT);
   digitalWrite(ctp.sendPin, LOW);
   delayMicroseconds(10);
 
-  // Calibrate and start charging
-  calibrate();
-  ctp.timeoutTime = millis() + ctp.timeoutMilliseconds;
-  digitalWrite(ctp.sendPin, HIGH);
+  // Prepare timer interrupt
+  TCCR2A = 0;
+  TCCR2B = (1 << CS22) | (1 << CS21); // 256 prescaling
 
-#ifdef CT_WITH_TIMER_INT
-
-  // Setup timer interrupt
-  cli();
-  TCCR2B = (1 << CS20);              // No prescaling
-  OCR2A = (16000000 * 5 / 1000000);  // Every 5 microseconds
-  TCNT2 = 0;
-  TIMSK2 = (1 << OCIE2A);            // Enable timer interupt
+  // Prepare input capture unit
+  ACSR = 0;
+  TCCR1B |= (1 << ICNC1); // Noise canceller
+  TCCR1B |= (1 << CS10);  // Start timer, prescale by 8
+  TCCR1B |= (1 << ICES1); // Trigger on rising edge
+  TCCR1A = 0;             // Clear timer state
+  TCNT1 = 0;              // Reset timer
   sei();
-#endif
+
+  // Start
+  getNextSensorValue();
 }
 
 int32_t CapacitiveTouch::sensorValue() {
-  return ctp.value;
+  return (ctp.valueReady) ? ctp.value : 0;
 }
 
 int32_t CapacitiveTouch::baseline() {
@@ -52,10 +73,6 @@ int32_t CapacitiveTouch::baseline() {
 
 void CapacitiveTouch::setSampleSize(uint8_t sampleSize) {
   ctp.numSamples = sampleSize;
-}
-
-void CapacitiveTouch::setTimeout(uint32_t timeoutMilliseconds) {
-  ctp.timeoutMilliseconds = timeoutMilliseconds;
 }
 
 void CapacitiveTouch::setCalibrationTimeout(uint32_t minMilliseconds) {
@@ -77,72 +94,96 @@ void CapacitiveTouch::calibrate() {
   ctp.calibrateTimeMax = millis() + ctp.calibrateMillisecondsMax;
 }
 
-// TIMER which regularly checks the sensor value
-#ifdef CT_WITH_TIMER_INT
-ISR(TIMER2_COMPA_vect) {
+// Overflow interrupt
+ISR(TIMER1_OVF_vect) {
+  ctp.overflows++;
 
-  uint32_t now = millis();
-  uint8_t  senseState = digitalRead(ctp.sensorPin);
+  if (ctp.overflows >= 10) {
+    ctp.pulseTime = (ctp.overflows << 16);
+    ctp.pulseDone = true;
 
-  ctp.ticks++;
+    DISABLE_ICU();
 
-  // State changed
-  if (ctp.state != senseState) {
-    ctp.state = senseState;
-
-    switch (senseState) {
-      case HIGH:
-        // Reset pins
-        pinMode(ctp.sensorPin, OUTPUT);
-        digitalWrite(ctp.sensorPin, HIGH);
-        pinMode(ctp.sensorPin, INPUT);
-
-        // Start discharge
-        digitalWrite(ctp.sendPin, LOW);
-      break;
-
-      case LOW:
-        ctp.sampleIndex++;
-
-        // Collected all samples, process
-        if (ctp.sampleIndex >= ctp.numSamples) {
-          setValue(ctp.ticks);
-          ctp.ticks = 0;
-          ctp.sampleIndex = 0;
-        }
-
-        // Reset
-        pinMode(ctp.sensorPin, OUTPUT);
-        digitalWrite(ctp.sensorPin, LOW);
-        pinMode(ctp.sensorPin, INPUT);
-
-        // Start charge sensor
-        // ctp.ticks = 0;
-        ctp.timeoutTime = millis() + ctp.timeoutMilliseconds;
-        digitalWrite(ctp.sendPin, HIGH);
-      break;
-    }
-  }
-  // Timed out, try again
-  else if (now >= ctp.timeoutTime) {
-
-    // Reset
+    // Discharge
     digitalWrite(ctp.sendPin, LOW);
     pinMode(ctp.sensorPin, OUTPUT);
     digitalWrite(ctp.sensorPin, LOW);
-    pinMode(ctp.sensorPin, INPUT);
-
-    // Log value
-    setValue(-200);
-
-    // Try again
-    ctp.sampleIndex = 0;
-    ctp.ticks = 0;
-    ctp.timeoutTime = millis() + ctp.timeoutMilliseconds;
-    digitalWrite(ctp.sendPin, HIGH);
   }
 }
-#endif CT_WITH_TIMER_INT
+
+// Input capture interrupt
+ISR(TIMER1_CAPT_vect) {
+  ctp.pulseTime = ICR1;
+
+  // if just missed an overflow
+  uint8_t overflowCopy = ctp.overflows;
+  if ((TIFR1 & bit(TOV1)) && ctp.pulseTime < 0x7FFF) {
+    overflowCopy++;
+  }
+
+  ctp.pulseTime += (overflowCopy << 16);
+  ctp.pulseDone = true;
+
+  // Done for now
+  DISABLE_ICU();
+  ENABLE_TIMER();
+
+  // Discharge
+  digitalWrite(ctp.sendPin, LOW);
+  pinMode(ctp.sensorPin, OUTPUT);
+  digitalWrite(ctp.sensorPin, LOW);
+}
+
+// Iterrupt timer
+ISR(TIMER2_OVF_vect) {
+  if (!ctp.pulseDone) return;
+
+  // Stop next timer interrupt while processing
+  DISABLE_TIMER();
+  sei();
+
+  // Add samples to array
+  ctp.samples[ctp.sampleIndex++] = ctp.pulseTime;
+  if (ctp.sampleIndex == CT_SAMPLE_SIZE) {
+    ctp.sampleIndex = 0;
+    ctp.valueReady = true;
+  }
+
+  // Filter samples array
+  if (ctp.valueReady) {
+    uint32_t sum = 0,
+             now = millis();
+
+    for (int i = 0; i < CT_SAMPLE_SIZE; i++){
+      sum += ctp.samples[i];
+    }
+
+    // Update baseline
+    if (sum < ctp.baseline) {
+      ctp.baseline = sum;
+    }
+    // Calibrate baseline, if sensor is not being touched
+    else if (now >= ctp.calibrateTimeMin && abs(sum - ctp.baseline) < (0.05 * ctp.baseline)) {
+      ctp.baseline = sum;
+      ctp.calibrateTimeMin = now + ctp.calibrateMillisecondsMin;
+    }
+    ctp.value = sum - ctp.baseline;
+  }
+
+  // Start all over again
+  getNextSensorValue();
+}
+
+
+// Collect the next sensor value
+void getNextSensorValue() {
+  pinMode(ctp.sensorPin, INPUT);
+
+  ctp.overflows = 0;
+  ctp.pulseDone = false;
+  ENABLE_ICU();
+  digitalWrite(ctp.sendPin, HIGH);
+}
 
 // Set the sensor value
 void setValue(uint32_t rawValue) {
