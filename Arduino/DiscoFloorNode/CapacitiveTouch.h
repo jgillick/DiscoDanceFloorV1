@@ -1,8 +1,27 @@
 
 /**
-  A capacitive touch/proximity sensor library that runs "in the background".
-  More specifically, it uses an AVR timer to make a sesor measurement and adjustment
-  about every microsecond.
+ * A capacitive touch/proximity sensor library that runs "in the background".
+ *
+ *
+ * Circuit:
+ * --------
+ *
+ *  PD4         PD8
+ *  ----        ----
+ *   |           |
+ *   |__/\/\/\___|
+ *       10M     |
+ *               |
+ *              ___
+ *              --- 0.001µF
+ *               |
+ *               |
+ *              ---
+ *             Sensor
+ *
+ *
+ *  - PD4 charges the circuit. This can be any pin and is defined during intialization
+ *  - PD8 the sensor pin. This must be the ICU pin, PD8
 */
 
 #ifndef CapacitiveTouch_h
@@ -11,8 +30,8 @@
 #include <Arduino.h>
 #include <avr/interrupt.h>
 
-#define CT_SAMPLE_SIZE       20     // how many samples taken to determine the value
-#define CT_SENSE_TIMEOUT     100    // milliseconds before sensor read times out
+#define CT_RECEIVE_PIN       8      // The ICU pin
+
 #define CT_THRESHOLD_PERCENT 0.05   // When the sensor value goes x% over the baseline, it's seen as a touch event.
 
 #define CT_CAL_TIMEOUT_MIN   2000    // Minimum milliseconds between baseline calibrations
@@ -29,7 +48,7 @@ class CapacitiveTouch
 
 public:
   // Constructor
-  CapacitiveTouch(int8_t sendPin, int8_t sensorPin);
+  CapacitiveTouch(int8_t sendPin);
 
   // Start reading capacitive sensor
   void begin();

@@ -24,13 +24,12 @@ void getNextSensorValue();
   TIMSK1 = 0;    \
 }
 
-CapacitiveTouch::CapacitiveTouch(int8_t sendPin, int8_t sensorPin) {
+CapacitiveTouch::CapacitiveTouch(int8_t sendPin) {
   pinMode(sendPin, OUTPUT);
-  pinMode(sensorPin, INPUT);
+  pinMode(CT_RECEIVE_PIN, INPUT);
 
   ctp.gain = 0;
   ctp.sendPin = sendPin;
-  ctp.sensorPin = sensorPin;
 
   // Kalman filter
   ctp.q = CT_KALMAN_PROCESS_NOISE;
@@ -54,7 +53,7 @@ void CapacitiveTouch::begin() {
 
   // Reset pins
   pinMode(ctp.sendPin, OUTPUT);
-  pinMode(ctp.sensorPin, INPUT);
+  pinMode(CT_RECEIVE_PIN, INPUT);
   digitalWrite(ctp.sendPin, LOW);
   delayMicroseconds(10);
 
@@ -123,8 +122,8 @@ ISR(TIMER1_OVF_vect) {
 
     // Discharge
     digitalWrite(ctp.sendPin, LOW);
-    pinMode(ctp.sensorPin, OUTPUT);
-    digitalWrite(ctp.sensorPin, LOW);
+    pinMode(CT_RECEIVE_PIN, OUTPUT);
+    digitalWrite(CT_RECEIVE_PIN, LOW);
   }
 }
 
@@ -147,8 +146,8 @@ ISR(TIMER1_CAPT_vect) {
 
   // Discharge
   digitalWrite(ctp.sendPin, LOW);
-  pinMode(ctp.sensorPin, OUTPUT);
-  digitalWrite(ctp.sensorPin, LOW);
+  pinMode(CT_RECEIVE_PIN, OUTPUT);
+  digitalWrite(CT_RECEIVE_PIN, LOW);
 }
 
 // Iterrupt timer
@@ -215,7 +214,7 @@ ISR(TIMER2_OVF_vect) {
 
 // Collect the next sensor value
 void getNextSensorValue() {
-  pinMode(ctp.sensorPin, INPUT);
+  pinMode(CT_RECEIVE_PIN, INPUT);
 
   ctp.overflows = 0;
   ctp.pulseDone = false;
