@@ -3,7 +3,8 @@
 */
 
 #include "LEDFader.h"
-#include "CapacitiveSensor.h"
+// #include "CapacitiveSensor.h"
+#include "CapacitiveTouch.h"
 #include "MessageBuffer.h"
 #include "Constants.h"
 
@@ -20,7 +21,8 @@ uint8_t myAddress       = 0;
 boolean needsAck        = false, // TRUE if we're waiting for an ACK
         enabledState    = false, // is the node enabled
         gotSensorValue  = false,
-        lastSensorValue = false;
+        lastSensorValue = false,
+        receivedSomething = false;
 
 // The RGB LEDs
 LEDFader rgb[3] = { LEDFader(LED_RED),
@@ -28,7 +30,8 @@ LEDFader rgb[3] = { LEDFader(LED_RED),
                     LEDFader(LED_BLUE) };
 
 // Sensor
-CapacitiveSensor sensor = CapacitiveSensor(SENSOR_SEND, SENSOR_TOUCH);
+// CapacitiveSensor sensor = CapacitiveSensor(SENSOR_SEND, SENSOR_TOUCH);
+CapacitiveTouch sensor = CapacitiveTouch(SENSOR_SEND);
 
 // Message buffers
 MessageBuffer txBuffer(TX_CONTROL);
@@ -43,16 +46,18 @@ MessageBuffer rxBuffer(TX_CONTROL);
 void setup() {
   pinMode(NEXT_NODE,   OUTPUT);
   pinMode(TX_CONTROL,  OUTPUT);
-  pinMode(NODE_STATUS, OUTPUT);
+
+  // DDRB &= ~(1 << DDB7);
   pinMode(ENABLE_NODE, INPUT);
 
   digitalWrite(TX_CONTROL, RS485Receive);
 
   // Init serial communication
+  // Serial.begin(4800);
   Serial.begin(250000);
 
   // Reboot if the node stalls for 1 second
-  wdt_enable(WDTO_2S);
+  // wdt_enable(WDTO_2S);
 
   // This is the master node
 #ifdef DUMMY_MASTER
@@ -68,23 +73,14 @@ void setup() {
     Serial.println(F("I'm a node."));
   }
 #endif
-
-  digitalWrite(NODE_STATUS, HIGH);
+  sensor.begin();
 }
 
 void loop() {
   long now = millis();
 
   // The program is still alive
-  wdt_reset();
-
-  // Send deubbging ping
-  if (lastPing + 500 < now) {
-    // Serial.print(F("P")); delay(1);
-    digitalWrite(NODE_STATUS, ledOn);
-    ledOn = (ledOn == 0) ? 1 : 0;
-    lastPing = now;
-  }
+  // wdt_reset();
 
 #ifdef DUMMY_MASTER
   // Skip to TestMater loop
@@ -100,6 +96,7 @@ void loop() {
   // Process message received from the bus
   rxBuffer.read();
   if (rxBuffer.isReady()) {
+    receivedSomething = true;
     processMessage();
   }
 
@@ -113,7 +110,6 @@ void processMessage() {
 
   // No ID defined yet
   if (myAddress == 0) {
-    // Serial.print(F("A"));
     // Serial.write(myAddress); delay(1);
     setAddress();
   }
@@ -245,7 +241,8 @@ void sendStatus() {
 
 // 1 if sensor detects someone
 bool sensorValue() {
-  return (sensor.capacitiveSensor(30) >= SENSOR_THRESHOLD);
+  return (sensor.sensorValue() >= SENSOR_THRESHOLD);
+  // return (sensor.capacitiveSensor(30) >= SENSOR_THRESHOLD);
 }
 
 // Set the LED color
@@ -290,12 +287,13 @@ void handleFadeMessage() {
 // Set an address if one hasn't been defined yet
 void setAddress() {
   uint8_t addr,
+          // enabled = (PINB & _BV(3));
           enabled = digitalRead(ENABLE_NODE);
 
-  // Must have crashed and rebotted because  we're enabled,
+  // Must have crashed and rebotted because we're enabled,
   // and the RX message is past the addressing stage
   // Get address from the EEPROM
-  if (enabled == HIGH && rxBuffer.getType() > TYPE_ADDR) {
+  if (enabled && rxBuffer.getType() > TYPE_ADDR) {
     addr = EEPROM.read(EEPROM_CELL_ADDR);
     if (addr > 0 && addr < 255) {
       myAddress = addr;
@@ -309,13 +307,13 @@ void setAddress() {
   }
 
   // Just enabled, clear RX and wait for next address (in case current RX is stale)
-  if (enabled == HIGH && enabledState == false) {
+  if (enabled && enabledState == false) {
     rxBuffer.reset();
     enabledState = true;
   }
 
   // Set address
-  else if (enabled == HIGH && rxBuffer.getType() == TYPE_ADDR) {
+  else if (enabled && rxBuffer.getType() == TYPE_ADDR) {
     addr = (uint8_t)rxBuffer.getBody()[0];
 
     // Valid addresses are greater than MASTER
