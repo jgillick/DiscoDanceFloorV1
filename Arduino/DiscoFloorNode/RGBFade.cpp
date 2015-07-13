@@ -1,7 +1,13 @@
 
 #include "RGBFade.h"
 
-#define STEP_TIME 16.0 // Number of milliseconds per step (max = 100)
+#define STEP_TIME 16.0 // Number of milliseconds per step (max = 200)
+
+#ifdef F_CPU
+#define SYSCLOCK F_CPU
+#else
+#define SYSCLOCK 20000000
+#endif
 
 // Timer interrupt macros
 #define ENABLE_TIMER() { \
@@ -112,9 +118,9 @@ void RGBFade::begin() {
   // Setup fade timer, but don't start until a fade is set
   TCCR1A = 0; \
   TCCR1B = 0; \
-  OCR1A = round(250 * STEP_TIME); // timer count
-  TCCR1B |= (1 << WGM12); // turn on CTC mode
+  OCR1A = round(SYSCLOCK / 64 * STEP_TIME / 1000); // timer count
   TCCR1B |= (1 << CS11) | (1 << CS10); // prescale by 64
+  TCCR1B |= (1 << WGM12); // turn on CTC mode
 
   RED_PWM_SETUP();
   GREEN_PWM_SETUP();
