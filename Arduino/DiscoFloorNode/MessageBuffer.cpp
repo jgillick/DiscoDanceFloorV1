@@ -14,7 +14,6 @@ void MessageBuffer::start(uint8_t messageType) {
     messageState = MSG_STATE_IDL;
   } else {
     messageState = MSG_STATE_ACT;
-    receiveTimeout = millis() + RECEIVE_TIMEOUT;
   }
 
   sentAt = 0;
@@ -128,10 +127,20 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
     // Upper Destination
     case 1:
       addressDestRange[1] = c;
+
+      // Ignore if not addressed to me or master
+      if (!addressedToMe() && !addressedToMaster()) {
+        // return messageState = MSG_STATE_IGN;
+      }
     break;
     // Source address
     case 2:
       srcAddress = c;
+
+      // Ignore if addressed to master and not from previous node
+      if (myAddress != 0 && addressedToMaster() && srcAddress != myAddress - 1) {
+        // return messageState = MSG_STATE_IGN;
+      }
     break;
     // Message type
     case 3:
@@ -141,10 +150,10 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
   }
   headerPos++;
 
-  // Not addressed to us or master, ignore the rest of it
-  if (!addressedToMe() && !addressedToMaster()) {
-    return messageState = MSG_STATE_IGN;
-  }
+  // Ignore if, not addressed to us, if addressed to master and it's not from the previous node
+  // if (myAddress != 0 && (!addressedToMe() || (addressedToMaster() && srcAddress != myAddress - 1)) ) {
+  //   return messageState = MSG_STATE_IGN;
+  // }
 
   // Move onto the body of the message
   if (headerPos >= 4) {
@@ -154,12 +163,6 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
 }
 
 uint8_t MessageBuffer::parse(uint8_t c) {
-  long now = millis();
-
-  // Previous message timeout
-  if (receiveTimeout < now) {
-    reset();
-  }
 
   // Escape characer
   if (escaped) {
@@ -170,13 +173,14 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     else if (messageState == MSG_STATE_HDR) {
       return processHeader(c);
     }
+    return messageState;
   }
 
   // Start of message
   else if(c == MSG_SOM) {
     reset();
-    receiveTimeout = now + RECEIVE_TIMEOUT;
     messageState = MSG_STATE_HDR;
+    return messageState;
   }
 
   // Aborted or overflow, wait until we see a new message
@@ -206,7 +210,6 @@ uint8_t MessageBuffer::parse(uint8_t c) {
         // for(int i = 0; i < bufferPos; i++ ){
         //   Serial.write(buffer[i]);Serial.write(',');
         // }
-        Serial.print(F("CM!"));
         Serial.write(checksum); Serial.write('!'); Serial.write(calculateChecksum());
 
         return messageState = MSG_STATE_ABT;
@@ -215,6 +218,7 @@ uint8_t MessageBuffer::parse(uint8_t c) {
       return messageState = MSG_STATE_RDY;
     } else {
       reset();
+      return messageState;
     }
   }
 
@@ -232,8 +236,14 @@ uint8_t MessageBuffer::parse(uint8_t c) {
 
 uint8_t MessageBuffer::read() {
   digitalWrite(txControl, RS485Receive);
+
   while (Serial.available() > 0) {
     parse((uint8_t)Serial.read());
+
+    // Return current message if it is addressed to us
+    if (isReady() && addressedToMe()) {
+      return messageState;
+    }
   }
   return messageState;
 }

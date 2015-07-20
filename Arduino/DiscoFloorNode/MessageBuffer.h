@@ -51,9 +51,6 @@
 #define MSG_ESC         '\\'  // Escape character
 #define MSG_ALL         0x00  // The wildcard address used to target all nodes
 
-// When to timeout an incoming message
-#define RECEIVE_TIMEOUT 500
-
 // Maximum size of the message buffer
 #define MSG_BUFFER_LEN  10
 
