@@ -12,6 +12,7 @@ var controller,
       [0,   255, 0],    // Green
       [255, 140, 0]   // Orange
     ],
+    running = false,
     phase = -1,
     phaseNum = 3,
     phaseState, phaseTimer, animateTimer;
@@ -39,19 +40,18 @@ module.exports = {
     Shutdown this program and clear memory
   */
   shutdown: function(){
-    clearInterval(phaseTimer);
-    clearInterval(animateTimer);
-    phaseTimer = null;
-    animateTimer = null;
-    return controller.changeAllCells([0,0,0], 2000);
+    running = false;
+    clearTimeout(phaseTimer);
+    clearTimeout(animateTimer);
+    return controller.changeAllCells([0,0,0], 500);
   },
 
   /**
     Run the program
   */
   run: function(){
+    running = true;
     runPhase();
-    // phaseTimer = setInterval(changePhase, phaseTime);
   }
 };
 
@@ -59,6 +59,8 @@ module.exports = {
   Run the current phase of the floor
 */
 function runPhase() {
+  if (!running) return;
+
   switch (phase) {
     case -1:
       lightInward();
@@ -79,6 +81,8 @@ function runPhase() {
   Move to the next phase
 */
 function nextPhase() {
+  if (!running) return;
+
   phase++;
   if (phase >= phaseNum) {
     phase = 0;
@@ -92,6 +96,8 @@ function nextPhase() {
   Light the rings from the outside in
 */
 function lightInward (){
+  if (!running) return;
+
   var color = 0,
       ring, cell;
 
@@ -120,7 +126,7 @@ function lightInward (){
 
   // All done
   if (phaseState.ring >= floorMap.length) {
-    setTimeout(nextPhase, 800);
+    phaseTimer = setTimeout(nextPhase, 800);
   }
   // Again!
   else {
@@ -132,6 +138,8 @@ function lightInward (){
   Light ever-other ring
 */
 function alternatingRings() {
+  if (!running) return;
+
   var colorIndex = 0,
       ring, color, cell;
 
@@ -140,7 +148,7 @@ function alternatingRings() {
       oddEven: 0,
       cycle: 0
     };
-    setTimeout(nextPhase, 3000);
+    phaseTimer = setTimeout(nextPhase, 3000);
   }
 
   for (var i = 0; i < floorMap.length; i++) {
@@ -163,9 +171,9 @@ function alternatingRings() {
   phaseState.cycle++;
 
   if (phaseState.cycle > 4) {
-    setTimeout(nextPhase, 800);
+    phaseTimer = setTimeout(nextPhase, 800);
   } else {
-    animateTimer = setTimeout(alternatingRings, 800);
+    animateTimer = setTimeout(alternatingRings, 500);
   }
 }
 
@@ -173,6 +181,8 @@ function alternatingRings() {
   Have the rings run outward
 */
 function runningRings() {
+  if (!running) return;
+
   var cell, ring, color;
 
   if (!phaseState) {
@@ -187,7 +197,7 @@ function runningRings() {
   ring = floorMap[phaseState.ring];
   color = colors[phaseState.color];
   for (var c = 0; c < ring.length; c++) {
-    cell = controller.getCell.apply(controller, ring[c]);
+    cell = controller.getCell(ring[c][1], ring[c][1]);
     cell.setColor(color);
   }
 
@@ -201,7 +211,7 @@ function runningRings() {
     phaseState.color = (phaseState.color + 2 < colors.length) ? phaseState.color + 2 : 0;
 
     if (phaseState.cycle > 4) {
-      setTimeout(nextPhase, 1000);
+      phaseTimer = setTimeout(nextPhase, 1000);
     }
   }
   animateTimer = setTimeout(runningRings, 300);
@@ -211,6 +221,8 @@ function runningRings() {
   Blink entire floor on and off
 */
 function blinkFloor() {
+  if (!running) return;
+
   var ring, color, colorIndex, cell, on;
 
   if (!phaseState) {
@@ -238,9 +250,9 @@ function blinkFloor() {
 
   phaseState.cycle++;
   if (phaseState.cycle > 5) {
-    setTimeout(nextPhase, 1000);
+    phaseTimer = setTimeout(nextPhase, 1000);
   } else {
-    animateTimer = setTimeout(blinkFloor, 600);
+    animateTimer = setTimeout(blinkFloor, 500);
   }
 }
 
@@ -273,6 +285,4 @@ function mapFloor() {
       floorMap[i].push([xMax - i, y]);
     }
   }
-
-  console.log(floorMap);
 }
