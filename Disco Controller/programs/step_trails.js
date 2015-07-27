@@ -4,7 +4,7 @@ var Promise = require("bluebird");
 
 var controller,
 		colorTimer,
-		color = [255, 255, 255],
+		color = [0, 0, 255],
 		colorTime = 10000;
 
 module.exports = {
@@ -22,7 +22,7 @@ module.exports = {
 	init: function(floorController){
 		controller = floorController;
 		colorTimer = null;
-		color = [255, 255, 255];
+		color = [0, 0, 255];
 		return Promise.resolve();
 	},
 
@@ -82,7 +82,7 @@ function changeColor(){
 		lastSelect = rgbSelect;
 	}
 
-	// console.log('New color:', color);
+	console.log('New color:', color);
 }
 
 /**
@@ -94,6 +94,7 @@ function changeColor(){
 function stepOn(x, y) {
 	var cell = controller.getCell(x, y);
 	cell.fadeToColor(color, 800);
+	// cell.setColor(color);
 }
 
 /**
@@ -104,4 +105,5 @@ function stepOn(x, y) {
 function stepOff(x, y) {
 	var cell = controller.getCell(x, y);
 	cell.fadeToColor([0,0,0], 2000);
+	// cell.setColor([0,0,0]);
 }
