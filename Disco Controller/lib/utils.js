@@ -2,6 +2,44 @@
 
 
 /**
+	Wraps a value to fit within the minimum and max values.
+
+	```
+	wrap(5, 0, 4); // 0
+	wrap(5, 4);    // 0
+	wrap(7, 0, 4); // 3
+	wrap(1, 3, 5); // 3
+
+	@method @wrap
+	@param {int} value
+	@param {int} (optional) min Minimum value, defaults to 0
+	@param {int} max
+*/
+module.exports.wrap = function(value, min, max) {
+	var diff;
+
+	if (arguments.length === 2){
+		max = min;
+		min = 0;
+	}
+
+	// Wrap until we fit
+	while(true) {
+		if (value > max) {
+			value = min + (value - (max + 1));
+		}
+		else if (value < min) {
+			value = max + (value - (min - 1));
+		}
+		else {
+			break;
+		}
+	}
+
+	return value;
+};
+
+/**
 	Convert a 3 - 6 character color HEX code to
 	RGB interger values from 0 - 255
 
