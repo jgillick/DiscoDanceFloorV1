@@ -15,31 +15,6 @@ var eventEmitter = new events.EventEmitter(),
   program;
 
 /**
-  Setup a fresh disco controller
-
-  @method refreshController
-*/
-// function refreshController(){
-//  var x = 10,
-//      y = 10,
-//      dimensions;
-
-//  if (controller) {
-//    dimensions = controller.getDimensions();
-//    x = dimensions.x;
-//    y = dimensions.y;
-
-//    dimensions = null;
-//    controller = null;
-//  }
-
-//  controller = new DiscoController(x, y);
-//  module.exports.controller = controller;
-//  return controller;
-// }
-// module.exports.refreshController = refreshController;
-
-/**
   Are we emulating the floor or actually communicating
   with a real one?
 
@@ -59,7 +34,20 @@ module.exports.playAll = false;
     * `interactive: true`,
     * `audio: true`
 */
-module.exports.payAllFilters = {}
+module.exports.playAllFilters = {};
+
+/**
+  Run all programs. You can filter out programs by passing in
+  and object with either `audio: true` and/or `interactive: true`.
+
+  @method runAll
+  @param {Object} filters (optional) An object used to filter out programs
+*/
+module.exports.runAllPrograms = function(filter) {
+  this.playAllFilters = filter;
+  this.playAll = true;
+  this.runProgram('');
+};
 
 /**
   Run a disco program from the 'programs' directory
@@ -70,29 +58,35 @@ module.exports.payAllFilters = {}
 */
 var runProgram = function(name){
   var shutdown, timeout,
+      self = this,
       promiseResolver = Promise.pending();
 
   // Play all programs
-  if (name === '' && module.exports.playAll) {
-    getProgramList(module.exports.payAllFilters)
+  if (name === '' && this.playAll) {
+    getProgramList(this.playAllFilters)
     .then(function(programs){
       var autoRunIndex = 0;
 
       function autoRun() {
         var prog = programs[autoRunIndex],
             time = prog.info.miniumumTime || 0.5;
-        time *= 60000; // time from minutes to milliseconds
 
-        runProgram(prog.file);
+        self.runProgram(prog.file);
 
+        autoRunIndex++;
+        if (autoRunIndex > programs.length - 1) {
+          autoRunIndex = 0;
+        }
+
+        // Play for `minimumTime` minutes
+        time *= 60000;
         playerTimout = setTimeout(autoRun, time);
-        autoRunIndex = discoUtils.wrap(autoRunIndex+1, autoRunIndex.length - 1);
       }
       autoRun();
     });
     return;
   }
-  else if (!module.exports.playAll) {
+  else if (!self.playAll) {
     clearInterval(playerTimout);
   }
 
@@ -143,8 +137,8 @@ var getProgramList = function(filter){
   filter = filter || {};
 
   function filterPrograms(program) {
-    return (filter.interactive !== true || program.info.interactive === true) &&
-            (filter.audio !== true || program.info.audio === true);
+    return (filter.interactive === undefined || program.info.interactive === filter.interactive) &&
+            (filter.audio === undefined || program.info.audio === filter.audio);
   }
 
   // Read files from the programs directory
@@ -584,4 +578,3 @@ var DiscoController = function(x, y){
 // Init a new controller
 controller = new DiscoController(8, 8);
 module.exports.controller = controller;
-
