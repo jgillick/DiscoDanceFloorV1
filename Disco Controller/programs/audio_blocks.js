@@ -18,7 +18,7 @@ module.exports = {
     description: 'Visualized audio in 4 blocks on the floor',
     interactive: false,
     audio: true,
-    miniumumTime: 2
+    miniumumTime: 1
   },
 
   /**
@@ -49,7 +49,7 @@ module.exports = {
         x1, x2, y1, y2;
 
     // Create one for the entire floor
-    blocks.push(new AudioBox(0, 6, [0,0], [dimensions.x - 1, dimensions.y - 1]));
+    blocks.push(new AudioBox(0, 16, [0,0], [dimensions.x - 1, dimensions.y - 1]));
 
     // And then four quadrants
     if (dimensions.x >= 8 && dimensions.y >= 8) {
@@ -59,16 +59,16 @@ module.exports = {
       y2 = dimensions.y - 1;
 
       // Top left
-      blocks.push(new AudioBox(0, 2, [0,0],
+      blocks.push(new AudioBox(0, 8, [0,0],
                                   [x1, y1]));
       // Top right
-      blocks.push(new AudioBox(1, 4, [x1 + 1, 0],
+      blocks.push(new AudioBox(1, 12, [x1 + 1, 0],
                                   [x2, y1]));
       // Bottom left
-      blocks.push(new AudioBox(2, 8, [0, y1 + 1],
+      blocks.push(new AudioBox(2, 16, [0, y1 + 1],
                                   [x1, y2]));
       // Bottom right
-      blocks.push(new AudioBox(3, 10, [x1 + 1, y1 + 1],
+      blocks.push(new AudioBox(3, 20, [x1 + 1, y1 + 1],
                                   [x2, y2]));
 
       modeTimer = setInterval(function() {
@@ -77,7 +77,7 @@ module.exports = {
     }
 
     // Setup audio
-    audio.analyser.fftSize = 32;
+    audio.analyser.fftSize = 64;
     running = true;
     processAudio();
   }
@@ -111,8 +111,9 @@ function processAudio() {
 */
 function AudioBox(index, band, from, to) {
   var floorMap = [],
-      primaryColor = discoUtils.wrap(index, 0, 2),
-      colors = [],
+      colorIndex = discoUtils.wrap(index, 0, 2),
+      primaryColor = [],
+      secondaryColor = [],
       timer;
 
   function mapSection() {
@@ -144,12 +145,15 @@ function AudioBox(index, band, from, to) {
   }
 
   function pickColors() {
-    colors = [0,0,0];
-    primaryColor = discoUtils.wrap(primaryColor+1, 0, 2);
-    colors[primaryColor] = 255;
+    primaryColor = [0,0,0];
+    secondaryColor = [0,0,0];
 
-    // Random secondary color
-    colors[Math.floor(Math.random() * 2)] = Math.round(Math.random() * 255);
+    colorIndex = discoUtils.wrap(colorIndex+1, 0, 2);
+    primaryColor[colorIndex] = 255;
+    secondaryColor[colorIndex] = 127;
+
+    primaryColor[Math.floor(Math.random() * 2)] = Math.round(Math.random() * 255);
+    secondaryColor[Math.floor(Math.random() * 2)] = Math.round(Math.random() * 255);
   }
 
   /**
@@ -157,26 +161,36 @@ function AudioBox(index, band, from, to) {
   */
   this.update = function(data) {
     var bandData = data[band],
+        bandData2 = data[band - 2],
+        intensity1 = bandData / 255,
+        intensity2 = bandData2 / 255,
         scale = floorMap.length / 255,
         height = Math.round(bandData * scale);
 
     for (var i = 0; i < floorMap.length; i++) {
       var ring = floorMap[i],
-          ringColor = colors.slice(0),
-          intensity = bandData / 255;
+          color,
+          ringColor1 = primaryColor.slice(0),
+          ringColor2 = secondaryColor.slice(0);
 
       // Set the color as a percentage of the audio value
       for (var c = 0; c < 3; c++) {
-        ringColor[c] = Math.round(ringColor[c] * intensity);
-      }
-      if (i >= height) {
-        ringColor = [0,0,0];
+        ringColor1[c] = Math.round(ringColor1[c] * intensity1);
+        ringColor2[c] = Math.round(ringColor2[c] * intensity2);
       }
 
-      // Fill in the rings
+      color = ringColor1;
+      if (i >= height) {
+        color = ringColor2;
+      }
+      if (color[colorIndex] < 20) {
+        color[colorIndex] = 20;
+      }
+
+      // Fill in the cells
       for (var n = 0; n < ring.length; n++) {
         var cell = floorController.getCell(ring[n][0], ring[n][1]);
-        cell.fadeToColor(ringColor, 100);
+        cell.fadeToColor(color, 200);
       }
     }
   };

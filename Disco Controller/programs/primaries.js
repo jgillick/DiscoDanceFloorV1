@@ -18,7 +18,7 @@ module.exports = {
     name: 'Primaries',
     description: 'Fades in primary colors, chasing from one cell to the next',
     interactive: false,
-    miniumumTime: 0.5
+    miniumumTime: 1
   },
 
   /**

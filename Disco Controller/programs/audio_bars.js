@@ -19,7 +19,7 @@ module.exports = {
     description: 'Audio bars visualization',
     interactive: false,
     audio: true,
-    miniumumTime: 2
+    miniumumTime: 1
   },
 
   /**
@@ -118,11 +118,11 @@ function visualizeAudio() {
   }
 
   // Set secondary color
-  for (var i = 0; i < 3; i++) {
-    secondaryColor[i] = Math.round(secondaryColor[i] * (data[3] / 255));
+  for (var c = 0; c < 3; c++) {
+    secondaryColor[c] = Math.round(secondaryColor[c] * (data[3] / 255));
   }
 
-  // Create bars along the x axis that display the audio frequency bands
+  // Create bars along the x axis that display the audio  bands
   for (var x = 0, xLen = dimensions.x; x < xLen; x++) {
     percent = data[x] / 255; // percent of the max value
     height = Math.round(data[x] * scale);
