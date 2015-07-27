@@ -133,8 +133,8 @@ body {
 		background: #fff;
 
 		td {
-			background: rgba(0, 0, 0, 0.05);
-			border: 2px solid #dedede;
+			background: rgb(0, 0, 0);
+			border: 2px solid #666;
 			cursor: url(../../images/shoe_small.png) 10 15, auto;
 
 			&:hover {
@@ -165,9 +165,15 @@ body {
 			width: 100%;
 			font-size: 14px;
 			font-family: inherit;
+			margin: 3px 0;
 
 			option {
 				padding: 5px;
+
+				&.selected:before {
+					content: '>';
+					margin: 0 3px 0 0;
+				}
 			}
 		}
 		.actions {

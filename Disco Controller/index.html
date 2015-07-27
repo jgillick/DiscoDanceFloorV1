@@ -5,10 +5,11 @@
 
 	<script type="text/javascript" src="javascript/frameworks/jquery-2.1.1.js"></script>
 	<script type="text/javascript" src="lib/emulated_floor.js"></script>
-	<script type="text/javascript" src="javascript/preview.js"></script>
-	<script type="text/javascript" src="javascript/serial.js"></script>
 
-	<link rel="stylesheet" type="text/css" href="public/stylesheets/reset.css" />
+	<script type="text/javascript" src="javascript/gui.js"></script>
+	<script type="text/javascript" src="javascript/preview.js"></script>
+
+	<!-- <link rel="stylesheet" type="text/css" href="public/stylesheets/reset.css" /> -->
 	<link rel="stylesheet" type="text/css" href="public/stylesheets/preview.css" />
 	<style id="grid-dimensions"></style>
 	<style id="grid-frame"></style>
@@ -47,7 +48,14 @@
 	</div>
 	<section class="programs">
 		<h1>Programs</h1>
-		<select id="program-list" multiple></select>
+		<select id="program-filters">
+			<option value="">All</option>
+			<option value="interactive">Interactive</option>
+			<option value="audio">Audio Visualization</option>
+		</select>
+		<select id="program-list" multiple size="10">
+			<option value="">- Play All -</option>
+		</select>
 		<div class="description"></div>
 		<!-- <div class="actions">
 			<button>New</button>
