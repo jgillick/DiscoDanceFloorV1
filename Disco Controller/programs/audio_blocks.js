@@ -149,11 +149,11 @@ function AudioBox(index, band, from, to) {
     secondaryColor = [0,0,0];
 
     colorIndex = discoUtils.wrap(colorIndex+1, 0, 2);
-    primaryColor[colorIndex] = 255;
-    secondaryColor[colorIndex] = 127;
 
     primaryColor[Math.floor(Math.random() * 2)] = Math.round(Math.random() * 255);
     secondaryColor[Math.floor(Math.random() * 2)] = Math.round(Math.random() * 255);
+    primaryColor[colorIndex] = 255;
+    secondaryColor[colorIndex] = 127;
   }
 
   /**
@@ -162,10 +162,12 @@ function AudioBox(index, band, from, to) {
   this.update = function(data) {
     var bandData = data[band],
         bandData2 = data[band - 2],
-        intensity1 = bandData / 255,
+        intensity1 = bandData / 180,
         intensity2 = bandData2 / 255,
         scale = floorMap.length / 255,
         height = Math.round(bandData * scale);
+
+    intensity1 = (intensity1 > 1) ? 1 : intensity1;
 
     for (var i = 0; i < floorMap.length; i++) {
       var ring = floorMap[i],
