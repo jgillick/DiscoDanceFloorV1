@@ -1,9 +1,10 @@
 'use strict';
 
-var disco      = require('./lib/disco_controller.js'),
-    comm       = require('./lib/comm.js'),
-    serialPort = require('serialport'),
-    audio      = require('./javascript/audio.js');
+var disco       = require('./lib/disco_controller.js'),
+    programCtrl = require('./lib/program_controller.js'),
+    comm        = require('./lib/comm.js'),
+    serialPort  = require('serialport'),
+    audio       = require('./javascript/audio.js');
 
 var controller = disco.controller,
     programFilter = {};
@@ -25,8 +26,11 @@ $(document).ready(function(){
     var list = this,
         file = list.options[list.selectedIndex].value;
 
-    disco.playAll = (file === '');
-    disco.runProgram(file);
+    if (file === '') {
+      programCtrl.runAllPrograms(programFilter);
+    } else {
+      programCtrl.runProgram(file);
+    }
   });
 
   // Update filters
@@ -38,22 +42,36 @@ $(document).ready(function(){
     if (on !== '') {
       programFilter[on] = true;
     }
+    programCtrl.playAllFilters = programFilter;
     buildProgramList();
 
     // We're currently in All Play, start over
-    if (disco.playAll) {
-      disco.playAllFilter = programFilter;
-      disco.runProgram('');
+    if (programCtrl.playAll) {
+      programCtrl.runAllPrograms(programFilter);
     }
   });
 
   // Show the program being played
-  disco.controller.events.on('program.started', function(file) {
+  programCtrl.events.on('started', function(file) {
     var progItem = $('#prog-'+ file.replace('.', '_'));
+
     if (progItem.length) {
       $('#program-list').find('.selected').removeClass('selected');
       progItem.addClass('selected');
+      $('#stop').attr('disabled', false);
     }
+  });
+
+  // Program was shut down
+  programCtrl.events.on('shutdown', function() {
+    $('#program-list').find('.selected').removeClass('selected');
+    $('#stop').attr('disabled', true);
+  });
+
+  // Stop program
+  $('#stop').click(function(){
+    $('#program-list option:selected').removeAttr('selected');
+    programCtrl.stopProgram();
   });
 });
 
@@ -62,7 +80,7 @@ $(document).ready(function(){
 */
 function buildProgramList() {
   // Load program list
-  disco.getProgramList(programFilter)
+  programCtrl.getProgramList(programFilter)
   .then(function(programs){
     var list = $('#program-list');
 
@@ -73,6 +91,7 @@ function buildProgramList() {
       item.id = 'prog-'+ program.file.replace('.', '_');
       item.value = program.file;
       item.text = program.info.name;
+      item.title = program.info.description || '';
 
       list.append(item);
     });
