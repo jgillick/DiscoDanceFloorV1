@@ -66,8 +66,22 @@ module.exports = {
     filter = filter || {};
 
     function filterPrograms(program) {
-      return (filter.interactive === undefined || program.info.interactive === filter.interactive) &&
-              (filter.audio === undefined || program.info.audio === filter.audio);
+      var i = 0;
+
+      if (program.info.disabled === true) {
+        return false;
+      }
+
+      for (var f in filter) if (filter.hasOwnProperty(f)) {
+        i++;
+        if (program.info[f] === filter[f]){
+          return true;
+        }
+        else if (f == 'lightShow' && !program.info.audio && !program.info.interactive) {
+          return true;
+        }
+      }
+      return (i === 0);
     }
 
     // Read files from the programs directory
@@ -77,6 +91,10 @@ module.exports = {
 
         // Get program list
         fs.readdirSync('./programs/').forEach(function(file){
+
+          // Not a valid file
+          if (!file.match(/^[^\.].*?\.js$/)) return;
+
           try {
             var prog = require('../programs/'+ file);
             prog.file = file;

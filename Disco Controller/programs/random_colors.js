@@ -11,6 +11,7 @@ module.exports = {
     name: 'Random Colors',
     description: 'Fades random colors across the floor.',
     interactive: false,
+    lightShow: true,
     miniumumTime: 0.5
   },
 

@@ -34,14 +34,13 @@ $(document).ready(function(){
   });
 
   // Update filters
-  $('#program-filters').change(function(){
-    var list = this,
-        on = list.options[list.selectedIndex].value;
-
+  $('.filters input').change(function(){
     programFilter = {};
-    if (on !== '') {
-      programFilter[on] = true;
-    }
+
+    $('.filters input:checked').each(function(){
+      programFilter[this.value] = true;
+    });
+
     programCtrl.playAllFilters = programFilter;
     buildProgramList();
 
@@ -52,8 +51,14 @@ $(document).ready(function(){
   });
 
   // Show the program being played
-  programCtrl.events.on('started', function(file) {
+  programCtrl.events.on('started', function(file, info) {
     var progItem = $('#prog-'+ file.replace('.', '_'));
+
+    if (info.interactive) {
+      $('#preview').addClass('interactive');
+    } else {
+      $('#preview').removeClass('interactive');
+    }
 
     if (progItem.length) {
       $('#program-list').find('.selected').removeClass('selected');

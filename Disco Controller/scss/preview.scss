@@ -1,5 +1,5 @@
 body {
-	font: normal 14px 'Helvetica Neue', Helvetica, Arial;
+	font: normal 14px "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
 	background: #999;
 }
 
@@ -159,6 +159,23 @@ body {
 			margin: 10px 0;
 			font-size: 18px;
 			text-align: center;
+		}
+		h2 {
+			font-size: 13px;
+			margin: 5px 0
+		}
+
+		ol {
+			margin: 0 0 7px 0;
+			padding: 0;
+			list-style-type: none;
+		}
+		li {
+			margin: 3px 0;
+
+			label {
+				padding: 7px 3px;
+			}
 		}
 
 		select {

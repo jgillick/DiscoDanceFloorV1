@@ -20,10 +20,11 @@ var controller,
 module.exports = {
 
   info: {
-      name: 'Saturday Night Fever',
-      description: 'Light display similar to the floor from Saturday Night Fever',
-      interactive: false,
-      miniumumTime: 1
+    name: 'Saturday Night Fever',
+    description: 'Light display similar to the floor from Saturday Night Fever',
+    interactive: false,
+    lightShow: true,
+    miniumumTime: 1
   },
 
   /**
