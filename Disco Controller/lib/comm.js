@@ -330,13 +330,13 @@ var comm = new Comm();
 function stringForStage(stage) {
   switch (stage) {
     case ADDRESSING:
-      return "ADDRESSING";
+      return 'ADDRESSING';
     case STATUSING:
-      return "STATUSING";
+      return 'STATUSING';
     case UPDATING:
-      return "UPDATING";
+      return 'UPDATING';
     default:
-      return "UNKNOWN";
+      return 'UNKNOWN';
   }
 }
 
