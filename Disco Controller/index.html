@@ -47,12 +47,28 @@
 		</div>
 	</div>
 	<section class="programs">
-		<h1>Programs</h1>
-		<select id="program-filters">
-			<option value="">All</option>
-			<option value="interactive">Interactive</option>
-			<option value="audio">Audio Visualization</option>
-		</select>
+		<h2>Filters</h2>
+		<ol class="filters">
+			<li>
+				<label>
+					<input type="checkbox" name="filter" value="lightShow" checked title="Programs that play on their own" />
+					Light shows
+				</label>
+			</li>
+			<li>
+				<label>
+					<input type="checkbox" name="filter" value="audio" checked title="Sound reactive programs" />
+					Audio visualizations
+				</label>
+			</li>
+			<li>
+				<label>
+					<input type="checkbox" name="filter" value="interactive" checked title="Step reactive programs" />
+					Interactive
+				</label>
+			</li>
+		</ol>
+		<h2>Programs</h2>
 		<select id="program-list" multiple size="10">
 			<option value="">- Play All -</option>
 		</select>
@@ -67,13 +83,19 @@
 	<div class="content">
 		<section class="selection">
 			<h1>Connect to floor</h1>
+
 			<fieldset>
 				<legend>Select Device</legend>
 				<select id="serial-ports-list">
 					<option value="">Loading...</option>
 				</select>
+				<label>
+					<input type="checkbox" id="reset-addresses" checked />
+					Reset the addresses on all nodes
+				</label>
 				<button class="connect">Connect</button>
 			</fieldset>
+
 			<fieldset>
 				<legend>- Or -</legend>
 				<button class="skip">Continue in Emulation Mode</button>

@@ -38,6 +38,12 @@ body {
 		}
 	}
 
+	label {
+		display: block;
+		margin: 7px 0;
+		font-size: 12px;
+	}
+
 	.connecting {
 		display: none;
 		p.status {
