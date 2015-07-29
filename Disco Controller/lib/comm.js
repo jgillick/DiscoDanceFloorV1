@@ -1,24 +1,22 @@
 /**
 
-	The communication interface between the dance floor
-	and the RS485 serial bus.
+  The communication interface between the dance floor
+  and the RS485 serial bus.
 
 */
 
 'use strict';
 
-var EventEmitter  = require("events").EventEmitter,
-		util   			  = require("util"),
-		Serial 			  = require('serialport').SerialPort,
-		MessageParser = require('./serial_message_parser.js'),
-		disco         = require('./disco_controller.js'),
-		FloorCell     = require('./floor_cell.js'),
-		discoUtils 		= require('./utils.js'),
-		_             = require('underscore');
+var EventEmitter  = require('events').EventEmitter,
+    util          = require('util'),
+    Serial        = require('serialport').SerialPort,
+    MessageParser = require('./serial_message_parser.js'),
+    disco         = require('./disco_controller.js'),
+    _             = require('underscore');
 
-const BAUD_RATE			      = 250000;
-const ACK_TIMEOUT         = 50;
-const STATUS_TIMEOUT      = 50;
+const BAUD_RATE           = 500000; // 4800;
+const ACK_TIMEOUT         = 50; //1000;
+const STATUS_TIMEOUT      = 50; //1000;
 const ADDRESSING_TIMEOUT  = 1000;
 
 // Program stages
@@ -28,392 +26,390 @@ const STATUSING           = 'statusing';
 const UPDATING            = 'updating';
 
 // Status flags
-const FADING           		= 0x01;
-const SENSOR_DETECT    		= 0x02;
+const FADING              = 0x20;
+const SENSOR_DETECT       = 0x40;
 
 var serialPort,
-		txBuffer,
-		rxBuffer,
-		stage = IDLE,
-		statuses = {},
-		lastStatusAddr,
-		statusTimeout,
-		statusTries,
-		lastNodeAddr = MessageParser.MASTER_ADDRESS,
-		lastUpdate = 0,
-		addressingStageTimeout,
-		nodeRegistration,
-		discoCntrl = disco.controller,
-		lastStage = 0,
-		stageTimer = 0;
+    txBuffer,
+    rxBuffer,
+    stage = IDLE,
+    statuses = {},
+    lastStatusAddr,
+    statusTimeout,
+    statusTries,
+    lastNodeAddr = 0,
+    lastUpdate = 0,
+    addressingStageTimeout,
+    nodeRegistration,
+    discoCntrl = disco.controller,
+    lastStage = 0,
+    stageTimer = 0;
 
 
 // Set our address on the parser
-MessageParser.setMyAddress(MessageParser.MASTER_ADDRESS);
+// MessageParser.setMyAddress(MessageParser.MASTER_ADDRESS);
 
 
 /**
-	Handles communication with the floor nodes
-	over the serial port
+  Handles communication with the floor nodes
+  over the serial port
 
-	@inherits EventEmitter
+  @inherits EventEmitter
 */
 function Comm(){
-	EventEmitter.call(this);
+  EventEmitter.call(this);
 
-	/**
-		Start communicating with all the floor cells
-		over the serial port
+  /**
+    Start communicating with all the floor cells
+    over the serial port
 
-		@param {String} port The serial port to the RS485 bus
-		@return SerialPort
-	*/
-	this.start = function (port){
-		nodeRegistration = [];
+    @param {String} port The serial port to the RS485 bus
+    @return SerialPort
+  */
+  this.start = function (port){
+    nodeRegistration = [];
 
-		serialPort = new Serial(port, {
-			baudrate: BAUD_RATE,
-			parser: serialParser
-		});
+    serialPort = new Serial(port, {
+      baudrate: BAUD_RATE,
+      parser: serialParser
+    });
 
-		// Open and process incoming data
-		serialPort.on('open', function () {
-			MessageParser.setSerialPort(serialPort);
+    // Open and process incoming data
+    console.log('Opening port');
+    serialPort.on('open', function () {
+      console.log('Opened!')
+      MessageParser.setSerialPort(serialPort);
 
-			// Listen for new messages
-			serialPort.on('message-ready', function(message) {
+      // Listen for new messages
+      serialPort.on('message-ready', function(message) {
+        this.handleMessage(message);
+      }.bind(this));
 
-				// Only message that we have not sent
-				if (message.srcAddress != MessageParser.MASTER_ADDRESS) {
-					// console.log('Message received: ' + message.getTypeAsString(),
-					// 						'From:', message.normalizeAddress(message.srcAddress));
-					this.handleMessage(message);
-				}
+      // Start node address registration
+      txBuffer = null;
+      this.nextStage();
+    }.bind(this));
 
-			}.bind(this));
+    return serialPort;
+  };
 
-			// Start node address registration
-			txBuffer = null;
-			this.nextStage();
-		}.bind(this));
+  /**
+    Move onto the next stage:
 
-		return serialPort;
-	};
+      1. ADDRESSING
+      2. STATUSING
+      3. UPDATING
+      4. Repeat 2 - 4
 
-	/**
-		Move onto the next stage:
+    @method nextStage
+  */
+  this.nextStage = function() {
+    var now = Date.now();
 
-			1. ADDRESSING
-			2. STATUSING
-			3. UPDATING
-			4. Repeat 2 - 4
+    if (txBuffer) {
+      txBuffer.reset();
+      txBuffer = null;
+    }
 
-		@method nextStage
-	*/
-	this.nextStage = function() {
-		var now = Date.now();
+    // From the old status to the new status
+    switch(stage) {
+      case IDLE:
+        stage = ADDRESSING;
+      break;
+      case ADDRESSING:
+        if (nodeRegistration.length) {
+          stage = STATUSING;
 
-		if (txBuffer) {
-			txBuffer.reset();
-			txBuffer = null;
-		}
+          this.emit('done-addressing', nodeRegistration.length);
+        }
+        // Nothing found, continue
+        else {
+          this.addressing();
+        }
+      break;
+      case STATUSING:
+        stage = UPDATING;
+      break;
+      case UPDATING:
+        stage = STATUSING;
+      break;
+    }
 
-		// From the old status to the new status
-		switch(stage) {
-			case IDLE:
-				stage = ADDRESSING;
-			break;
-			case ADDRESSING:
-				if (nodeRegistration.length) {
-					stage = STATUSING;
+    // Declare stage change
+    if (lastStage != stage) {
+      this.emit('stage-change', stage, lastStage);
+    //  if (lastStage) {
+    //    console.log(stringForStage(lastStage), ' took', (now - stageTimer) +'ms');
+    //  }
+    //  stageTimer = now;
+      lastStage = stage;
+    }
 
-					this.emit('done-addressing', nodeRegistration.length);
-				}
-				// Nothing found, continue
-				else {
-					this.addressing();
-				}
-			break;
-			case STATUSING:
-				stage = UPDATING;
-			break;
-			case UPDATING:
-				stage = STATUSING;
-			break;
-		}
+    // Setup and call the new status handler on the next tick of the event loop
+    switch(stage) {
+      case ADDRESSING:
+        process.nextTick(this.addressing.bind(this));
+      break;
+      case STATUSING:
+        // console.log('STATUSING');
+        lastStatusAddr = 0;
+        process.nextTick(this.status.bind(this));
+        // setTimeout(this.status.bind(this), 10);
+      break;
+      case UPDATING:
+        // console.log('UPDATING');
+        process.nextTick(this.update.bind(this));
+        // setTimeout(this.update.bind(this), 10);
+      break;
+    }
+  };
 
-		// Declare stage change
-		if (lastStage != stage) {
-			this.emit('stage-change', stage, lastStage);
-		// 	if (lastStage) {
-		// 		console.log(stringForStage(lastStage), ' took', (now - stageTimer) +'ms');
-		// 	}
-		// 	stageTimer = now;
-			lastStage = stage;
-		}
-
-		// Setup and call the new status handler on the next tick of the event loop
-		switch(stage) {
-			case ADDRESSING:
-				process.nextTick(this.addressing.bind(this));
-			break;
-			case STATUSING:
-				// console.log('STATUSING');
-				lastStatusAddr = MessageParser.MASTER_ADDRESS;
-				process.nextTick(this.status.bind(this));
-				// setTimeout(this.status.bind(this), 10);
-			break;
-			case UPDATING:
-				// console.log('UPDATING');
-				process.nextTick(this.update.bind(this));
-				// setTimeout(this.update.bind(this), 10);
-			break;
-		}
-	};
-
-	/**
-		Pass the most recent message to the correct stage.
-		For example, all messages received during the addressing stage
-		will be sent to the `addressing` method.
-	*/
-	this.handleMessage = function(message) {
-		switch(stage) {
-			case ADDRESSING:
-				this.addressing(message);
-			break;
-			case STATUSING:
-				this.status(message);
-			break;
-		}
-	};
+  /**
+    Pass the most recent message to the correct stage.
+    For example, all messages received during the addressing stage
+    will be sent to the `addressing` method.
+  */
+  this.handleMessage = function(message) {
+    switch(stage) {
+      case ADDRESSING:
+        this.addressing(message);
+      break;
+      case STATUSING:
+        this.status(message);
+      break;
+    }
+  };
 
 
-	/**
-		Handle the addressing stage
+  /**
+    Handle the addressing stage
 
-		@method addressing
-		@param {MessageParser} message (optional) The most recent message recieved
-	*/
-	this.addressing = function(message) {
-		var addr;
+    @method addressing
+    @param {MessageParser} message (optional) The most recent message recieved
+  */
+  this.addressing = function(message) {
+    var addr;
 
-		// Start sending address requests
-		if (!txBuffer) {
-			txBuffer = sendAddressingRequest();
-			addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
-		}
+    // Start sending address requests
+    if (!txBuffer) {
+      txBuffer = sendAddressingRequest();
+      addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
+    }
 
-		// Register new address
-		else if (message && message.type == MessageParser.TYPE_ADDR) {
-			addr = message.getMessageBody()[0];
+    // Register new address
+    else if (message && message.type == MessageParser.TYPE_ADDR) {
+      addr = message.getMessageBody()[0];
 
-			// New address must be larger than the last one added
-			if (addr > lastNodeAddr) {
-				txBuffer.stopSending();
+      // New address must be larger than the last one added
+      if (addr > lastNodeAddr) {
+        txBuffer.stopSending();
 
-				nodeRegistration.push(addr);
-				discoCntrl.addCellWithAddress(addr);
-				console.log('Add node at address', addr);
+        nodeRegistration.push(addr);
+        discoCntrl.addCellWithAddress(addr);
+        console.log('Add node at address', addr);
 
-				lastNodeAddr = addr;
-				this.emit('new-node', addr);
+        lastNodeAddr = addr;
+        this.emit('new-node', addr);
 
-				// Send ACK, and then query for the next address
-				sendACK(addr)
-				.then(function(){
-					txBuffer = sendAddressingRequest();
-				});
+        // Send ACK, and then query for the next address
+        sendACK(addr)
+        .then(function(){
+          txBuffer = sendAddressingRequest();
+        });
 
-				// Update timeout
-				clearTimeout(addressingStageTimeout);
-				addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
-			}
-			else {
-				console.log('Invalid address:', addr);
-			}
-		}
-	};
+        // Update timeout
+        clearTimeout(addressingStageTimeout);
+        addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
+      }
+      else {
+        console.log('Invalid address:', addr);
+      }
+    }
+  };
 
-	/**
-		Handle the status stage
+  /**
+    Handle the status stage
 
-		@method status
-		@param {MessageParser} message (optional) The most recent message recieved while in this stage
-	*/
-	this.status = function(message) {
-		var sensor, addr;
+    @method status
+    @param {MessageParser} message (optional) The most recent message recieved while in this stage
+  */
+  this.status = function(message) {
+    var sensor, addr;
 
-		// All statuses received, move on
-		if (lastStatusAddr == lastNodeAddr) {
-			this.nextStage();
-		}
+    // All statuses received, move on
+    if (lastStatusAddr == lastNodeAddr) {
+      this.nextStage();
+    }
 
-		// Register status
-		else if (message && message.type == MessageParser.TYPE_STATUS) {
-			sensor = message.getMessageBody()[0] & SENSOR_DETECT;
-			addr = message.srcAddress;
-			// console.log('Status received from ', addr);
+    // Register status
+    else if (message && message.type == MessageParser.TYPE_STATUS) {
+      sensor = message.getMessageBody()[0] & SENSOR_DETECT;
+      addr = message.address;
+      // console.log('Status received from ', addr);
 
-			if (addr > lastStatusAddr) {
-				statusTries = 0;
-				lastStatusAddr = addr;
-				statuses[addr] = message.getMessageBody();
-				clearTimeout(statusTimeout);
+      if (addr > lastStatusAddr) {
+        statusTries = 0;
+        lastStatusAddr = addr;
+        statuses[addr] = message.getMessageBody();
 
-				// No more nodes
-				if (lastStatusAddr >= lastNodeAddr) {
-					this.nextStage();
-				}
-				// Update retry timeout
-				else {
-					statusTimeout = setTimeout(sendStatusRequest, STATUS_TIMEOUT);
-				}
-			}
-		}
+        console.log(statuses[addr].join(', '));
 
-		// Send status request
-		else if (!txBuffer) {
-			statusTries = 0;
-			txBuffer = sendStatusRequest();
-		}
-	};
+        clearTimeout(statusTimeout);
 
-	/**
-		Handle the node update stage
-	*/
-	this.update = function() {
-		var i = 0,
-				batches = [],
-				lastMessage;
+        // No more nodes
+        if (lastStatusAddr >= lastNodeAddr) {
+          this.nextStage();
+        }
+        // Update retry timeout
+        else {
+          statusTimeout = setTimeout(sendStatusRequest, STATUS_TIMEOUT);
+        }
+      }
+    }
 
-		nodeRegistration.forEach(function(addr){
-			var cell = discoCntrl.getCellByAddress(addr),
-					status = statuses[addr],
-					message;
+    // Send status request
+    else if (!txBuffer) {
+      statusTries = 0;
+      txBuffer = sendStatusRequest();
+    }
+  };
 
-			// Could not find cell or status
-			if (!cell || !status) {
-				return;
-			}
+  /**
+    Handle the node update stage
+  */
+  this.update = function() {
+    var i = 0,
+        batches = [],
+        lastMessage;
 
-			// Process status and sync
-			if (!processStatus(addr, cell, status)) {
-				message = updateFloorCell(addr, cell, false);
+    nodeRegistration.forEach(function(addr){
+      var cell = discoCntrl.getCellByAddress(addr),
+          status = statuses[addr],
+          message;
 
-				// If this message is the same as the last, batch it
-				if (lastMessage
-					&& lastMessage.addressDestRange[1] == addr - 1
-					&& lastMessage.type == message.type
-					&& _.isEqual(lastMessage.getMessageBody(), message.getMessageBody())) {
+      // Could not find cell or status
+      if (!cell || !status) {
+        return;
+      }
 
-					lastMessage.addressDestRange[1] = addr;
-				}
-				// New message, no batch
-				else {
-					batches.push(message);
-					lastMessage = message;
-				}
-			}
-		});
+      // Process status and sync
+      if (!processStatus(addr, cell, status)) {
+        message = updateFloorCell(addr, cell, false);
 
-		// Send message batches
-		batches.forEach(function(tx) {
-			tx.send();
-		});
+        // If this message is the same as for the last cell, batch it
+        // if (lastMessage
+        //  && lastMessage.addressDestRange[1] == addr - 1
+        //  && lastMessage.type == message.type
+        //  && _.isEqual(lastMessage.getMessageBody(), message.getMessageBody())) {
 
-		this.nextStage();
-	};
+        //  lastMessage.addressDestRange[1] = addr;
+        // }
+        // // New message, no batch
+        // else {
+          batches.push(message);
+          lastMessage = message;
+        // }
+      }
+    });
+
+    // Send message batches
+    batches.forEach(function(tx) {
+      tx.send();
+    });
+
+    this.nextStage();
+  };
 }
 util.inherits(Comm, EventEmitter);
 var comm = new Comm();
 
 /**
-	Return a string for the STAGE constant
+  Return a string for the STAGE constant
 
-	@function stringForStage
-	@param {int} stage
+  @function stringForStage
+  @param {int} stage
 */
 function stringForStage(stage) {
-	switch (stage) {
-		case ADDRESSING:
-			return "ADDRESSING";
-		case STATUSING:
-			return "STATUSING";
-		case UPDATING:
-			return "UPDATING";
-		default:
-			return "UNKNOWN";
-	}
+  switch (stage) {
+    case ADDRESSING:
+      return "ADDRESSING";
+    case STATUSING:
+      return "STATUSING";
+    case UPDATING:
+      return "UPDATING";
+    default:
+      return "UNKNOWN";
+  }
 }
 
 /**
-	A custom SerialPort parser that runs incoming data through the
-	MessageParser and emits `message-ready` every time it finds
-	an incoming message.
+  A custom SerialPort parser that runs incoming data through the
+  MessageParser and emits `message-ready` every time it finds
+  an incoming message.
 
-	@function serialParser
-	@params {Emitter} emitter The SerialPort event emitter
-	@params {Buffer} buffer Incoming data
+  @function serialParser
+  @params {Emitter} emitter The SerialPort event emitter
+  @params {Buffer} buffer Incoming data
 */
 function serialParser(emitter, buffer) {
-	if (!rxBuffer) {
-		rxBuffer = new MessageParser();
-	}
+  if (!rxBuffer) {
+    rxBuffer = new MessageParser();
+  }
 
-	for (var i = 0; i < buffer.length; i++){
-		rxBuffer.parse(buffer.readUInt8(i));
+  for (var i = 0; i < buffer.length; i++){
+    rxBuffer.parse(buffer.readUInt8(i));
 
-		if (rxBuffer.isReady()){
-			emitter.emit('message-ready', rxBuffer);
-			rxBuffer = new MessageParser();
-		} else {
-			emitter.emit('data', buffer[i]);
-		}
-	}
+    if (rxBuffer.isReady()){
+      emitter.emit('message-ready', rxBuffer);
+      rxBuffer = new MessageParser();
+    } else {
+      emitter.emit('data', buffer[i]);
+    }
+  }
 }
 
 /**
-	Send the last node address to the bus during
-	the address registration stage.
+  Send the last node address to the bus during
+  the address registration stage.
 
-	@function sendAddressingRequest
-	@return {MessageParser} The sent message object
+  @function sendAddressingRequest
+  @return {MessageParser} The sent message object
 */
 function sendAddressingRequest() {
-	var tx = new MessageParser();
+  var tx = new MessageParser();
 
-	tx.start(MessageParser.TYPE_ADDR);
-	tx.setDestAddress(MessageParser.MSG_ALL);
-	tx.write(lastNodeAddr);
-	tx.sendEvery(ACK_TIMEOUT);
+  tx.start(MessageParser.TYPE_ADDR);
+  tx.setAddress(MessageParser.BROADCAST_ADDRESS);
+  tx.write(lastNodeAddr);
+  tx.sendEvery(ACK_TIMEOUT);
 
-	return tx;
+  return tx;
 }
 
 /**
-	Send a request for node status
+  Send a request for node status
 
-	@function sendStatusRequest
-	@return {MessageParser or False} The sent message object or `False` if there are not more nodes
+  @function sendStatusRequest
+  @return {MessageParser or False} The sent message object or `False` if there are not more nodes
 */
 function sendStatusRequest() {
-	var tx = new MessageParser();
+  var tx = new MessageParser();
 
-	// If we've failed to get status at least twice, skip this node
+  // If we've failed to get status at least twice, skip this node
   if (statusTries >= 2) {
-    console.log('No status received from '+ (lastStatusAddr + 1));
-    lastStatusAddr++;
-    statusTries = 0;
+  console.log('No status received from '+ (lastStatusAddr + 1));
+  lastStatusAddr++;
+  statusTries = 0;
   }
 
   // We're out of nodes
   if (lastStatusAddr >= lastNodeAddr) {
-  	comm.nextStage();
-    return false;
+  comm.nextStage();
+  return false;
   }
 
   tx.start(MessageParser.TYPE_STATUS);
-  tx.setDestAddress(lastStatusAddr + 1, MessageParser.MSG_ALL);
+  tx.setAddress(lastStatusAddr + 1);
   tx.send();
   statusTries++;
 
@@ -424,112 +420,138 @@ function sendStatusRequest() {
 }
 
 /**
-	Sends the values from FloorCell to the physical cell node
+  Sends the values from FloorCell to the physical cell node
 
-	@private
-	@function updateFloorCell
-	@param {byte} addr The address of the node to update
-	@param {FloorCell} cell The object to get the cell state from
-	@param {boolean} noSend (optional) If true, it just sets up the MessageParger, but does not send
-	@return MessageParser
+  @private
+  @function updateFloorCell
+  @param {byte} addr The address of the node to update
+  @param {FloorCell} cell The object to get the cell state from
+  @param {boolean} noSend (optional) If true, it just sets up the MessageParger, but does not send
+  @return MessageParser
 */
 function updateFloorCell(addr, cell, noSend) {
-	if (disco.emulatedFloor) return Promise.resolve();
+  if (disco.emulatedFloor) return Promise.resolve();
 
-	var tx = new MessageParser(),
-			type = (cell.isFading()) ? MessageParser.TYPE_FADE : MessageParser.TYPE_COLOR,
-			data = cell.getColor();
+  var tx = new MessageParser(),
+    type = (cell.isFading()) ? MessageParser.TYPE_FADE : MessageParser.TYPE_COLOR,
+    data = cell.getColor(),
+    duration = cell.getFadeDuration();
 
-	if (cell.isFading()) {
-		type = MessageParser.TYPE_FADE;
-		data = cell.getFadeColor();
-		data.push(Math.round(cell.getFadeDuration() / 250));
-	}
+  if (cell.isFading()) {
+    type = MessageParser.TYPE_FADE;
+    data = cell.getFadeColor();
 
-	tx.start(type);
-	tx.setDestAddress(addr);
-	tx.write(data);
+    // Break duration into 2 bytes
+    data.push((duration >> 8) & 0xFF);
+    data.push(duration & 0xff);
+  }
 
-	if (noSend !== false ) {
-		tx.send();
-	}
-	return tx;
+  // Command ID
+  data.push(incrementCmdID(cell));
+
+  tx.start(type);
+  tx.setAddress(addr);
+  tx.write(data);
+
+  if (noSend !== false ) {
+    tx.send();
+  }
+  return tx;
 }
 
 /**
-	Process the status received from on of the floor
-	nodes and sync it with the FloorCell that represents it.
+  Process the status received from on of the floor
+  nodes and sync it with the FloorCell that represents it.
 
-	Here's how it work:
-		* The FloorCell is the source of truth for the color & fading state of the node
-		* If the node color and the FloorCell color do not match, update the node
-		* If the fading status between the node and the Floor cell are different:
-		    + If the node's color is the same as the FloorCell's target color, tell the FloorCell the fade is complete
-		    + Otherwise, sync the node
-    * Update the FloorCell value to match the node's sensor value -- only if it has changed;
+  Here's how it work:
+    * The FloorCell is the source of truth for the color & fading state of the node
+    * If the node color and the FloorCell color do not match, update the node
+    * If the fading status between the node and the Floor cell are different:
+      + If the node's color is the same as the FloorCell's target color, tell the FloorCell the fade is complete
+      + Otherwise, sync the node
+  * Update the FloorCell value to match the node's sensor value -- only if it has changed;
 
-	Does the FloorCell object match the status of
-	what was returned from the bus
+  Does the FloorCell object match the status of
+  what was returned from the bus
 
-	@private
-	@function processStatus
-	@param {byte} addr The node address
-	@param {FloorCell} cell
-	@param {Array of bytes} status
-	@return {boolean} True if the node and FloorCell are in sync
+  @private
+  @function processStatus
+  @param {byte} addr The node address
+  @param {FloorCell} cell
+  @param {Array of bytes} status
+  @return {boolean} True if the node and FloorCell are in sync
 */
 function processStatus(addr, cell, status) {
-	var hasFadeFlag = (status[0] & FADING),
-			sensorDetect = (status[0] & SENSOR_DETECT) ? 1 : 0,
-			color = cell.getColor(),
-			statusColor = status.slice(1, 4),
-			targetColor = (cell.isFading()) ? cell.getFadeColor() : color,
-			statusTargetColor = (hasFadeFlag) ? status.slice(4, 7) : statusColor;
+  var hasFadeFlag = (status[0] & FADING),
+      sensorDetect = (status[0] & SENSOR_DETECT) ? 1 : 0,
+      color = cell.getColor(),
+      statusColor = status.slice(1, 4),
+      targetColor = (cell.isFading()) ? cell.getFadeColor() : color,
+      statusTargetColor = (hasFadeFlag) ? status.slice(4, 7) : statusColor;
 
-	// Set FloorCell value to match sensor value
-	if (sensorDetect != cell.getValue()) {
-		console.log('Detected change: '+ sensorDetect +' on '+ addr);
-		cell.setValue(sensorDetect ? 1 : 0);
-		return false;
-	}
+  // Set FloorCell value to match sensor value
+  if (sensorDetect != cell.getValue()) {
+    // console.log('Detected change: '+ sensorDetect +' on '+ addr);
+    cell.setValue(sensorDetect ? 1 : 0);
+    return false;
+  }
 
-	// Stop fading node
-	if (hasFadeFlag && !cell.isFading()) {
-		console.log('Fading mismatch', cell.isFading(), status[0]);
-		return false;
-	}
+  // Stop fading node
+  if (hasFadeFlag && !cell.isFading()) {
+    console.log('Fading mismatch', cell.isFading(), status[0]);
+    return false;
+  }
 
-	// Node finished fading, update state
-	else if (!hasFadeFlag && cell.isFading() && _.isEqual(statusColor, targetColor)) {
-		cell.stopFade();
-	}
+  // Node finished fading, update state
+  else if (!hasFadeFlag && cell.isFading() && _.isEqual(statusColor, targetColor)) {
+    cell.stopFade();
+  }
 
-	// Colors don't match
-	else if (!_.isEqual(targetColor, statusTargetColor)) {
-		// console.log('Color mismatch', addr, targetColor, statusTargetColor);
-		return false;
-	}
+  // Colors don't match
+  else if (!_.isEqual(targetColor, statusTargetColor)) {
+    // console.log('Color mismatch', addr, targetColor, statusTargetColor);
+    return false;
+  }
 
-	// Update color for fade step from the floor
-	else if (cell.isFading() && !_.isEqual(color, statusColor)) {
-		// console.log('Update FadeCell');
-		cell.setColor(statusColor, !hasFadeFlag);
-	}
+  // Update color for fade step from the floor
+  else if (cell.isFading() && !_.isEqual(color, statusColor)) {
+    // console.log('Update FadeCell');
+    cell.setColor(statusColor, !hasFadeFlag);
+  }
 
-	return true;
+  return true;
 }
 
 /**
-	Send an ACK message to a node address
+  Increment the TX Command ID on a cell.
+  This is used as a simple way to check if a cell is in sync with master.
+  A valid ID is between 0 and 7 (3 bits)
 
-	@function sendACK
-	@param {byte} addr The destination address
-	@return {Promise}
+  @function incrementCmdID
+  @param {FloorCell} cell
+  @return {int} The new ID
+*/
+function incrementCmdID(cell) {
+  var id = cell.txCmdID || 0;
+
+  id++;
+  if (id > 7) id = 0;
+
+  cell.txCmdID = id;
+  return cell.txCmdID;
+}
+
+/**
+  Send an ACK message to a node address
+
+  @function sendACK
+  @param {byte} addr The destination address
+  @return {Promise}
 */
 function sendACK(addr) {
-	var tx = new MessageParser();
-	tx.start(MessageParser.TYPE_ACK);
-  tx.setDestAddress(addr);
+  var tx = new MessageParser();
+  tx.start(MessageParser.TYPE_ACK);
+  tx.setAddress(addr);
   return tx.send();
 }
 
