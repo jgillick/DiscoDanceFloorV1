@@ -36,7 +36,12 @@ process.stdin.resume();
 process.stdin.setRawMode(true);
 process.stdin.on('data', function (s) {
   if (s[0] === 0x03) {
-    port.close();
+    try {
+      port.close();
+    } catch(e) {
+      process.stderr.write("Error closing the port: ");
+      process.stderr.write(e.message);
+    }
     process.exit(0);
   }
 });
