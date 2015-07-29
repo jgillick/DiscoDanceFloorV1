@@ -1,5 +1,5 @@
 {
-  "name": "Disco Controller",
+  "name": "DiscoController",
   "description": "The master controller for an interactive disco dance floor",
   "repository": {
     "type": "git",
@@ -13,6 +13,7 @@
     "pubsub-js": "*",
     "underscore": "*",
     "serialport": "*",
-    "optimist": "*"
+    "optimist": "*",
+    "crc": "*"
   }
 }
