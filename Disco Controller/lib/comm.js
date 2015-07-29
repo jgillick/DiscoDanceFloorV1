@@ -75,9 +75,7 @@ function Comm(){
     });
 
     // Open and process incoming data
-    console.log('Opening port');
     serialPort.on('open', function () {
-      console.log('Opened!')
       MessageParser.setSerialPort(serialPort);
 
       // Listen for new messages
