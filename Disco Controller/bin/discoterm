@@ -5,7 +5,8 @@
 var SerialPort = require('serialport').SerialPort,
     optimist = require('optimist'),
     comm = require('../lib/comm.js'),
-    disco = require('../lib/disco_controller.js');
+    disco = require('../lib/disco_controller.js'),
+    programCtrl = require('../lib/program_controller.js');
 
 // Process Arguments
 var args = optimist
@@ -19,6 +20,10 @@ var args = optimist
     alias: 'p',
     describe: 'Name of the program to run.'
   })
+  .options('list', {
+    alias: 'l',
+    describe: 'List the available programs'
+  })
   .argv;
 
 if (args.help) {
@@ -26,6 +31,22 @@ if (args.help) {
   return process.exit(-1);
 }
 
+// List programs
+if (args.list) {
+  process.stdout.write('\nPrograms:\n');
+  programCtrl.getProgramList()
+  .then(function(programs){
+    programs.forEach(function(program){
+      var name = program.file.replace(/\.js$/, '');
+      process.stdout.write(' * '+ name +' -- '+ program.info.description +'\n');
+    });
+    process.stdout.write('\n');
+    process.exit(-1);
+  });
+  return;
+}
+
+// No serial port, nothing else to do
 if (!args.serialPort) {
   console.error('Serial port name is required.');
   return process.exit(-1);
@@ -39,7 +60,7 @@ process.stdin.on('data', function (s) {
     try {
       port.close();
     } catch(e) {
-      process.stderr.write("Error closing the port: ");
+      process.stderr.write('Error closing the port: ');
       process.stderr.write(e.message);
     }
     process.exit(0);
@@ -59,11 +80,10 @@ port.on('error', function (err) {
 comm.on('done-addressing', function(found) {
   console.log('Done addressing. Found '+ found +' floor cells');
   if (args.program) {
-    disco.runProgram(args.program);
+    programCtrl.runProgram(args.program);
   }
 });
 
 comm.on('fade-complete', function(addr) {
   console.log('Fade complete for ', addr);
 });
-

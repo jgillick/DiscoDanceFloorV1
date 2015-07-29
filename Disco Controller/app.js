@@ -3,7 +3,6 @@
 // Compile SASS files
 var exec = require('child_process').exec;
 
-
 (function compileSass() {
 
 	var sassCompiler = exec('sass -I ./ --update ./scss:./public/stylesheets', function (error, stdout, stderr) {
