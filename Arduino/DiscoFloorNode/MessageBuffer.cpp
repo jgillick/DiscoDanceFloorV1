@@ -1,32 +1,43 @@
 
 #include "MessageBuffer.h"
+#include <util/crc16.h>
 
-MessageBuffer::MessageBuffer(uint8_t txCntl) {
+MessageBuffer::MessageBuffer(uint8_t txCntl, uint8_t rxCntl) {
   myAddress = 0;
+  weAreMaster = 0;
   txControl = txCntl;
+  rxControl = rxCntl;
   reset();
 }
 
 void MessageBuffer::start(uint8_t messageType) {
-  type = messageType;
+  bufferPos = 0;
+  headerPos = 0;
+  destAddress = myAddress;
+  calculatedCRC = ~0;
+  msgLengthCounter = 0;
 
+  // The last message type determined that this message should be streamed
+  if (type == TYPE_STREAMING) {
+    streaming = 1;
+  }
+  else {
+    streaming = 0;
+    streamingValueSet = 0;
+  }
+
+  type = messageType;
   if (type == 0) {
     messageState = MSG_STATE_IDL;
   } else {
-    messageState = MSG_STATE_ACT;
+    messageState = MSG_STATE_BOD;
+    msgLengthCounter++;
   }
-
-  sentAt = 0;
-  escaped = false;
-  bufferPos = 0;
-  headerPos = 0;
-
-  srcAddress = 0;
-  addressDestRange[0] = 0;
-  addressDestRange[1] = 0;
 }
 void MessageBuffer::reset() {
   start(0);
+  streaming = 0;
+  streamingValueSet = 0;
 }
 
 uint8_t MessageBuffer::getType() {
@@ -41,44 +52,44 @@ void MessageBuffer::setMyAddress(uint8_t addr) {
   myAddress = addr;
 }
 
-uint8_t MessageBuffer::getSourceAddress() {
-  return srcAddress;
+uint8_t MessageBuffer::getAddress() {
+  return destAddress;
 }
 
-void MessageBuffer::setDestAddress(uint8_t start, uint8_t end) {
-  messageState = MSG_STATE_ACT;
-  addressDestRange[0] = start;
-  addressDestRange[1] = end;
+uint8_t MessageBuffer::isStreaming() {
+  return streaming;
 }
+
+void MessageBuffer::setStreamingValue(uint8_t val) {
+  streamingValueSet = 1;
+  streamingValue = val;
+}
+
+void MessageBuffer::setMaster() {
+  weAreMaster = 1;
+}
+
 void MessageBuffer::setDestAddress(uint8_t addr) {
-  setDestAddress(addr, addr);
-}
-
-uint8_t MessageBuffer::getLowerDestRange() {
-  return addressDestRange[0];
-}
-
-uint8_t MessageBuffer::getUpperDestRange() {
-  return addressDestRange[1];
+  if (weAreMaster) {
+    destAddress = addr;
+  }
 }
 
 bool MessageBuffer::addressedToMe() {
 
+  // All messages heard by master are for master
+  if (weAreMaster) return true;
+
   // Wildcard
-  if (addressDestRange[0] == MSG_ALL) return true;
+  if (destAddress == BROADCAST_ADDRESS) return true;
 
   // We have not set our address
   if (myAddress == 0) return false;
 
-  // Match range
-  if (addressDestRange[1] == MSG_ALL && addressDestRange[0] <= myAddress) return true;
-  if (addressDestRange[0] <= myAddress && addressDestRange[1] >= myAddress) return true;
+  // Exact match
+  if (destAddress == myAddress) return true;
 
   return false;
-}
-
-bool MessageBuffer::addressedToMaster() {
-  return addressDestRange[0] == MASTER_ADDRESS;
 }
 
 bool MessageBuffer::isReady() {
@@ -102,6 +113,7 @@ uint8_t MessageBuffer::write(uint8_t* buf, uint8_t len) {
 
 uint8_t MessageBuffer::write(uint8_t c) {
   if (messageState >= MSG_STATE_RDY) return messageState;
+  calculatedCRC = _crc16_update(calculatedCRC, c);
 
   // Buffer over flow
   if (bufferPos + 1 >= MSG_BUFFER_LEN) {
@@ -109,77 +121,82 @@ uint8_t MessageBuffer::write(uint8_t c) {
   }
 
   buffer[bufferPos++] = c;
-  buffer[bufferPos]   = '\0'; // Null terminator
 
-  return messageState;
-}
-
-uint8_t MessageBuffer::processHeader(uint8_t c) {
-  if (messageState != MSG_STATE_HDR) return messageState;
-
-  // Headder parts
-  switch (headerPos){
-
-    // Lower Destination
-    case 0:
-      addressDestRange[0] = c;
-    break;
-    // Upper Destination
-    case 1:
-      addressDestRange[1] = c;
-
-      // Ignore if not addressed to me or master
-      if (!addressedToMe() && !addressedToMaster()) {
-        // return messageState = MSG_STATE_IGN;
-      }
-    break;
-    // Source address
-    case 2:
-      srcAddress = c;
-
-      // Ignore if addressed to master and not from previous node
-      if (myAddress != 0 && addressedToMaster() && srcAddress != myAddress - 1) {
-        // return messageState = MSG_STATE_IGN;
-      }
-    break;
-    // Message type
-    case 3:
-      type = c;
-    break;
-
-  }
-  headerPos++;
-
-  // Ignore if, not addressed to us, if addressed to master and it's not from the previous node
-  // if (myAddress != 0 && (!addressedToMe() || (addressedToMaster() && srcAddress != myAddress - 1)) ) {
-  //   return messageState = MSG_STATE_IGN;
-  // }
-
-  // Move onto the body of the message
-  if (headerPos >= 4) {
-    return messageState = MSG_STATE_ACT;
-  }
   return messageState;
 }
 
 uint8_t MessageBuffer::parse(uint8_t c) {
 
-  // Escape characer
-  if (escaped) {
-    escaped = false;
-    if (messageState == MSG_STATE_ACT) {
-      return write(c);
+  // Message CRC
+  if (messageState == MSG_STATE_CRC) {
+    messageCRC |= c;
+
+    // Checksums don't match
+    if (calculatedCRC != messageCRC) {
+      return messageState = MSG_STATE_ABT;
     }
-    else if (messageState == MSG_STATE_HDR) {
-      return processHeader(c);
+
+    // Set streaming bit for the next message
+    else if (type == TYPE_STREAMING) {
+
+      // Missing streaming type in body, invalid
+      if (bufferPos == 0) {
+        return messageState = MSG_STATE_ABT;
+      }
+
+      streaming = 1;
+      type = buffer[0];
+      streamingValueSet = 0;
+    }
+    else {
+      streaming = 0;
+    }
+
+    return messageState = MSG_STATE_RDY;
+  }
+
+  // Message body
+  else if (messageState == MSG_STATE_BOD) {
+
+    // Something went wrong
+    if (msgLengthCounter > msgLength) {
+      return messageState = MSG_STATE_ABT;
+    }
+    // End of the message, match checksum
+    else if (msgLength == msgLengthCounter) {
+
+      // If this was a streaming message, we're not returning it anyways
+      if (streaming) {
+        return messageState = MSG_STATE_IDL;
+      }
+
+      messageCRC = (c << 8);
+      return messageState = MSG_STATE_CRC;
+    }
+    else {
+      msgLengthCounter++;
+      write(c);
     }
     return messageState;
   }
 
+  // Header
+  else if (messageState == MSG_STATE_HDR) {
+    calculatedCRC = _crc16_update(calculatedCRC, c);
+    return processHeader(c);
+  }
+
   // Start of message
   else if(c == MSG_SOM) {
-    reset();
-    messageState = MSG_STATE_HDR;
+
+    // This is the second start bit, begin message
+    if (messageState == MSG_STATE_SOM) {
+      messageState = MSG_STATE_HDR;
+    }
+    else {
+      start(TYPE_NULL);
+      messageState = MSG_STATE_SOM;
+    }
     return messageState;
   }
 
@@ -188,122 +205,96 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     return messageState;
   }
 
-  // Header
-  else if (messageState == MSG_STATE_HDR) {
-    return processHeader(c);
-  }
+  return messageState;
+}
 
-  // End of message
-  else if (c == MSG_EOM) {
-    if(messageState == MSG_STATE_ACT && bufferPos > 0) {
+uint8_t MessageBuffer::processHeader(uint8_t c) {
+  // Message address
+  if (headerPos == 0) {
+    destAddress = c;
 
-      // Compare checksum
-      uint8_t checksum = buffer[--bufferPos];
-      buffer[bufferPos] = '\0';
-      if (calculateChecksum() != checksum) {
-        // Serial.print(F("D:"));
-        // Serial.write(addressDestRange[0]);Serial.write(',');
-        // Serial.write(addressDestRange[1]);Serial.write(',');
-        // Serial.write(srcAddress);Serial.write(',');
-        // Serial.write(type);
-        // Serial.write(':');
-        // for(int i = 0; i < bufferPos; i++ ){
-        //   Serial.write(buffer[i]);Serial.write(',');
-        // }
-        Serial.write(checksum); Serial.write('!'); Serial.write(calculateChecksum());
-
-        return messageState = MSG_STATE_ABT;
-      }
-
-      return messageState = MSG_STATE_RDY;
-    } else {
-      reset();
-      return messageState;
+    // Not valid address
+    if (myAddress && !addressedToMe()) {
+      messageState = MSG_STATE_ABT;
     }
   }
-
-  // Message body
-  else if(messageState == MSG_STATE_ACT) {
-    if (c == MSG_ESC) {
-      escaped = true;
-    } else {
-      return write(c);
-    }
+  // Length
+  else if (headerPos == 1) {
+    msgLength = c;
   }
-
+  // Type
+  else if (headerPos == 2) {
+    type = c;
+    msgLengthCounter++;
+    messageState = MSG_STATE_BOD;
+  }
+  headerPos++;
   return messageState;
 }
 
 uint8_t MessageBuffer::read() {
   digitalWrite(txControl, RS485Receive);
+  digitalWrite(rxControl, RS485Receive);
 
   while (Serial.available() > 0) {
     parse((uint8_t)Serial.read());
 
-    // Return current message if it is addressed to us
-    if (isReady() && addressedToMe()) {
+    // Return current message if it is ready
+    if (isReady()) {
       return messageState;
     }
   }
+
+  // It's our turn to respond in a streaming message
+  if (streaming && streamingValueSet && myAddress > 0 && msgLengthCounter == myAddress) {
+    digitalWrite(txControl, RS485Transmit);
+    digitalWrite(rxControl, RS485Transmit);
+
+    Serial.write(streamingValue);
+    msgLengthCounter++;
+    calculatedCRC = _crc16_update(calculatedCRC, streamingValue);
+
+    digitalWrite(txControl, RS485Receive);
+    digitalWrite(rxControl, RS485Receive);
+  }
+
   return messageState;
 }
 
-
-// Calculate the checksum for this message
-uint8_t MessageBuffer::calculateChecksum() {
-  uint8_t checksum = 0;
-  if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return 0;
-
-  checksum = crc_checksum(checksum, addressDestRange[0]);
-  checksum = crc_checksum(checksum, addressDestRange[1]);
-  checksum = crc_checksum(checksum, srcAddress);
-  checksum = crc_checksum(checksum, type);
-  for(int i = 0; i < bufferPos; i++ ){
-    checksum = crc_checksum(checksum, buffer[i]);
-  }
-
-  return checksum;
-}
-
-void MessageBuffer::sendChar(uint8_t c) {
-
-  // Escape
-  if (c == MSG_SOM || c == MSG_EOM || c == MSG_ESC) {
-    Serial.write(MSG_ESC);
-  }
-
+void MessageBuffer::sendAndChecksum(uint8_t c) {
   Serial.write(c);
+  calculatedCRC = _crc16_update(calculatedCRC, c);
 }
 
 void MessageBuffer::send() {
-  if (messageState != MSG_STATE_RDY && messageState != MSG_STATE_ACT) return;
-  if (myAddress == 0) return;
+  if (myAddress == 0 && !weAreMaster) return;
 
   // Start sending
-  srcAddress = myAddress;
+  calculatedCRC = ~0;
   digitalWrite(txControl, RS485Transmit);
+  digitalWrite(rxControl, RS485Transmit);
 
-  Serial.print(MSG_SOM);
+  Serial.write(MSG_SOM);
+  Serial.write(MSG_SOM);
 
-  // Headers
-  sendChar(addressDestRange[0]);
-  sendChar(addressDestRange[1]);
-  sendChar(srcAddress);
-  sendChar(type);
+  // Header
+  sendAndChecksum(destAddress);
+  sendAndChecksum(bufferPos + 1);
+  sendAndChecksum(type);
 
-  // Add message body and escape reserved bytes
+  // Message body
   for(int i = 0; i < bufferPos; i++ ){
-    sendChar(buffer[i]);
+    sendAndChecksum(buffer[i]);
   }
 
-  // End of messageState
-  sendChar(calculateChecksum());
-  Serial.print(MSG_EOM);
+  // End of message
+  Serial.write((calculatedCRC >> 8) & 0xFF);
+  Serial.write(calculatedCRC & 0xff);
   Serial.flush();
-  sentAt = millis();
 
   // Set back to receive
   digitalWrite(txControl, RS485Receive);
+  digitalWrite(rxControl, RS485Receive);
 }
 
 uint8_t MessageBuffer::crc_checksum(uint8_t crc, uint8_t data) {
