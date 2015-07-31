@@ -18,6 +18,7 @@ const BAUD_RATE           = 500000; // 4800;
 const ACK_TIMEOUT         = 50; //1000;
 const STATUS_TIMEOUT      = 50; //1000;
 const ADDRESSING_TIMEOUT  = 1000;
+const NULL_SIGNATURE      = '0,0,0,0';
 
 // Program stages
 const IDLE                = 'idle';
@@ -26,8 +27,8 @@ const STATUSING           = 'statusing';
 const UPDATING            = 'updating';
 
 // Status flags
-const FADING              = 0x20;
-const SENSOR_DETECT       = 0x40;
+const FADING              = 0b00100000;
+const SENSOR_DETECT       = 0b01000000;
 
 var serialPort,
     txBuffer,
@@ -35,15 +36,13 @@ var serialPort,
     stage = IDLE,
     statuses = {},
     lastStatusAddr,
-    statusTimeout,
-    statusTries,
     lastNodeAddr = 0,
-    lastUpdate = 0,
     addressingStageTimeout,
     nodeRegistration,
+    cellSentSignatures = [],
     discoCntrl = disco.controller,
-    lastStage = 0,
-    stageTimer = 0;
+    lastStage = 0;
+    // stageTimer = 0;
 
 
 // Set our address on the parser
@@ -102,7 +101,7 @@ function Comm(){
     @method nextStage
   */
   this.nextStage = function() {
-    var now = Date.now();
+    // var now = Date.now();
 
     if (txBuffer) {
       txBuffer.reset();
@@ -203,6 +202,11 @@ function Comm(){
         txBuffer.stopSending();
 
         nodeRegistration.push(addr);
+        cellSentSignatures[addr] = {
+          cmdID: 0,
+          signature: colorSignatureForCell(null)
+        };
+
         discoCntrl.addCellWithAddress(addr);
         console.log('Add node at address', addr);
 
@@ -226,119 +230,86 @@ function Comm(){
   };
 
   /**
-    Handle the status stage
+    Get the status from all floor nodes
 
     @method status
-    @param {MessageParser} message (optional) The most recent message recieved while in this stage
+    @param {MessageParser} message (optional) The most recent message received while in this stage
   */
   this.status = function(message) {
-    var sensor, addr;
 
-    // All statuses received, move on
-    if (lastStatusAddr == lastNodeAddr) {
+    // Start a streaming response for status
+    if (!message) {
+      rxBuffer.startStreamingResponse(MessageParser.TYPE_STATUS, lastNodeAddr);
+    }
+
+    // Processes statuses
+    else if (message.isReady()) {
+      statuses = message.getMessageBody();
+      statuses.unshift(0); // so that indexes match addresses (i.e. 1,2,3...)
       this.nextStage();
     }
-
-    // Register status
-    else if (message && message.type == MessageParser.TYPE_STATUS) {
-      sensor = message.getMessageBody()[0] & SENSOR_DETECT;
-      addr = message.address;
-      // console.log('Status received from ', addr);
-
-      if (addr > lastStatusAddr) {
-        statusTries = 0;
-        lastStatusAddr = addr;
-        statuses[addr] = message.getMessageBody();
-
-        console.log(statuses[addr].join(', '));
-
-        clearTimeout(statusTimeout);
-
-        // No more nodes
-        if (lastStatusAddr >= lastNodeAddr) {
-          this.nextStage();
-        }
-        // Update retry timeout
-        else {
-          statusTimeout = setTimeout(sendStatusRequest, STATUS_TIMEOUT);
-        }
-      }
-    }
-
-    // Send status request
-    else if (!txBuffer) {
-      statusTries = 0;
-      txBuffer = sendStatusRequest();
-    }
-  };
+  },
 
   /**
     Handle the node update stage
   */
   this.update = function() {
-    var i = 0,
-        batches = [],
-        lastMessage;
+    var broadcast = true,
+        updates = {},
+        lastSignature;
 
+    // Figure out all the nodes that need to be updated
     nodeRegistration.forEach(function(addr){
-      var cell = discoCntrl.getCellByAddress(addr),
-          status = statuses[addr],
-          message;
+      var cell      = discoCntrl.getCellByAddress(addr),
+          status    = statuses[addr] || 0,
+          cmdID     = status & 0x07,
+          sensorVal = (status & SENSOR_DETECT) ? 1 : 0,
+          isFading  = (status & FADING) ? 1 : 0,
+          lastSent  = cellSentSignatures[addr],
+          cellSig   = colorSignatureForCell(cell);
 
       // Could not find cell or status
       if (!cell || !status) {
         return;
       }
 
-      // Process status and sync
-      if (!processStatus(addr, cell, status)) {
-        message = updateFloorCell(addr, cell, false);
+      // Update FloorCell values
+      if (!isFading && cell.isFading()) {
+        cell.stopFade();
+      }
+      cell.setValue(sensorVal);
 
-        // If this message is the same as for the last cell, batch it
-        // if (lastMessage
-        //  && lastMessage.addressDestRange[1] == addr - 1
-        //  && lastMessage.type == message.type
-        //  && _.isEqual(lastMessage.getMessageBody(), message.getMessageBody())) {
+      // If the cell did not receive the last message or
+      // the FloorCell object has changed, update this cell
+      if (!lastSent || cmdID != lastSent.cmdID || cellSig != lastSent.signature) {
+        updates[addr] = cell;
 
-        //  lastMessage.addressDestRange[1] = addr;
-        // }
-        // // New message, no batch
-        // else {
-          batches.push(message);
-          lastMessage = message;
-        // }
+        if (broadcast && cellSig != lastSignature) {
+          broadcast = false;
+        }
+        lastSignature = cellSig;
+      } else {
+        broadcast = false;
       }
     });
 
-    // Send message batches
-    batches.forEach(function(tx) {
-      tx.send();
-    });
+    // Update floor cells
+    var i = 0;
+    for (var addr in updates) if (updates.hasOwnProperty(addr)) {
+      i++;
+      var cell = updates[addr];
+      updateFloorCell(addr, cell, broadcast);
+
+      // No need to continue, we've already told everyone
+      if (broadcast) {
+        break;
+      }
+    }
 
     this.nextStage();
   };
 }
 util.inherits(Comm, EventEmitter);
-var comm = new Comm();
-
-/**
-  Return a string for the STAGE constant
-
-  @function stringForStage
-  @param {int} stage
-*/
-function stringForStage(stage) {
-  switch (stage) {
-    case ADDRESSING:
-      return 'ADDRESSING';
-    case STATUSING:
-      return 'STATUSING';
-    case UPDATING:
-      return 'UPDATING';
-    default:
-      return 'UNKNOWN';
-  }
-}
 
 /**
   A custom SerialPort parser that runs incoming data through the
@@ -351,7 +322,9 @@ function stringForStage(stage) {
 */
 function serialParser(emitter, buffer) {
   if (!rxBuffer) {
-    rxBuffer = new MessageParser();
+    rxBuffer = new MessageParser(emitter);
+  } else {
+    rxBuffer.serialEmitter = emitter;
   }
 
   for (var i = 0; i < buffer.length; i++){
@@ -385,76 +358,81 @@ function sendAddressingRequest() {
 }
 
 /**
-  Send a request for node status
-
-  @function sendStatusRequest
-  @return {MessageParser or False} The sent message object or `False` if there are not more nodes
-*/
-function sendStatusRequest() {
-  var tx = new MessageParser();
-
-  // If we've failed to get status at least twice, skip this node
-  if (statusTries >= 2) {
-  console.log('No status received from '+ (lastStatusAddr + 1));
-  lastStatusAddr++;
-  statusTries = 0;
-  }
-
-  // We're out of nodes
-  if (lastStatusAddr >= lastNodeAddr) {
-  comm.nextStage();
-  return false;
-  }
-
-  tx.start(MessageParser.TYPE_STATUS);
-  tx.setAddress(lastStatusAddr + 1);
-  tx.send();
-  statusTries++;
-
-  // Automatically attempt again
-  statusTimeout = setTimeout(sendStatusRequest, STATUS_TIMEOUT);
-
-  return tx;
-}
-
-/**
   Sends the values from FloorCell to the physical cell node
 
   @private
   @function updateFloorCell
   @param {byte} addr The address of the node to update
   @param {FloorCell} cell The object to get the cell state from
-  @param {boolean} noSend (optional) If true, it just sets up the MessageParger, but does not send
+  @param {boolean} broadcast (optional) If `true`, broadcast this to all floor nodes
   @return MessageParser
 */
-function updateFloorCell(addr, cell, noSend) {
+function updateFloorCell(addr, cell, broadcast) {
   if (disco.emulatedFloor) return Promise.resolve();
 
   var tx = new MessageParser(),
-    type = (cell.isFading()) ? MessageParser.TYPE_FADE : MessageParser.TYPE_COLOR,
-    data = cell.getColor(),
-    duration = cell.getFadeDuration();
+      type, data, duration,
+      sendSignature = cellSentSignatures[addr];
+
+  sendSignature.cmdID = (sendSignature.cmdID >= 7) ? 0 : sendSignature.cmdID + 1;
+  sendSignature.signature = colorSignatureForCell(cell);
 
   if (cell.isFading()) {
     type = MessageParser.TYPE_FADE;
     data = cell.getFadeColor();
+    duration = cell.getFadeDuration();
 
     // Break duration into 2 bytes
     data.push((duration >> 8) & 0xFF);
     data.push(duration & 0xff);
   }
-
-  // Command ID
-  data.push(incrementCmdID(cell));
-
-  tx.start(type);
-  tx.setAddress(addr);
-  tx.write(data);
-
-  if (noSend !== false ) {
-    tx.send();
+  else {
+    type = MessageParser.TYPE_COLOR;
+    data = cell.getColor();
   }
+  data.push(sendSignature.cmdID);
+
+  // Send message
+  tx.start(type);
+  if (broadcast) {
+    tx.setAddress(MessageParser.BROADCAST_ADDRESS);
+  } else {
+    tx.setAddress(addr);
+  }
+  tx.write(data);
+  tx.send();
   return tx;
+}
+
+/**
+  Return an string that represents the current color state of the
+  cell in the format:
+
+  ```
+  <R>,<G>,<B>,<D>
+  ```
+  R, G, B: Red, Green, Blue values
+  D: Fading duration or 0
+
+  @method colorSignatureForCell
+  @param {FloorCell} cell
+  @return {String}
+*/
+function colorSignatureForCell(cell) {
+  var signature = [0, 0, 0, 0];
+
+  if (cell) {
+    if (cell.isFading()) {
+      signature = cell.getFadeColor();
+      signature.push(cell.getFadeDuration());
+    }
+    else {
+      signature = cell.getColor();
+      signature.push(0);
+    }
+  }
+
+  return signature.join(',');
 }
 
 /**
@@ -521,25 +499,6 @@ function processStatus(addr, cell, status) {
 }
 
 /**
-  Increment the TX Command ID on a cell.
-  This is used as a simple way to check if a cell is in sync with master.
-  A valid ID is between 0 and 7 (3 bits)
-
-  @function incrementCmdID
-  @param {FloorCell} cell
-  @return {int} The new ID
-*/
-function incrementCmdID(cell) {
-  var id = cell.txCmdID || 0;
-
-  id++;
-  if (id > 7) id = 0;
-
-  cell.txCmdID = id;
-  return cell.txCmdID;
-}
-
-/**
   Send an ACK message to a node address
 
   @function sendACK
@@ -551,6 +510,25 @@ function sendACK(addr) {
   tx.start(MessageParser.TYPE_ACK);
   tx.setAddress(addr);
   return tx.send();
+}
+
+/**
+  Return a string for the STAGE constant
+
+  @function stringForStage
+  @param {int} stage
+*/
+function stringForStage(stage) {
+  switch (stage) {
+    case ADDRESSING:
+      return 'ADDRESSING';
+    case STATUSING:
+      return 'STATUSING';
+    case UPDATING:
+      return 'UPDATING';
+    default:
+      return 'UNKNOWN';
+  }
 }
 
 module.exports = new Comm();

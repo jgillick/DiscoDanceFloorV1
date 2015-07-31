@@ -25,35 +25,40 @@ const MSG_SOM = 0xFF;
 const BROADCAST_ADDRESS = 0x00;
 
 // Message types
-const TYPE_NULL   = 0x00; // Reset node
-const TYPE_ACK    = 0x01; // Acknowledge command
-const TYPE_ADDR   = 0xF1; // Announce address
-const TYPE_COLOR  = 0x04; // Set color
-const TYPE_FADE   = 0x05; // Set fade
-const TYPE_STATUS = 0x06; // Set or Get node status
-const TYPE_MODE   = 0x07; // Set or Get node status
-const TYPE_RESET  = 0x10; // Reset node
+const TYPE_NULL      = 0x00; // Reset node
+const TYPE_ACK       = 0x01; // Acknowledge command
+const TYPE_ADDR      = 0xF1; // Announce address
+const TYPE_STREAMING = 0x02; // Set streaming mode
+const TYPE_COLOR     = 0x04; // Set color
+const TYPE_FADE      = 0x05; // Set fade
+const TYPE_STATUS    = 0x06; // Set or Get node status
+const TYPE_MODE      = 0x07; // Set or Get node status
+const TYPE_RESET     = 0x10; // Reset node
 
 // Message parsing status
-const MSG_STATE_IDL = 0x00; // no data received
-const MSG_STATE_SOM = 0x10; // no data received
-const MSG_STATE_HDR = 0x20; // collecting header
-const MSG_STATE_BOD = 0x30; // message active
-const MSG_STATE_CRC = 0x40  // message CRC
-const MSG_STATE_RDY = 0x50; // message ready
-const MSG_STATE_IGN = 0x80; // ignore message
-const MSG_STATE_ABT = 0x81; // abnormal termination
-const MSG_STATE_BOF = 0x82; // buffer over flow
+const MSG_STATE_IDL  = 0x00; // no data received
+const MSG_STATE_SOM  = 0x10; // no data received
+const MSG_STATE_HDR  = 0x20; // collecting header
+const MSG_STATE_BOD  = 0x30; // message active
+const MSG_STATE_CRC  = 0x40; // message CRC
+const MSG_STATE_RDY  = 0x50; // message ready
+const MSG_STATE_STRM = 0x60; // streaming message
+const MSG_STATE_IGN  = 0x80; // ignore message
+const MSG_STATE_ABT  = 0x81; // abnormal termination
+const MSG_STATE_BOF  = 0x82; // buffer over flow
 
 // When to timeout an incoming message
-const RECEIVE_TIMEOUT = 500;
+const STREAMING_TIMEOUT  = 50;
 
 var serialPort;
 
 /**
   @class MessageParser
+
+  @param {EventEmitter} serialEmitter The event emitter from SerialPort
 */
-function MessageParser() {
+function MessageParser(serialEmitter) {
+  this.serialEmitter = serialEmitter;
   this.start(TYPE_NULL);
 }
 
@@ -86,15 +91,25 @@ MessageParser.prototype = {
   address: 0,
 
   /**
+    True if the current finished message was streamed from all nodes
+  */
+  streamed: false,
+
+  /**
     The current header position that's being parserd
     @private
   */
   _headerPos: 0,
 
   /**
-    The length of the message from the header
+    The length of the message, as reported in the headers
   */
   _msgLen: 0,
+
+  /**
+    The actual length of the message body
+  */
+  _actualMsgLen: 0,
 
   /**
     The generated CRC
@@ -122,14 +137,19 @@ MessageParser.prototype = {
   */
   _sendTimer: null,
 
-  /**
-    When to timeout the current incoming message
-  */
-  _receiveTimeout: 0,
-
   // Debugging buffers
   _fullBuffer: [],
   _fullBufferChars: [],
+
+  /**
+    A timeout is used during streaming to fill in responses
+    that are not being returned from the nodes. If a node does
+    not respond in time, master automatically fills it in with 0.
+
+    @type {timer}
+    @property _streamingTimer
+  */
+  _streamingTimer: null,
 
   /**
     Start a fresh message
@@ -144,17 +164,29 @@ MessageParser.prototype = {
     this._state = MSG_STATE_IDL;
 
     this.sentAt = 0;
+    this._msgLen = 0;
+    this._actualMsgLen = 0;
+
+    this.streamed = false;
 
     this._headerPos = 0;
     this._buffer = [];
     this._fullBuffer = [];
     this._fullBufferChars = [];
     this._calculatedCRC = 0xFFFF;
-
     this.address = undefined;
+
+    if (type) {
+      this._actualMsgLen++;
+      this._calculatedCRC = crc16_update(this._calculatedCRC, type);
+    }
+
     if (destAddress !== undefined) {
       this.setAddress(destAddress);
     }
+
+
+    this._stopStreamingTimeout();
   },
 
   /**
@@ -164,6 +196,8 @@ MessageParser.prototype = {
   */
   reset: function(){
     this.start(TYPE_NULL);
+    this._state = MSG_STATE_IDL;
+    this._stopStreamingTimeout();
   },
 
   /**
@@ -180,6 +214,7 @@ MessageParser.prototype = {
   setAddress: function(address){
     this._state = MSG_STATE_BOD;
     this.address = address;
+    this._calculatedCRC = crc16_update(this._calculatedCRC, this.address);
   },
 
   /**
@@ -210,7 +245,6 @@ MessageParser.prototype = {
 
     // Add to buffer
     this._buffer.push(c);
-    this._state = MSG_STATE_RDY;
   },
 
   /**
@@ -221,7 +255,6 @@ MessageParser.prototype = {
     @return {int} The current message parsing state
   */
   parse: function(c) {
-
     if (typeof c == 'undefined') return this._state;
 
     // String or buffer of data
@@ -236,13 +269,33 @@ MessageParser.prototype = {
     this._fullBuffer.push(c);
     this._fullBufferChars.push(String.fromCharCode(c));
 
-    // Previous message timed out
-    if (this._receiveTimeout < Date.now()) {
-      this.reset();
+    // Streaming response
+    if (this._state == MSG_STATE_STRM) {
+      this._stopStreamingTimeout();
+
+      // We're still sending the initial streaming message, ignore
+      if (this.type == TYPE_STREAMING) {
+        return this._state;
+      }
+
+      this._actualMsgLen++;
+      this._buffer.push(c);
+      this._calculatedCRC = crc16_update(this._calculatedCRC, this.address);
+
+      // Received all output, end streaming
+      if (this._actualMsgLen == this._msgLen) {
+        this._finishStreaming();
+      }
+      // Continue
+      else {
+        this._startStreamingTimeout();
+      }
+
+      return this._state;
     }
 
     // Message CRC
-    if (this._state == MSG_STATE_CRC) {
+    else if (this._state == MSG_STATE_CRC) {
       this._messageCRC |= c;
 
       // Checksums don't match
@@ -263,16 +316,16 @@ MessageParser.prototype = {
     else if (this._state == MSG_STATE_BOD) {
 
       // Lengths didn't match up
-      if (this._msgLen < 0) {
+      if (this._actualMsgLen > this._msgLen) {
         this._state = MSG_STATE_ABT;
       }
       // End of the message, move on to matching CRC
-      else if (this._msgLen === 0) {
+      else if (this._msgLen === this._actualMsgLen) {
         this._messageCRC = (c << 8);
         this._state = MSG_STATE_CRC;
       }
       else {
-        this._msgLen--;
+        this._actualMsgLen++;
         this._buffer.push(c);
         this._calculatedCRC = crc16_update(this._calculatedCRC, c);
       }
@@ -295,7 +348,6 @@ MessageParser.prototype = {
       else {
         this.reset();
         this._state = MSG_STATE_SOM;
-        this._receiveTimeout = Date.now() + RECEIVE_TIMEOUT;
         this._fullBuffer.push(c);
         this._fullBufferChars.push(String.fromCharCode(c));
       }
@@ -358,13 +410,110 @@ MessageParser.prototype = {
        // Type
        case 2:
         this.type = c;
-        this._msgLen--;
+        this._actualMsgLen++;
         this._state = MSG_STATE_BOD;
        break;
     }
 
     this._headerPos++;
     return this._state;
+  },
+
+  /**
+    Tell the nodes to stream responses for a command type
+
+    @method startStreamingResponse
+    @param {int} type The type the nodes should be responding to
+    @param {int} lastNode The address of the last node that should send a response
+  */
+  startStreamingResponse: function(type, lastNode) {
+
+    // Send message to inform the nodes we're about to start streaming
+    this.reset();
+    this.type = TYPE_STREAMING;
+    this.setAddress(BROADCAST_ADDRESS);
+    this.write(type);
+    this._state = MSG_STATE_STRM;
+
+    this.send().then(function(){
+
+      // Start second message that will receive the streamed results
+      var header = [MSG_SOM, MSG_SOM, BROADCAST_ADDRESS, lastNode+1, type];
+      this.reset();
+      this.type = type;
+      this.setAddress(BROADCAST_ADDRESS);
+      this._state = MSG_STATE_STRM;
+      this._msgLen = lastNode + 1;
+      this._actualMsgLen = 1;
+      this.sendRawData(header)
+        .then(this._startStreamingTimeout.bind(this));
+
+    }.bind(this));
+
+    // Start filling in empty responses
+
+  },
+
+  /**
+    Finish the streaming response message with the checksum and update
+    the message status to RDY
+
+    @private
+    @method _finishStreaming
+  */
+  _finishStreaming: function() {
+    this._stopStreamingTimeout();
+    this.streamed = true;
+    this.sendRawData([
+      (this._calculatedCRC >> 8) & 0xFF,
+      this._calculatedCRC & 0xff
+    ]);
+    this._state = MSG_STATE_RDY;
+
+    if (this.serialEmitter) {
+      this.serialEmitter.emit('message-ready', this);
+    }
+  },
+
+  /**
+    Start a timer that will insert a zero if a node does not
+    respond in time for the streaming response
+
+    @private
+    @method _startStreamingTimeout
+  */
+  _startStreamingTimeout: function() {
+    this._streamingTimer = setTimeout(function(){
+      if (this._state != MSG_STATE_STRM) {
+        return;
+      }
+
+      // We've finished streaming
+      if (this._actualMsgLen >= this._msgLen) {
+        this._finishStreaming();
+        return;
+      }
+
+      console.log('Missed response from node '+ this._actualMsgLen);
+
+      this._calculatedCRC = crc16_update(this._calculatedCRC, 0);
+      this._actualMsgLen++;
+      this.sendRawData([0])
+        .then(this._startStreamingTimeout.bind(this));
+    }.bind(this), STREAMING_TIMEOUT);
+  },
+
+  /**
+    Stop the current streaming timer
+
+    @private
+    @method _startStreamingTimeout
+  */
+  _stopStreamingTimeout: function() {
+    if (this._streamingTimer) {
+      clearTimeout(this._streamingTimer);
+      this._streamingTimer = null;
+    }
   },
 
   /**
@@ -390,7 +539,7 @@ MessageParser.prototype = {
       data.push(this.type);
       data = data.concat(this._buffer);
 
-      // 16-bit Checksum
+      // Calculate CRC
       for (var i = 0; i < data.length; i++) {
         checksum = crc16_update(checksum, data[i]);
       }
@@ -402,13 +551,30 @@ MessageParser.prototype = {
       data.unshift(MSG_SOM);
 
       // Send
-      serialPort.write(data, function(err, results){
+      this.sendRawData(data).then(
+        function(){
+          this.sentAt = new Date();
+          resolve.call(this);
+        }.bind(this), reject);
+    }.bind(this));
+  },
+
+  /**
+    Sends raw data to the serial port.
+
+    @method sendRawData
+    @param {Buffer} buffer Buffer or array of data
+    @return Promise
+  */
+  sendRawData: function(buffer) {
+    // console.log('SEND: '+ buffer.join(', '));
+    return new Promise(function(resolve, reject) {
+      serialPort.write(buffer, function(err, results){
         if (err) {
           reject(err);
         } else {
           serialPort.drain(function(){
             resolve(results);
-            this.sentAt = new Date();
           }.bind(this));
         }
       }.bind(this));
@@ -499,6 +665,8 @@ MessageParser.prototype = {
         return 'FADE';
       case TYPE_STATUS:
         return 'STATUS';
+      case TYPE_STREAMING:
+        return 'STREAMING';
     }
     return 'UNKNOWN';
   },
@@ -519,45 +687,10 @@ MessageParser.prototype = {
         return 'ABT';
       case MSG_STATE_BOF:
         return 'BOF';
+      case MSG_STATE_STRM:
+        return 'STRM';
     }
     return 'UNKNOWN';
-  },
-
-  /**
-    Convert an address byte into either a string or byte.
-
-    + If the address is master, then 'MASTER' will be returned.
-    + If the address is the `MSG_ALL` bypte, then '*' will be returned
-    + Otherwise, the address byte will be returned.
-
-    @method normalizeAddress
-    @param {byte} addr The address to normalize
-    @return {String or byte}
-  */
-  normalizeAddress: function(addr) {
-    switch(addr) {
-      case MSG_ALL:
-        return '*';
-      case MASTER_ADDRESS:
-        return 'MASTER';
-    }
-    return addr;
-  },
-
-  /**
-    Get the full buffer as a normalized string
-
-    @method dumpBuffer
-  */
-  dumpBuffer: function() {
-    var debug = this._fullBuffer.map(function(b, i){
-      b = (~[MSG_SOM, MSG_EOM, MSG_ESC].indexOf(b)) ? this._fullBufferChars[i] : b;
-      b = (b == '\n') ? '\\n' : b;
-      b = (b == '\\') ? '\\' : b;
-      return b;
-    }.bind(this));
-
-    return debug.join(' ');
   }
 
 };
