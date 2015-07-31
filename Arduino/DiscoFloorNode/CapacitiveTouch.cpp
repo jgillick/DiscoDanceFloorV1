@@ -3,24 +3,39 @@
 volatile CapTouchParams ctp;
 void getNextSensorValue();
 
+// Minimum millisecond delay between sensor charges
+#define DELAY_TIME 5.0
+
 // Timer interrupt macros
 #define ENABLE_TIMER() { \
-  TCNT2 = 0; \
-  TIMSK2 = (1 << OCIE2A); \
+  TCCR1A = 0; \
+  TCCR1B = 0; \
+  OCR1A = round(F_CPU / 8 * DELAY_TIME / 1000); \
+  TCCR1B |= (1 << WGM12); \
+  TCCR1B |= (1 << CS10); \
+  TIMSK1 |= (1 << OCIE1A); \
 }
-#define DISABLE_TIMER() TIMSK2 = 0
+#define DISABLE_TIMER() { \
+  TIMSK1 &= ~(1 << OCIE1A); \
+  TCCR1B &= ~(1 << WGM12); \
+}
 
 // Input capture unit macros
 #define ENABLE_ICU() { \
+  ACSR = 0; \
+  TCCR1B = 0; \
+  TCCR1B |= (1 << ICNC1); /* Noise canceller */ \
+  TCCR1B |= (1 << CS10); /* Start timer, prescale by 8 */ \
+  TCCR1B |= (1 << ICES1); /* Trigger on rising edge */ \
+  TCCR1A = 0; /* Clear timer state */ \
   TCNT1 = 0; \
   TIMSK1 = 1 << ICIE1 | 1 << TOIE1; \
-  TCCR1B |= (1 << CS10); \
 }
 #define DISABLE_ICU() { \
   ctp.overflows = 0; \
-  TCCR1B &= ~(1 << CS10); \
-  TCNT1 = 0;     \
-  TIMSK1 = 0;    \
+  TCCR1B = 0; \
+  TCNT1 = 0;  \
+  TIMSK1 = 0; \
 }
 
 /**
@@ -34,7 +49,6 @@ ISR(TIMER1_OVF_vect) {
     ctp.pulseDone = true;
 
     DISABLE_ICU();
-    ENABLE_TIMER();
 
     // Discharge
     digitalWrite(ctp.sendPin, LOW);
@@ -49,15 +63,15 @@ ISR(TIMER1_OVF_vect) {
 */
 ISR(TIMER1_CAPT_vect) {
   ctp.pulseTime = ICR1;
-  DISABLE_ICU();
-  ENABLE_TIMER();
-  sei();
 
   // if just missed an overflow
   uint8_t overflowCopy = ctp.overflows;
   if ((TIFR1 & bit(TOV1)) && ctp.pulseTime < 0x7FFF) {
     overflowCopy++;
   }
+
+  DISABLE_ICU();
+  sei();
 
   ctp.pulseTime += (overflowCopy << 16);
   ctp.pulseDone = true;
@@ -66,6 +80,9 @@ ISR(TIMER1_CAPT_vect) {
   digitalWrite(ctp.sendPin, LOW);
   pinMode(CT_RECEIVE_PIN, OUTPUT);
   digitalWrite(CT_RECEIVE_PIN, LOW);
+
+  ENABLE_TIMER();
+  sei();
 }
 
 /*
@@ -73,7 +90,7 @@ ISR(TIMER1_CAPT_vect) {
   Processes ICU time and kicks off the next
   sensor reading.
 */
-ISR(TIMER2_COMPA_vect) {
+ISR(TIMER1_COMPA_vect) {
   if (!ctp.pulseDone) return;
 
   // Stop next timer interrupt while processing
@@ -175,22 +192,6 @@ void CapacitiveTouch::begin() {
   digitalWrite(ctp.sendPin, LOW);
   delayMicroseconds(10);
 
-  // Prepare timer interrupt
-  TCCR2A = 0;
-  OCR2A = 150; // ~15ms at 1024 prescaling
-  TCCR2A |= (1 << WGM21); // CTC mode
-  TCCR2B |= (1 << CS22) | (1 << CS21) | (1 << CS20); // 1024 prescaling
-
-  // Prepare input capture unit
-  ACSR = 0;
-  TCCR1B |= (1 << ICNC1); // Noise canceller
-  TCCR1B |= (1 << CS10);  // Start timer, prescale by 8
-  TCCR1B |= (1 << ICES1); // Trigger on rising edge
-  TCCR1A = 0;             // Clear timer state
-  TCNT1 = 0;              // Reset timer
-
-  sei();
-
   // Start
   getNextSensorValue();
 }
@@ -237,5 +238,6 @@ void getNextSensorValue() {
   ctp.overflows = 0;
   ctp.pulseDone = false;
   ENABLE_ICU();
+  sei();
   digitalWrite(ctp.sendPin, HIGH);
 }
