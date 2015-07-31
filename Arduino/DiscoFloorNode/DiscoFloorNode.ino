@@ -162,6 +162,11 @@ void setStreamingValue() {
 
 // Process messages addressed to me
 void myMessage() {
+
+  if (rxBuffer.isStreaming()) {
+    return;
+  }
+
   switch(rxBuffer.getType()) {
     case TYPE_RESET:
       myAddress = 0;

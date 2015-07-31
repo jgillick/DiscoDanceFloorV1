@@ -18,7 +18,7 @@ void MessageBuffer::start(uint8_t messageType) {
   msgLengthCounter = 0;
 
   // The last message type determined that this message should be streamed
-  if (type == TYPE_STREAMING) {
+  if (messageState == MSG_STATE_STM) {
     streaming = 1;
   }
   else {
@@ -61,8 +61,8 @@ uint8_t MessageBuffer::isStreaming() {
 }
 
 void MessageBuffer::setStreamingValue(uint8_t val) {
-  streamingValueSet = 1;
   streamingValue = val;
+  streamingValueSet = 1;
 }
 
 void MessageBuffer::setMaster() {
@@ -147,6 +147,7 @@ uint8_t MessageBuffer::parse(uint8_t c) {
       streaming = 1;
       type = buffer[0];
       streamingValueSet = 0;
+      return messageState = MSG_STATE_STM;
     }
     else {
       streaming = 0;

@@ -38,7 +38,7 @@
   Streaming
   ---------
   In order to received data from all nodes quickly, we use the streaming command.
-  Master will broadcast a streaming command, with a secondary command type as the
+  Master will broadcast a streaming command (0x02), with a secondary command type as the
   message body (i.e 0x06 for STATUS), to prepare all the nodes to stream their response
   in the next message.
 
@@ -73,7 +73,8 @@
 #define MSG_STATE_HDR  0x20  // collecting header
 #define MSG_STATE_BOD  0x30  // message body
 #define MSG_STATE_CRC  0x40  // message CRC
-#define MSG_STATE_RDY  0x50  // message ready
+#define MSG_STATE_STM  0x50  // message streaming
+#define MSG_STATE_RDY  0x60  // message ready
 #define MSG_STATE_IGN  0x80  // ignore message
 #define MSG_STATE_ABT  0x81  // corrupt message
 #define MSG_STATE_BOF  0x82  // buffer over flow
