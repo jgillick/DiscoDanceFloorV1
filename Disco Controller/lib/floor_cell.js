@@ -109,7 +109,7 @@ function FloorCell (xPos, yPos, discoController) {
 								  Deaults to 'true'
 	*/
 	this.setColor = function(rgb, stopFade) {
-		if (typeof rgb == "string") {
+		if (typeof rgb == 'string') {
 			rgb = discoUtils.hexToRGB(rgb);
 		}
 
@@ -155,12 +155,7 @@ function FloorCell (xPos, yPos, discoController) {
 		this.events.emit('fadeStart', color, duration);
 		controller.events.emit('cell.fadeStart', x, y, color, duration);
 
-		if (disco.emulatedFloor) {
-			controller.startFadeLoop();
-		}
-
 		fadePromise = Promise.pending();
-
 		return fadePromise.promise;
 	};
 
@@ -233,10 +228,11 @@ function FloorCell (xPos, yPos, discoController) {
 		@param {val} int The step value
 	*/
 	this.setValue = function(val){
-		value = val;
-
-		this.events.emit('valueChanged', val);
-		controller.events.emit('cell.valueChanged', x, y, val);
+		if (val != value) {
+			value = val;
+			this.events.emit('valueChanged', val);
+			controller.events.emit('cell.valueChanged', x, y, val);
+		}
 	};
 
 	/**

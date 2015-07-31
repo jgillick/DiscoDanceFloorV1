@@ -20,135 +20,6 @@ var eventEmitter = new events.EventEmitter(),
 */
 module.exports.emulatedFloor = true;
 
-/**
-  The fade loop handles every step of fading one color to another
-  and is called several times a second.
-
-  @class FadeLoop
-  @private
-*/
-var FadeLoop = {
-
-  /**
-    True if some cells are currently fading
-  */
-  fading: false,
-
-  /**
-    Number of milliseconds per loop
-  */
-  interval: 10,
-
-  /**
-    The time fo the last fade loop step
-  */
-  last_loop_time: 0,
-
-  /**
-    Start a fading loop, if one hasn't started already
-    @method start
-  */
-  start: function(){
-    if (!this.fading) {
-      this.fading = true;
-      this.last_loop_time = Date.now();
-      window.requestAnimationFrame(function(){
-      // setTimeout(function(){
-        this.loop();
-      }.bind(this));
-      // }.bind(this), 30);
-    }
-  },
-
-  /**
-    Adjust the color of all the fading cells to the color they should be
-    @method loop
-  */
-  loop: function() {
-    var cell,
-      fading = false,
-      now = Date.now(),
-      cells = controller.getCells(),
-      sinceLastLoop = now - this.last_loop_time;
-
-    eventEmitter.emit('fadeFrame.start');
-
-    try {
-
-      // Process all fading cells
-      for (var i = 0, len = cells.length; i < len; i++) {
-        cell = cells[i];
-        if (cell.getMode() == FloorCell.MODE_FADING) {
-          fading = true;
-          this.setCellColor(cell, sinceLastLoop);
-        }
-      }
-
-      // Continue to next loop, if we're still fading
-      this.fading = fading;
-      this.last_loop_time = Date.now();
-      if (fading) {
-        window.requestAnimationFrame(function(){
-        // setTimeout(function(){
-          this.loop();
-        }.bind(this));
-        // }.bind(this), 30);
-        // setTimeout(function(){
-        //  this.loop()
-        // }.bind(this), 60);
-      }
-
-    } catch(e) {
-      process.stderr.write(e.message);
-      process.stderr.write(e.stack);
-    }
-
-    eventEmitter.emit('fadeFrame.end');
-  },
-
-  /**
-    Set the color for this cell at this stage in the fade
-
-    @method setCellColor
-    @param {FadeCell} cell The cell to fade the color on
-    @param {int} sinceLastLoop The number of milliseconds since the last fade loop processed
-  */
-  setCellColor: function(cell, sinceLastLoop){
-    var fromRGB = cell.getColor(),
-      toRGB = cell.getFadeColor(),
-      duration = cell.getFadeDuration(),
-      setRGB = [],
-      fadeComplete = false,
-      multiplier, colorDiff, increment;
-
-    // Figure out how much to adjust each color by how much time has passed
-    multiplier = sinceLastLoop / duration;
-
-    // We must be done, skip ahead
-    if (multiplier >= 1) {
-      setRGB = toRGB;
-      fadeComplete = true;
-    }
-    // Increment each color
-    else {
-      for (var i = 0; i < 3; i++) {
-        var from = fromRGB[i],
-          to = toRGB[i];
-
-        colorDiff = to - from;
-        increment = Math.round(colorDiff * multiplier);
-        setRGB[i] = from + increment;
-      }
-    }
-
-    // Set color
-    cell.setColor(setRGB, fadeComplete);
-    if (!fadeComplete) {
-      cell.setFadeDuration(duration - sinceLastLoop);
-    }
-  }
-};
-
 
 /**
   The central controller for the disco floor.
@@ -399,17 +270,8 @@ var DiscoController = function(x, y){
       }
     }
 
+    // Return the promise of the last cell
     return cells[i - 1].getFadePromise() || Promise.resolve();
-  };
-
-  /**
-    Start the fade loop which will animate any
-    fading cell
-
-    @method startFadeLoop
-  */
-  this.startFadeLoop = function() {
-    FadeLoop.start();
   };
 
   this.setDimensions(x, y);
