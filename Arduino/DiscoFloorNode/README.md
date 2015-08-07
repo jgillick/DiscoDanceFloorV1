@@ -91,6 +91,6 @@ in Arduino's library directory (i.e. For mac: ~/Documents/Arduino/libraries/)
 (note to self)
 If you're using a bare Atmega328, you'll have to first set the fuse bits, otherwise it will run verrrrrry slow:
 ```
-avrdude -p m328 -c usbtiny -e -U lfuse:w:0xff:m -U hfuse:w:0xdb:m -U efuse:w:0xff:m
+avrdude -p atmega328p -c usbtiny -F -e -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x05:m
 ```
 This assumes you're using the USBTiny programmer.
