@@ -2,10 +2,10 @@
   See README for description and pin assignment
 */
 
-#include "LEDFader.h"
-// #include "RGBFade.h"
+// #include "LEDFader.h"
+#include "RGBFade.h"
 // #include "CapacitiveSensor.h"
-#include "CapacitiveTouch.h"
+// #include "CapacitiveTouch.h"
 #include "MessageBuffer.h"
 #include "Constants.h"
 
@@ -19,18 +19,17 @@ uint32_t lastPrint = 0;
 boolean needsAck          = false, // TRUE if we're waiting for an ACK
         enabledState      = false, // is the node enabled
         gotSensorValue    = false,
-        lastSensorValue   = false,
-        receivedSomething = false;
+        lastSensorValue   = false;
 
 // The RGB LEDs
-LEDFader rgb[3] = { LEDFader(LED_RED),
-                    LEDFader(LED_GREEN),
-                    LEDFader(LED_BLUE) };
-// RGBFade fadeCtrl;
+// LEDFader rgb[3] = { LEDFader(LED_RED),
+//                     LEDFader(LED_GREEN),
+//                     LEDFader(LED_BLUE) };
+RGBFade fadeCtrl;
 
 // Sensor
 // CapacitiveSensor sensor = CapacitiveSensor(SENSOR_SEND, SENSOR_TOUCH);
-CapacitiveTouch sensor = CapacitiveTouch(SENSOR_SEND);
+// CapacitiveTouch sensor = CapacitiveTouch(SENSOR_SEND);
 
 // Message buffers
 MessageBuffer txBuffer(TX_CONTROL, RX_CONTROL);
@@ -46,42 +45,63 @@ void setup() {
   digitalWrite(RX_CONTROL, RS485Receive);
 
   // Pull address from EEPROM
-  // uint8_t addr = EEPROM.read(EEPROM_CELL_ADDR);
-  // if (addr > 0 && addr < 255) {
-  //   myAddress = addr;
-  //   txBuffer.setMyAddress(myAddress);
-  //   rxBuffer.setMyAddress(myAddress);
-  // }
+  uint8_t addr = EEPROM.read(EEPROM_CELL_ADDR);
+  if (addr > 0 && addr < 255) {
+    myAddress = addr;
+    txBuffer.setMyAddress(myAddress);
+    rxBuffer.setMyAddress(myAddress);
+  }
 
   // Init serial communication
-  Serial.begin(500000);
+  Serial.begin(250000);
+  Serial.println("START!");
 
   // Reboot if the node stalls for 2 seconds
   wdt_enable(WDTO_2S);
 
-  sensor.setGain(3);
-  sensor.filterTuning(0.3, 40, 320);
-  sensor.begin();
+  // sensor.setGain(3);
+  // sensor.filterTuning(0.3, 40, 320);
+  // sensor.begin();
 
-  // fadeCtrl.begin();
+  fadeCtrl.begin();
 }
 
 void loop() {
+  static uint32_t timeout = 0;
+  wdt_reset();
+
+  timeout++;
+  rxBuffer.read();
+  if (rxBuffer.isReady()) {
+    timeout = 0;
+    processMessage();
+  }
+  if (rxBuffer.isStreaming() && !rxBuffer.isStreamingValueSet()) {
+    setStreamingValue();
+  }
+
+  // If we haven't heard from master in awhile, we should turn everything off
+  if (timeout > 150000) {
+    fadeCtrl.setColor(0, 0, 0);
+    timeout = 0;
+  }
+}
+
+void loopz() {
   // long now = millis();
 
   // The program is still alive
   wdt_reset();
 
   // Update non-blocking LED fade
-  updateLEDs();
+  // updateLEDs();
 
   // Process message received from the bus
   rxBuffer.read();
   if (rxBuffer.isReady()) {
-    receivedSomething = true;
     processMessage();
   }
-  if (rxBuffer.isStreaming()) {
+  if (rxBuffer.isStreaming() && !rxBuffer.isStreamingValueSet()) {
     setStreamingValue();
   }
 
@@ -101,17 +121,6 @@ void loop() {
   // if (needsAck && now > txBuffer.sentAt + ACK_TIMEOUT) {
   //   txBuffer.send();
   // }
-}
-
-void idleMode() {
-  bool val = sensorValue();
-  if (val != lastSensorValue) {
-    if (val) {
-      fadeToColor(500, 255, 255, 255);
-    } else {
-      fadeToColor(500, 0, 0, 0);
-    }
-  }
 }
 
 void processMessage() {
@@ -154,9 +163,6 @@ void setStreamingValue() {
     case TYPE_STATUS:
       rxBuffer.setStreamingValue(getStatusFlag());
     break;
-    case TYPE_SENSE:
-      rxBuffer.setStreamingValue(sensor.rawValue());
-    break;
   }
 }
 
@@ -172,6 +178,7 @@ void myMessage() {
       myAddress = 0;
       txBuffer.setMyAddress(myAddress);
       rxBuffer.setMyAddress(myAddress);
+      setColor(0,0,0);
     break;
     case TYPE_ACK:
       processACK();
@@ -233,40 +240,42 @@ uint8_t getStatusFlag() {
   uint8_t flag = 0;
 
   // The last command ID should only be in the first 3 bits
-  flag |= lastCmdID & 0x07;
+  flag |= (lastCmdID & 0x07);
 
   if (isFading()) {
     flag |= FADING;
   }
 
-  if (sensor.sensorValue() >= SENSOR_THRESHOLD) {
-    flag |= SENSOR_DETECT;
-  }
+  // Serial.print("\nSensor: ");
+  // Serial.println(sensor.sensorValue());
+
+  // if (sensor.sensorValue() >= SENSOR_THRESHOLD) {
+  //   flag |= SENSOR_DETECT;
+  // }
 
   return flag;
 }
 
 // Send node status to master
 void sendStatus() {
-
   uint8_t flag = getStatusFlag();
-  int32_t sensorVal = sensor.sensorValue();
+  int32_t sensorVal = 0; //sensor.sensorValue();
 
   txBuffer.start(TYPE_STATUS);
   txBuffer.write(flag);
 
   // Current color
-  txBuffer.write(rgb[0].get_value());
-  txBuffer.write(rgb[1].get_value());
-  txBuffer.write(rgb[2].get_value());
-  // txBuffer.write(fadeCtrl.getColor(), 3);
+  // txBuffer.write(rgb[0].get_value());
+  // txBuffer.write(rgb[1].get_value());
+  // txBuffer.write(rgb[2].get_value());
+  txBuffer.write(fadeCtrl.getColor(), 3);
 
   // Target color
   if (isFading()){
-    txBuffer.write(rgb[0].get_target_value());
-    txBuffer.write(rgb[1].get_target_value());
-    txBuffer.write(rgb[2].get_target_value());
-    // txBuffer.write(fadeCtrl.getTargetColor(), 3);
+    // txBuffer.write(rgb[0].get_target_value());
+    // txBuffer.write(rgb[1].get_target_value());
+    // txBuffer.write(rgb[2].get_target_value());
+    txBuffer.write(fadeCtrl.getTargetColor(), 3);
   }
 
   // Sensor value
@@ -284,7 +293,8 @@ void sendStatus() {
 
 // 1 if sensor detects someone
 bool sensorValue() {
-  return (sensor.sensorValue() >= SENSOR_THRESHOLD);
+  return 0;
+  // return (sensor.sensorValue() >= SENSOR_THRESHOLD);
   // return (sensor.capacitiveSensor(30) >= SENSOR_THRESHOLD);
 }
 
@@ -303,6 +313,9 @@ void handleColorMessage() {
 
   // Command ID
   lastCmdID = data[3];
+
+  Serial.print("NEW CMD: ");
+  Serial.println(lastCmdID);
 }
 
 // Set LED fade
@@ -324,8 +337,13 @@ void handleFadeMessage() {
   //   }
   // }
 
+  Serial.print("\nDURATION: ");
+  Serial.print(data[3]);
+  Serial.print(" AND ");
+  Serial.println(data[4]);
+
   // Set colors
-  fadeToColor(duration, data[0], data[1], data[2]);
+  fadeToColor(data[0], data[1], data[2], duration);
 
   // Command ID
   lastCmdID = data[5];
@@ -376,26 +394,28 @@ void setAddress() {
 }
 
 void updateLEDs() {
-  rgb[0].update();
-  rgb[1].update();
-  rgb[2].update();
+  // rgb[0].update();
+  // rgb[1].update();
+  // rgb[2].update();
 }
 
 bool isFading() {
-  // return fadeCtrl.isFading();
-  return rgb[0].is_fading() || rgb[1].is_fading() || rgb[2].is_fading();
+  return fadeCtrl.isFading();
+  // return rgb[0].is_fading() || rgb[1].is_fading() || rgb[2].is_fading();
 }
 
 void setColor(uint8_t red, uint8_t green, uint8_t blue) {
-  rgb[0].set_value(red);
-  rgb[1].set_value(green);
-  rgb[2].set_value(blue);
-  // fadeCtrl.setColor(red, green, blue);
+  // rgb[0].set_value(red);
+  // rgb[1].set_value(green);
+  // rgb[2].set_value(blue);
+  fadeCtrl.setColor(red, green, blue);
 }
 
-void fadeToColor(uint16_t time, uint8_t red, uint8_t green, uint8_t blue) {
-  rgb[0].fade(red, time);
-  rgb[1].fade(green, time);
-  rgb[2].fade(blue, time);
-  // fadeCtrl.fadeTo(red, green, blue, time);
+void fadeToColor(uint8_t red, uint8_t green, uint8_t blue, uint16_t time) {
+  // rgb[0].fade(red, time);
+  // rgb[1].fade(green, time);
+  // rgb[2].fade(blue, time);
+  Serial.print("\nTOTALS: ");
+  Serial.println(time);
+  fadeCtrl.fadeTo(red, green, blue, time);
 }

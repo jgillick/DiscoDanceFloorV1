@@ -83,7 +83,8 @@ class MessageBuffer {
   private:
 
     uint16_t messageCRC,
-             calculatedCRC;
+             calculatedCRC,
+             timeoutCounter;
 
     uint8_t buffer[MSG_BUFFER_LEN + 1];
 
@@ -137,11 +138,17 @@ class MessageBuffer {
     // Get the message address
     uint8_t getAddress();
 
-    // Returns 1 if this is the start of a streaming message
-    uint8_t isStreaming();
+    // Returns true if this is the start of a streaming message
+    bool isStreaming();
 
     // Set the value to be sent as the streaming message for this node
     void setStreamingValue(uint8_t);
+
+    // Returns true if we have set a streaming value
+    bool isStreamingValueSet();
+
+    // Returns the streaming value
+    uint8_t getStreamingValue();
 
     // Make our messages from master
     void setMaster();

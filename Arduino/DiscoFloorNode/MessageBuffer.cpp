@@ -56,13 +56,25 @@ uint8_t MessageBuffer::getAddress() {
   return destAddress;
 }
 
-uint8_t MessageBuffer::isStreaming() {
-  return streaming;
+bool MessageBuffer::isReady() {
+  return messageState == MSG_STATE_RDY;
+}
+
+bool MessageBuffer::isStreaming() {
+  return (streaming && messageState < MSG_STATE_IGN);
 }
 
 void MessageBuffer::setStreamingValue(uint8_t val) {
   streamingValue = val;
   streamingValueSet = 1;
+}
+
+bool MessageBuffer::isStreamingValueSet() {
+  return (streamingValueSet == 1);
+}
+
+uint8_t MessageBuffer::getStreamingValue() {
+  return streamingValue;
 }
 
 void MessageBuffer::setMaster() {
@@ -90,10 +102,6 @@ bool MessageBuffer::addressedToMe() {
   if (destAddress == myAddress) return true;
 
   return false;
-}
-
-bool MessageBuffer::isReady() {
-  return messageState == MSG_STATE_RDY;
 }
 
 uint8_t* MessageBuffer::getBody() {
@@ -127,9 +135,16 @@ uint8_t MessageBuffer::write(uint8_t c) {
 
 uint8_t MessageBuffer::parse(uint8_t c) {
 
+  // Current message is being ignored or aborted, wait until we've read past message and CRC
+  if (messageState >= MSG_STATE_IGN && msgLengthCounter < msgLength + 2) {
+    msgLengthCounter++;
+    return messageState;
+  }
+
   // Message CRC
-  if (messageState == MSG_STATE_CRC) {
+  else if (messageState == MSG_STATE_CRC) {
     messageCRC |= c;
+    msgLengthCounter += 2;
 
     // Checksums don't match
     if (calculatedCRC != messageCRC) {
@@ -139,14 +154,13 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     // Set streaming bit for the next message
     else if (type == TYPE_STREAMING) {
 
-      // Missing streaming type in body, invalid
+      // Invalid if the type was not passed in the body
       if (bufferPos == 0) {
         return messageState = MSG_STATE_ABT;
       }
 
-      streaming = 1;
       type = buffer[0];
-      streamingValueSet = 0;
+      streaming = 1;
       return messageState = MSG_STATE_STM;
     }
     else {
@@ -163,11 +177,12 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     if (msgLengthCounter > msgLength) {
       return messageState = MSG_STATE_ABT;
     }
-    // End of the message, match checksum
+    // End of the message, get CRC
     else if (msgLength == msgLengthCounter) {
 
       // If this was a streaming message, we're not returning it anyways
       if (streaming) {
+        streaming = 0;
         return messageState = MSG_STATE_IDL;
       }
 
@@ -183,7 +198,6 @@ uint8_t MessageBuffer::parse(uint8_t c) {
 
   // Header
   else if (messageState == MSG_STATE_HDR) {
-    calculatedCRC = _crc16_update(calculatedCRC, c);
     return processHeader(c);
   }
 
@@ -200,34 +214,39 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     }
     return messageState;
   }
-
-  // Aborted or overflow, wait until we see a new message
-  else if (messageState >= MSG_STATE_RDY) {
-    return messageState;
+  // no second start of message character
+  else if (messageState == MSG_STATE_SOM) {
+    return messageState = MSG_STATE_ABT;
   }
 
   return messageState;
 }
 
 uint8_t MessageBuffer::processHeader(uint8_t c) {
-  // Message address
-  if (headerPos == 0) {
-    destAddress = c;
+  calculatedCRC = _crc16_update(calculatedCRC, c);
+  switch(headerPos) {
 
-    // Not valid address
-    if (myAddress && !addressedToMe()) {
-      messageState = MSG_STATE_ABT;
-    }
-  }
-  // Length
-  else if (headerPos == 1) {
-    msgLength = c;
-  }
-  // Type
-  else if (headerPos == 2) {
-    type = c;
-    msgLengthCounter++;
-    messageState = MSG_STATE_BOD;
+    // Message address
+    case 0:
+      destAddress = c;
+    break;
+
+    // Length
+    case 1:
+      msgLength = c;
+
+      // Not addressed to us (waited until length so we know how many characters to ignore)
+      if (myAddress && !addressedToMe()) {
+        messageState = MSG_STATE_IGN;
+      }
+    break;
+
+    // Type
+    case 2:
+      type = c;
+      msgLengthCounter++;
+      messageState = MSG_STATE_BOD;
+    break;
   }
   headerPos++;
   return messageState;
@@ -238,25 +257,38 @@ uint8_t MessageBuffer::read() {
   digitalWrite(rxControl, RS485Receive);
 
   while (Serial.available() > 0) {
+    timeoutCounter = 0;
     parse((uint8_t)Serial.read());
 
-    // Return current message if it is ready
-    if (isReady()) {
+    // Return current message if it is ready or streaming
+    if (isReady() || isStreaming()) {
       return messageState;
     }
   }
+  timeoutCounter++;
 
-  // It's our turn to respond in a streaming message
-  if (streaming && streamingValueSet && myAddress > 0 && msgLengthCounter == myAddress) {
+  // Timeout message
+  if (timeoutCounter > 1000) {
+    type = 0;
+    streaming = 0;
+    messageState = MSG_STATE_IDL;
+  }
+
+  // Respond in the streaming message
+  // (FYI, if type=streaming, that means we're in the message announcing that streaming is coming)
+  if (streaming && streamingValueSet && type != TYPE_STREAMING && myAddress > 0 && msgLengthCounter == myAddress) {
     digitalWrite(txControl, RS485Transmit);
     digitalWrite(rxControl, RS485Transmit);
 
-    Serial.write(streamingValue);
+    sendAndChecksum(streamingValue);
     msgLengthCounter++;
-    calculatedCRC = _crc16_update(calculatedCRC, streamingValue);
+    streamingValueSet = 0;
 
     digitalWrite(txControl, RS485Receive);
     digitalWrite(rxControl, RS485Receive);
+
+    // Ignore the rest of the message
+    messageState = MSG_STATE_IGN;
   }
 
   return messageState;
@@ -264,6 +296,7 @@ uint8_t MessageBuffer::read() {
 
 void MessageBuffer::sendAndChecksum(uint8_t c) {
   Serial.write(c);
+  Serial.flush();
   calculatedCRC = _crc16_update(calculatedCRC, c);
 }
 
@@ -296,17 +329,4 @@ void MessageBuffer::send() {
   // Set back to receive
   digitalWrite(txControl, RS485Receive);
   digitalWrite(rxControl, RS485Receive);
-}
-
-uint8_t MessageBuffer::crc_checksum(uint8_t crc, uint8_t data) {
-  // From http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html#ga37b2f691ebbd917e36e40b096f78d996
-  uint8_t i;
-  crc = crc ^ data;
-  for (i = 0; i < 8; i++) {
-    if (crc & 0x01)
-      crc = (crc >> 1) ^ 0x8C;
-    else
-      crc >>= 1;
-  }
-  return crc;
 }

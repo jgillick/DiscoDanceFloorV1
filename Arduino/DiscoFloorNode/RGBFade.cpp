@@ -1,13 +1,12 @@
 
 #include "RGBFade.h"
 
-#define STEP_TIME 16.0 // Number of milliseconds per step (max = 200)
+#define STEP_TIME 12.0 // Number of milliseconds per step (max = 200)
 
-#ifdef F_CPU
-#define SYSCLOCK F_CPU
-#else
-#define SYSCLOCK 20000000
-#endif
+// Handy array indexes
+#define R 0
+#define G 1
+#define B 2
 
 // Timer interrupt macros
 #define ENABLE_TIMER() { \
@@ -22,44 +21,39 @@
 
 // Red - PD5 (OC0B)
 #define RED_PWM_SETUP() { \
-  DDRD |= (1 << DDD5); \
-  TCCR0A |= (1 << COM0B1); \
+  DDRD |= (1 << PD5); \
   PORTD &= ~(1 << PD5); \
 }
 #define RED_PWM(val) { \
+  TCCR0A &= ~(1 << COM0B1); \
   if (val == 0) PORTD &= ~(1 << PD5); \
   else if (val == 255) PORTD |= (1 << PD5); \
-  else OCR0B = val; \
+  else TCCR0A |= (1 << COM0B1); OCR0B = val; \
 }
 
 // Green - PD6 (OC0A)
 #define GREEN_PWM_SETUP() { \
-  DDRD |= (1 << DDD6); \
-  TCCR0A |= (1 << COM0A1); \
+  DDRD |= (1 << PD6); \
   PORTD &= ~(1 << PD6); \
 }
 #define GREEN_PWM(val) { \
+  TCCR0A &= ~(1 << COM0A1); \
   if (val == 0) PORTD &= ~(1 << PD6); \
   else if (val == 255) PORTD |= (1 << PD6); \
-  else OCR0A = val; \
+  else { TCCR0A |= (1 << COM0A1); OCR0A = val; } \
 }
 
 // Blue - PD3 (OC2B)
 #define BLUE_PWM_SETUP() { \
-  DDRD |= (1 << DDD3); \
-  TCCR2A |= (1 << COM2B1); \
+  DDRD |= (1 << PD3); \
   PORTD &= ~(1 << PD3); \
 }
 #define BLUE_PWM(val) { \
+  TCCR2A &= ~(1 << COM2B1); \
   if (val == 0) PORTD &= ~(1 << PD3); \
   else if (val == 255) PORTD |= (1 << PD3); \
-  else OCR2B = val; \
+  else TCCR2A |= (1 << COM2B1); OCR2B = val; \
 }
-
-// Handy array indexes
-#define R 0
-#define G 1
-#define B 2
 
 volatile RGBFadeParams params;
 
@@ -116,9 +110,9 @@ RGBFade::RGBFade() {
 void RGBFade::begin() {
 
   // Setup fade timer, but don't start until a fade is set
-  TCCR1A = 0; \
-  TCCR1B = 0; \
-  OCR1A = round(SYSCLOCK / 64 * STEP_TIME / 1000); // timer count
+  TCCR1A = 0;
+  TCCR1B = 0;
+  OCR1A = round(F_CPU / 64 * STEP_TIME / 1000); // timer count
   TCCR1B |= (1 << CS11) | (1 << CS10); // prescale by 64
   TCCR1B |= (1 << WGM12); // turn on CTC mode
 
@@ -134,8 +128,8 @@ bool RGBFade::isFading() {
 }
 
 void RGBFade::stopFade() {
-  DISABLE_TIMER();
   params.fading = false;
+  DISABLE_TIMER();
 }
 
 void RGBFade::fadeTo(uint8_t red, uint8_t green, uint8_t blue, uint32_t time) {
@@ -165,17 +159,20 @@ void RGBFade::fadeTo(uint8_t red, uint8_t green, uint8_t blue, uint32_t time) {
 void RGBFade::setColor(uint8_t red, uint8_t green, uint8_t blue) {
   stopFade();
 
-  params.color[R] = red;
   params.pwm[R] = red;
+  params.color[R] = red;
+  params.targetColor[R] = red;
   RED_PWM(red);
 
-  params.color[G] = green;
   params.pwm[G] = green;
-  RED_PWM(green);
+  params.color[G] = green;
+  params.targetColor[G] = green;
+  GREEN_PWM(green);
 
-  params.color[B] = blue;
   params.pwm[B] = blue;
-  RED_PWM(blue);
+  params.color[B] = blue;
+  params.targetColor[B] = blue;
+  BLUE_PWM(blue);
 }
 
 uint8_t* RGBFade::getColor() {
