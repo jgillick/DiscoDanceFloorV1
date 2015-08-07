@@ -1,5 +1,7 @@
 #include "CapacitiveTouch.h"
 
+#ifdef DISABLED
+
 volatile CapTouchParams ctp;
 void getNextSensorValue();
 
@@ -241,3 +243,5 @@ void getNextSensorValue() {
   sei();
   digitalWrite(ctp.sendPin, HIGH);
 }
+
+#endif
