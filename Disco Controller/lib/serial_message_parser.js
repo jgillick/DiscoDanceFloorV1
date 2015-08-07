@@ -1,6 +1,7 @@
 'use strict';
 
-var crc = require('crc');
+var events = require('events').EventEmitter,
+    util   = require('util');
 
 /**
   Handles reading and sending serial messages.
@@ -48,7 +49,7 @@ const MSG_STATE_ABT  = 0x81; // abnormal termination
 const MSG_STATE_BOF  = 0x82; // buffer over flow
 
 // When to timeout an incoming message
-const STREAMING_TIMEOUT  = 50;
+const STREAMING_TIMEOUT  = 200;
 
 var serialPort;
 
@@ -61,6 +62,8 @@ function MessageParser(serialEmitter) {
   this.serialEmitter = serialEmitter;
   this.start(TYPE_NULL);
 }
+
+MessageParser.events = new events.EventEmitter();
 
 /**
   Set the SerialPort that all communication will
@@ -266,8 +269,8 @@ MessageParser.prototype = {
     }
 
     // Debug buffers
-    this._fullBuffer.push(c);
-    this._fullBufferChars.push(String.fromCharCode(c));
+    // this._fullBuffer.push(c);
+    // this._fullBufferChars.push(String.fromCharCode(c));
 
     // Streaming response
     if (this._state == MSG_STATE_STRM) {
@@ -280,7 +283,7 @@ MessageParser.prototype = {
 
       this._actualMsgLen++;
       this._buffer.push(c);
-      this._calculatedCRC = crc16_update(this._calculatedCRC, this.address);
+      this._calculatedCRC = crc16_update(this._calculatedCRC, c);
 
       // Received all output, end streaming
       if (this._actualMsgLen == this._msgLen) {
@@ -303,6 +306,7 @@ MessageParser.prototype = {
         this._state = MSG_STATE_ABT;
       } else {
         this._state = MSG_STATE_RDY;
+        MessageParser.events.emit('message-ready', this);
       }
 
       return this._state;
@@ -348,8 +352,8 @@ MessageParser.prototype = {
       else {
         this.reset();
         this._state = MSG_STATE_SOM;
-        this._fullBuffer.push(c);
-        this._fullBufferChars.push(String.fromCharCode(c));
+        // this._fullBuffer.push(c);
+        // this._fullBufferChars.push(String.fromCharCode(c));
       }
       return this._state;
     }
@@ -427,6 +431,7 @@ MessageParser.prototype = {
     @param {int} lastNode The address of the last node that should send a response
   */
   startStreamingResponse: function(type, lastNode) {
+    // console.log('Start streaming');
 
     // Send message to inform the nodes we're about to start streaming
     this.reset();
@@ -436,15 +441,20 @@ MessageParser.prototype = {
     this._state = MSG_STATE_STRM;
 
     this.send().then(function(){
+      var header;
+      this.reset();
 
       // Start second message that will receive the streamed results
-      var header = [MSG_SOM, MSG_SOM, BROADCAST_ADDRESS, lastNode+1, type];
-      this.reset();
       this.type = type;
       this.setAddress(BROADCAST_ADDRESS);
       this._state = MSG_STATE_STRM;
       this._msgLen = lastNode + 1;
       this._actualMsgLen = 1;
+
+      header = [MSG_SOM, MSG_SOM, BROADCAST_ADDRESS, this._msgLen, type];
+
+      this._calculatedCRC = 0xFFFF;
+      this._calculatedCRC = crc16_update(this._calculatedCRC, header.slice(2));
       this.sendRawData(header)
         .then(this._startStreamingTimeout.bind(this));
 
@@ -462,17 +472,17 @@ MessageParser.prototype = {
     @method _finishStreaming
   */
   _finishStreaming: function() {
+    // console.log('Finish streaming');
+    // console.log(this._buffer.join(', '));
     this._stopStreamingTimeout();
     this.streamed = true;
     this.sendRawData([
       (this._calculatedCRC >> 8) & 0xFF,
       this._calculatedCRC & 0xff
     ]);
-    this._state = MSG_STATE_RDY;
 
-    if (this.serialEmitter) {
-      this.serialEmitter.emit('message-ready', this);
-    }
+    this._state = MSG_STATE_RDY;
+    MessageParser.events.emit('message-ready', this);
   },
 
   /**
@@ -496,8 +506,9 @@ MessageParser.prototype = {
 
       console.log('Missed response from node '+ this._actualMsgLen);
 
-      this._calculatedCRC = crc16_update(this._calculatedCRC, 0);
+      this._buffer.push(0);
       this._actualMsgLen++;
+      this._calculatedCRC = crc16_update(this._calculatedCRC, 0);
       this.sendRawData([0])
         .then(this._startStreamingTimeout.bind(this));
     }.bind(this), STREAMING_TIMEOUT);
@@ -526,7 +537,7 @@ MessageParser.prototype = {
 
     return new Promise(function(resolve, reject) {
       var data = [],
-          checksum = 0xFFFF;
+          crc = 0xFFFF;
 
       if (!serialPort)
         return reject('No serial port defined. See `MessageParser.setSerialPort(<SerialPort>)`');
@@ -540,15 +551,17 @@ MessageParser.prototype = {
       data = data.concat(this._buffer);
 
       // Calculate CRC
-      for (var i = 0; i < data.length; i++) {
-        checksum = crc16_update(checksum, data[i]);
-      }
-      data.push((checksum >> 8) & 0xFF);
-      data.push(checksum & 0xff);
+      crc = crc16_update(crc, data);
+      data.push((crc >> 8) & 0xFF);
+      data.push(crc & 0xff);
 
       // Add start of message
       data.unshift(MSG_SOM);
       data.unshift(MSG_SOM);
+
+      // if (this.type != TYPE_STREAMING) {
+      //   console.log('SEND: '+ data.join(', '));
+      // }
 
       // Send
       this.sendRawData(data).then(
@@ -567,7 +580,6 @@ MessageParser.prototype = {
     @return Promise
   */
   sendRawData: function(buffer) {
-    // console.log('SEND: '+ buffer.join(', '));
     return new Promise(function(resolve, reject) {
       serialPort.write(buffer, function(err, results){
         if (err) {
@@ -695,7 +707,26 @@ MessageParser.prototype = {
 
 };
 
+/**
+  Calculate a 16-bit CRC.
+  Initial crc value should be 0xFFFF
+  ported from http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html
+
+  @param {int} crc Current CRC number
+  @param {int or array} d Value to add to the CRC
+*/
 function crc16_update(crc, d) {
+
+  // CRC an array
+  if (typeof d == 'object') {
+    if (!d.length) return crc;
+
+    d.forEach(function(val){
+      crc = crc16_update(crc, val);
+    });
+    return crc;
+  }
+
   crc ^= d;
   for (var i = 0; i < 8; ++i) {
     if (crc & 1)
@@ -722,5 +753,7 @@ module.exports.TYPE_ADDR   = TYPE_ADDR;
 module.exports.TYPE_COLOR  = TYPE_COLOR;
 module.exports.TYPE_FADE   = TYPE_FADE;
 module.exports.TYPE_STATUS = TYPE_STATUS;
+module.exports.TYPE_MODE   = TYPE_MODE;
+module.exports.TYPE_RESET  = TYPE_RESET;
 
 module.exports.MSG_SOM = MSG_SOM;

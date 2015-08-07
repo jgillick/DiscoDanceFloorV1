@@ -14,11 +14,12 @@ var EventEmitter  = require('events').EventEmitter,
     disco         = require('./disco_controller.js'),
     _             = require('underscore');
 
-const BAUD_RATE           = 500000; // 4800;
-const ACK_TIMEOUT         = 50; //1000;
-const STATUS_TIMEOUT      = 50; //1000;
-const ADDRESSING_TIMEOUT  = 1000;
-const NULL_SIGNATURE      = '0,0,0,0';
+const BAUD_RATE            = 250000;
+const ACK_TIMEOUT          = 50; //1000;
+const STATUS_TIMEOUT       = 50; //1000;
+const ADDRESSING_TIMEOUT   = 500;
+const DELAY_BETWEEN_STAGES = 5;
+const NULL_SIGNATURE       = '0,0,0,0';
 
 // Program stages
 const IDLE                = 'idle';
@@ -34,7 +35,8 @@ var serialPort,
     txBuffer,
     rxBuffer,
     stage = IDLE,
-    statuses = {},
+    hasReset = false,
+    statuses = [],
     lastStatusAddr,
     lastNodeAddr = 0,
     addressingStageTimeout,
@@ -78,7 +80,7 @@ function Comm(){
       MessageParser.setSerialPort(serialPort);
 
       // Listen for new messages
-      serialPort.on('message-ready', function(message) {
+      MessageParser.events.on('message-ready', function(message) {
         this.handleMessage(message);
       }.bind(this));
 
@@ -115,8 +117,11 @@ function Comm(){
       break;
       case ADDRESSING:
         if (nodeRegistration.length) {
-          stage = STATUSING;
+          if (txBuffer) {
+            txBuffer.stopSending();
+          }
 
+          stage = STATUSING;
           this.emit('done-addressing', nodeRegistration.length);
         }
         // Nothing found, continue
@@ -145,18 +150,19 @@ function Comm(){
     // Setup and call the new status handler on the next tick of the event loop
     switch(stage) {
       case ADDRESSING:
-        process.nextTick(this.addressing.bind(this));
+        // process.nextTick(this.addressing.bind(this));
+        setTimeout(this.addressing.bind(this), DELAY_BETWEEN_STAGES);
       break;
       case STATUSING:
         // console.log('STATUSING');
         lastStatusAddr = 0;
-        process.nextTick(this.status.bind(this));
-        // setTimeout(this.status.bind(this), 10);
+        // process.nextTick(this.status.bind(this));
+        setTimeout(this.status.bind(this), DELAY_BETWEEN_STAGES);
       break;
       case UPDATING:
         // console.log('UPDATING');
-        process.nextTick(this.update.bind(this));
-        // setTimeout(this.update.bind(this), 10);
+        // process.nextTick(this.update.bind(this));
+        setTimeout(this.update.bind(this), DELAY_BETWEEN_STAGES);
       break;
     }
   };
@@ -186,6 +192,18 @@ function Comm(){
   */
   this.addressing = function(message) {
     var addr;
+
+    // First reset nodes
+    if (!hasReset) {
+      txBuffer = new MessageParser();
+      txBuffer.start(MessageParser.TYPE_RESET, MessageParser.BROADCAST_ADDRESS);
+      txBuffer.send()
+      .then(function(){
+        txBuffer = null;
+        hasReset = true;
+        this.addressing();
+      }.bind(this))
+    }
 
     // Start sending address requests
     if (!txBuffer) {
@@ -269,14 +287,11 @@ function Comm(){
           cellSig   = colorSignatureForCell(cell);
 
       // Could not find cell or status
-      if (!cell || !status) {
+      if (!cell) {
         return;
       }
 
       // Update FloorCell values
-      if (!isFading && cell.isFading()) {
-        cell.stopFade();
-      }
       cell.setValue(sensorVal);
 
       // If the cell did not receive the last message or
@@ -322,9 +337,7 @@ util.inherits(Comm, EventEmitter);
 */
 function serialParser(emitter, buffer) {
   if (!rxBuffer) {
-    rxBuffer = new MessageParser(emitter);
-  } else {
-    rxBuffer.serialEmitter = emitter;
+    rxBuffer = new MessageParser();
   }
 
   for (var i = 0; i < buffer.length; i++){
@@ -377,6 +390,7 @@ function updateFloorCell(addr, cell, broadcast) {
   sendSignature.cmdID = (sendSignature.cmdID >= 7) ? 0 : sendSignature.cmdID + 1;
   sendSignature.signature = colorSignatureForCell(cell);
 
+  // Fading message
   if (cell.isFading()) {
     type = MessageParser.TYPE_FADE;
     data = cell.getFadeColor();
@@ -386,6 +400,7 @@ function updateFloorCell(addr, cell, broadcast) {
     data.push((duration >> 8) & 0xFF);
     data.push(duration & 0xff);
   }
+  // Color message
   else {
     type = MessageParser.TYPE_COLOR;
     data = cell.getColor();
@@ -400,7 +415,10 @@ function updateFloorCell(addr, cell, broadcast) {
     tx.setAddress(addr);
   }
   tx.write(data);
-  tx.send();
+  tx.send().then(function(){
+    cellSentSignatures[addr] = sendSignature
+  });
+
   return tx;
 }
 
