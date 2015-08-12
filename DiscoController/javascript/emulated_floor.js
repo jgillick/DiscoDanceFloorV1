@@ -2,14 +2,22 @@
 
 /* global process */
 
-var disco = require('./lib/disco_controller.js'),
-    utils = require('./lib/utils.js');
+var disco = require('./lib/disco_controller.js');
+
+var controller = disco.controller;
 
 (function() {
   var fadeProcessing = false;
 
   $(document).ready(function(){
-    var dimensions = disco.controller.getDimensions();
+    var dimensions = controller.getDimensions();
+
+    // Emulated floor
+    $(document).on('emulated-floor', function(event, isEmulated) {
+      if (isEmulated) {
+        emulatedFloorAnimationFrame();
+      }
+    });
 
     // Set floor dimensions
     $('#floor-max-x').val(dimensions.x);
@@ -21,7 +29,7 @@ var disco = require('./lib/disco_controller.js'),
         y = parseInt($('#floor-max-y').val() );
 
       if (!isNaN(x) && !isNaN(y)) {
-        disco.controller.setDimensions(x, y);
+        controller.setDimensions(x, y);
       }
     });
 
@@ -32,7 +40,7 @@ var disco = require('./lib/disco_controller.js'),
       var td = $(evt.target),
         x = parseInt(td.attr('data-x')),
         y = parseInt(td.attr('data-y')),
-        cell = disco.controller.getCell(x, y);
+        cell = controller.getCell(x, y);
 
       cell.setValue(1);
     });
@@ -42,7 +50,7 @@ var disco = require('./lib/disco_controller.js'),
       var td = $(evt.target),
         x = parseInt(td.attr('data-x')),
         y = parseInt(td.attr('data-y')),
-        cell = disco.controller.getCell(x, y);
+        cell = controller.getCell(x, y);
 
       cell.setValue(0);
     });
@@ -80,13 +88,38 @@ var disco = require('./lib/disco_controller.js'),
     process.nextTick(sizeTable);
   }
 
+  // Update floor grid
+  controller.events.on('dimensions.changed', function(xMax, yMax){
+    buildFloor(xMax, yMax);
+  });
+
+  // Start stop fade processing
+  controller.events.on('fadeFrame.start', function(){
+    fadeProcessing = true;
+  });
+  controller.events.on('fadeFrame.end', function(){
+    fadeProcessing = false;
+    // window.requestAnimationFrame(updateFrame);
+  });
+
+  // Floor cell color changed
+  controller.events.on('cell.colorChanged', function emulatorSetColor(x, y, color){
+    var el = document.getElementById('cell-'+ x +'-'+ y);
+    if (!el) {
+      return;
+    }
+
+    // Set color
+    el.style.background = 'rgb('+ color.join(',') +')';
+  });
+
   /**
     Size the table to keep the floor cells square in the available space
   */
   function sizeTable() {
     var emulator = $('.emulator'),
         table = emulator.find('.grid'),
-        dimensions = disco.controller.getDimensions(),
+        dimensions = controller.getDimensions(),
         xMax = dimensions.x,
         yMax = dimensions.y;
 
@@ -103,48 +136,17 @@ var disco = require('./lib/disco_controller.js'),
     }
   }
 
-  // Update floor grid
-  disco.controller.events.on('dimensions.changed', function(xMax, yMax){
-    buildFloor(xMax, yMax);
-  });
+  // Updates the fading color of all floor cells
+  function emulatedFloorAnimationFrame() {
+    if (!disco.emulatedFloor) return;
 
-  // Start stop fade processing
-  disco.controller.events.on('fadeFrame.start', function(){
-    fadeProcessing = true;
-  });
-  disco.controller.events.on('fadeFrame.end', function(){
-    fadeProcessing = false;
-    // window.requestAnimationFrame(updateFrame);
-  });
-
-  // Floor cell color changed
-  disco.controller.events.on('cell.colorChanged', function emulatorSetColor(x, y, color){
-    var el = document.getElementById('cell-'+ x +'-'+ y);
-    if (!el) {
-      return;
+    // If the cell is fading, calling getColor will process the next
+    // color increment, which will update the floor via the 'cell.colorChanged' event
+    var cells = controller.getCells();
+    for (var i = 0, len = cells.length; i < len; i++) {
+      cells[i].getColor();
     }
 
-    // Set color
-    el.style.background = 'rgb('+ color.join(',') +')';
-  });
-
-  // Fading color change
-  disco.controller.events.on('cell.fadeStart', function emulatorSetColor(x, y, color, duration){
-    var el = document.getElementById('cell-'+ x +'-'+ y);
-    if (!el) {
-      return;
-    }
-
-    color = 'rgb('+ color.join(',') +')';
-    $(el).animate({backgroundColor: color}, duration, function(){
-        // If truly emulating the floor, call stopFade when done
-        var cell;
-        if (disco.emulatedFloor) {
-          cell = disco.controller.getCell(x, y);
-          if (cell) {
-            cell.stopFade();
-          }
-        }
-      });
-  });
+    requestAnimationFrame(emulatedFloorAnimationFrame);
+  }
 })();
