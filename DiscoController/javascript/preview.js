@@ -3,8 +3,8 @@
 var disco       = require('./lib/disco_controller.js'),
     programCtrl = require('./lib/program_controller.js'),
     comm        = require('./lib/comm.js'),
-    serialPort  = require('serialport'),
-    audio       = require('./javascript/audio.js');
+    audio       = require('./lib/audio.js'),
+    serialPort  = require('serialport');
 
 var controller = disco.controller,
     programFilter = {};
@@ -114,10 +114,9 @@ function serialSetup(){
     serialPort.list(function (err, ports) {
       var list = $('#serial-ports-list');
 
-      if (ports.length != lastPortNum) {
-        lastPortNum = ports.length;
-
+      if (ports && ports.length != lastPortNum) {
         list.empty();
+        lastPortNum = ports.length;
         ports.forEach(function(port) {
           list.append('<option>'+ port.comName +'</option>');
         });
@@ -132,6 +131,7 @@ function serialSetup(){
   // Skip serial
   $('#serial-setup button.skip').click(function(){
     $('#serial-setup').addClass('closed');
+    $(document).trigger('emulated-floor', [true]);
   });
 
   // Port selected, connect and get node count
@@ -147,6 +147,7 @@ function serialSetup(){
     controller.setDimensions(0, 0);
     el.addClass('connect');
     comm.start(port);
+    $(document).trigger('emulated-floor', [false]);
 
     // Show status
     comm.on('new-node', function(){
