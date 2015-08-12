@@ -16,14 +16,23 @@ You'll need to follow these steps to get the app running:
  5. Go into that directory and run: `npm install`
  6. Now run `nwjs .` and the app should launch. See the Troubleshooting section if you get errors.
 
+### Install SerialPort
+
+This one takes a special step. Go into the DiscoController directory and do the following:
+
+1. `npm install -g node-pre-gyp`
+2. `node-pre-gyp rebuild --runtime=node-webkit --target=0.12.3`
+	- Replace `0.12.3` with the version of nwjs you downloaded.
+
 ### Installing NW.js
 
 Here's how I installed NW.js on my mac
 
  1. Download the latest NW.js pacakged from http://nwjs.io/
- 2. Extract the package and put the directory in /Applications/.
- 3. Update your `PATH` environment variable to point to the correct (and burried) nwjs directory:
+ 2. Extract the file somewhere on your system
+ 3. Update your `PATH` environment variable to point to the directory with the nwjs executable:
 
+On my mac:
 ```
 echo "export PATH=\$PATH:/Applications/nw/nwjs.app/Contents/MacOS/" >> ~/.bash_profile
 ```
