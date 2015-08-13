@@ -49,6 +49,27 @@
   Then each node will respond with a single byte, in turn, to fill up the message body.
 
   Master will then close the message with the CRC code.
+
+  Batch Update
+  ------------
+  The master can also update all nodes to different values in a single batch message. This is
+  a message with a slightly different format than usual messages.
+
+  The format of a batch update is:
+  0xFF 0xFF 0x00  {len} {type} {lengthPerNode} {secondaryType} {nodeAddr} {nodeData}    ...  {CRC}
+
+  0xFF 0xFF        - The start of a message
+  0x00             - Broadcast to all nodes
+  {len}            - The number of nodes we're updating
+  {cmd}            - The message type or command (set LED, get sensor value, etc)
+  {lengthPerNode}  - The length of data for each node (i.e. 3 for TYPE_COLOR for R,G,B)
+  {secondaryType}  - The type that represents the updates (i.e. TYPE_COLOR)
+  {nodeAddr}       - The node address, repeated twice (not included in lengthPerNode)
+  {nodeData}       - Data for the node
+  ...              - Repeat {nodeAddr} and {nodeData} for all nodes
+  {CRC}            - CRC for the entire batch message
+  For example, if we have 10 nodes and the master was sending a color update to all of them, it would look
+  something like this:
 */
 
 
@@ -84,11 +105,18 @@ class MessageBuffer {
 
     uint16_t messageCRC,
              calculatedCRC,
-             timeoutCounter;
+             timeoutCounter,
+             msgLength,
+             msgLengthCounter;
 
     uint8_t buffer[MSG_BUFFER_LEN + 1];
 
     uint8_t  type,
+             secondaryType,
+             batchLength,
+             batchMsgStart,
+             batchMsgEnd,
+             batchMsgCounter,
              myAddress,
              destAddress,
              bufferPos,
@@ -97,8 +125,6 @@ class MessageBuffer {
              rxControl,
              weAreMaster,
              messageState,
-             msgLength,
-             msgLengthCounter,
              streaming,
              streamingValue,
              streamingValueSet;

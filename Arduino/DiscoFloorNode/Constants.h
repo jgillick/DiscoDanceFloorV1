@@ -2,14 +2,15 @@
 // Commands codes
 #define TYPE_NULL         0x00
 #define TYPE_ACK          0x01  // Acknowledge command
-#define TYPE_ADDR         0xF1  // Announce address
-#define TYPE_STREAMING    0x02  // Set streaming mode
+#define TYPE_STRM_RESP    0x02  // Set streaming response mode
+#define TYPE_BATCH        0x03  // Set batch update mode
 #define TYPE_COLOR        0x04  // Set color
 #define TYPE_FADE         0x05  // Set fade
 #define TYPE_STATUS       0x06  // Set or Get node status
 #define TYPE_SENSE_ENABLE 0x07  // Enable or disable the capacitive sensor
 #define TYPE_SENSE        0x08  // Manually retrieve a sensor reading
 #define TYPE_RESET        0x10  // Reset node
+#define TYPE_ADDR         0xF1  // Addressing
 
 
 // Flags

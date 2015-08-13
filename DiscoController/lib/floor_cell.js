@@ -10,9 +10,8 @@
 
 'use strict';
 
-var Promise = require("bluebird"),
-		events = require('events'),
-		disco 		 = require('./disco_controller.js'),
+var Promise    = require("bluebird"),
+		events     = require('events'),
 		discoUtils = require('./utils.js');
 
 
@@ -22,14 +21,17 @@ function FloorCell (xPos, yPos, discoController) {
 	this.MODE_FADING = 1;
 
 	var x = xPos,
-		y = yPos,
-		controller = discoController,
-		mode = 0,
-		value = 0,
-		color = [0,0,0],
-		fadeColor = [0,0,0],
-		fadeDuration = 0,
-		fadePromise = null;
+			y = yPos,
+			controller = discoController,
+			mode = 0,
+			value = 0,
+			color = [0,0,0],
+			targetColor = [0,0,0],
+			fadingColor = [0,0,0],
+			fadeDuration = 0,
+			fadeIncrements = [0, 0, 0],
+			fadePromise = null,
+			lastFadeUpdate = 0;
 
 	/**
 		Events emitted are:
@@ -54,19 +56,6 @@ function FloorCell (xPos, yPos, discoController) {
 	this.setXY = function(xPos, yPos) {
 		x = xPos;
 		y = yPos;
-	};
-
-	/**
-		Get the current mode of this cell.
-		Either:
-		* `FloorCell.MODE_NORMAL`
-		* `FloorCell.MODE_FADING`
-
-		@method getMode
-		@return int
-	*/
-	this.getMode = function() {
-		return mode;
 	};
 
 	/**
@@ -104,9 +93,9 @@ function FloorCell (xPos, yPos, discoController) {
 
 		@method setColor
 		@param {Array or String} rgb Color defined as an RGB array or HEX string
-		@param {boolean} stopFade (optional) If currently faing, set this to `false` to not stop the current fade.
-								  Otherwise, the fade will continue from this color
-								  Deaults to 'true'
+		@param {boolean} stopFade (optional) If currently fading, set this to `false` to not stop the current fade.
+														  Otherwise, the fade will continue from this color
+														  Deaults to 'true'
 	*/
 	this.setColor = function(rgb, stopFade) {
 		if (typeof rgb == 'string') {
@@ -115,13 +104,15 @@ function FloorCell (xPos, yPos, discoController) {
 
 		// Stop the current fade
 		if (stopFade !== false && mode == FloorCell.MODE_FADING) {
-			fadeColor = rgb;
+			targetColor = rgb;
 			return this.stopFade();
 		}
 
 		color = rgb;
 		this.events.emit('colorChanged', color);
 		controller.events.emit('cell.colorChanged', x, y, color);
+
+		return color.slice(0);
 	};
 
 	/**
@@ -131,7 +122,11 @@ function FloorCell (xPos, yPos, discoController) {
 		@return {Array} RGB color array
 	*/
 	this.getColor = function() {
-		return color.slice(0);
+		if (this.isFading()) {
+			return this.processFadeIncrement();
+		} else {
+			return color.slice(0);
+		}
 	};
 
 	/**
@@ -143,20 +138,77 @@ function FloorCell (xPos, yPos, discoController) {
 
 		@return {Promise} which will resolve when the fade is complete
 	*/
-	this.fadeToColor = function(color, duration) {
-		if (typeof color == 'string') {
-			color = discoUtils.hexToRGB(color);
+	this.fadeToColor = function(toColor, duration) {
+		if (typeof toColor == 'string') {
+			toColor = discoUtils.hexToRGB(toColor);
 		}
 
-		fadeColor = color;
-		mode = FloorCell.MODE_FADING;
-		fadeDuration = duration;
+		// Figure out how much to change the color per millisecond
+		fadeIncrements = [0, 0, 0];
+		for (var i = 0; i < 3; i++) {
+	    var colorDiff = toColor[i] - color[i];
 
-		this.events.emit('fadeStart', color, duration);
-		controller.events.emit('cell.fadeStart', x, y, color, duration);
+	    if (colorDiff === 0) {
+	      fadeIncrements[i] = 0;
+	    } else {
+	      fadeIncrements[i] = colorDiff / duration;
+	    }
+	  }
+
+		targetColor = toColor;
+		fadingColor = color.slice(0);
+		fadeDuration = duration;
+		lastFadeUpdate = Date.now();
+		mode = FloorCell.MODE_FADING;
+
+	  // Events
+		this.events.emit('fadeStart', targetColor, duration);
+		controller.events.emit('cell.fadeStart', x, y, targetColor, duration);
 
 		fadePromise = Promise.pending();
 		return fadePromise.promise;
+	};
+
+	/**
+		Figure out the current color in the fade progression
+
+		@method processFadeIncrement
+		@return {Array} color
+	*/
+	this.processFadeIncrement = function() {
+		if (!this.isFading()) return this.getColor();
+
+		var inc = 0,
+				fading = true,
+				updateColor = color.slice(0),
+				timeSince = Date.now() - lastFadeUpdate;
+
+		for (var i = 0; i < 3; i++) {
+			inc = fadeIncrements[i];
+	    if (inc !== 0) {
+	      fadingColor[i] += inc * timeSince;
+
+	      // Fade complete
+	      if ((inc > 0 && fadingColor[i] >= targetColor[i]) ||
+	      		(inc < 0 && fadingColor[i] <= targetColor[i])) {
+	        fadingColor[i] = targetColor[i];
+	        fadeIncrements[i] = 0;
+	      }
+	      else {
+	        fading = true;
+	      }
+
+	      updateColor[i] = Math.round(fadingColor[i]);
+	    }
+	  }
+		lastFadeUpdate = Date.now();
+		fadeDuration -= timeSince;
+
+	  // Update color
+	  if (!fading || fadeDuration <= 0) {
+	  	this.stopFade();
+	  }
+	 	return this.setColor(updateColor, false);
 	};
 
 	/**
@@ -166,7 +218,7 @@ function FloorCell (xPos, yPos, discoController) {
 		@return {Array} RGB color array
 	*/
 	this.getFadeColor = function(){
-		return fadeColor.slice(0);
+		return targetColor.slice(0);
 	};
 
 	/**
@@ -195,8 +247,9 @@ function FloorCell (xPos, yPos, discoController) {
 		@method stopFade
 	*/
 	this.stopFade = function() {
-		this.setColor(fadeColor, false);
+		this.setColor(targetColor, false);
 		fadeDuration = 0;
+		mode = FloorCell.MODE_NORMAL;
 
 		if (fadePromise) {
 			fadePromise.resolve();

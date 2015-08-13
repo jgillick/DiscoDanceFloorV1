@@ -15,10 +15,10 @@ var EventEmitter  = require('events').EventEmitter,
     _             = require('underscore');
 
 const BAUD_RATE            = 250000;
-const ACK_TIMEOUT          = 50; //1000;
-const STATUS_TIMEOUT       = 50; //1000;
+const ACK_TIMEOUT          = 100;
+const STATUS_TIMEOUT       = 50;
 const ADDRESSING_TIMEOUT   = 500;
-const DELAY_BETWEEN_STAGES = 5;
+const DELAY_BETWEEN_STAGES = 10;
 const NULL_SIGNATURE       = '0,0,0,0';
 
 // Program stages
@@ -120,6 +120,7 @@ function Comm(){
           if (txBuffer) {
             txBuffer.stopSending();
           }
+          // serialPort.set({rts:false}, function(){});
 
           stage = STATUSING;
           this.emit('done-addressing', nodeRegistration.length);
@@ -161,8 +162,8 @@ function Comm(){
       break;
       case UPDATING:
         // console.log('UPDATING');
-        // process.nextTick(this.update.bind(this));
-        setTimeout(this.update.bind(this), DELAY_BETWEEN_STAGES);
+        // process.nextTick(this.batchUpdate.bind(this));
+        setTimeout(this.batchUpdate.bind(this), DELAY_BETWEEN_STAGES);
       break;
     }
   };
@@ -202,13 +203,15 @@ function Comm(){
         txBuffer = null;
         hasReset = true;
         this.addressing();
-      }.bind(this))
+      }.bind(this));
     }
 
-    // Start sending address requests
+    // Enable the first node and then start addresses
     if (!txBuffer) {
-      txBuffer = sendAddressingRequest();
-      addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
+      // serialPort.set({rts:true}, function(){
+        txBuffer = sendAddressingRequest();
+        addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
+      // }.bind(this));
     }
 
     // Register new address
@@ -269,6 +272,65 @@ function Comm(){
   },
 
   /**
+    Do a batch color update in a single message
+  */
+  this.batchUpdate = function() {
+    var tx = new MessageParser(),
+        data = [],
+        broadcast = true,
+        lastAddr, lastSignature,
+        i, crc;
+
+    // Start batch message
+    data = [MessageParser.MSG_SOM, MessageParser.MSG_SOM,
+            MessageParser.BROADCAST_ADDRESS,
+            nodeRegistration.length,
+            MessageParser.TYPE_BATCH,
+            3,
+            MessageParser.TYPE_COLOR];
+    i = data.length;
+
+    // Build message data
+    nodeRegistration.forEach(function(addr){
+      var cell      = discoCntrl.getCellByAddress(addr),
+          color     = cell.getColor(),
+          cellSig   = colorSignatureForCell(cell);
+
+      data[i++] = addr;
+      data[i++] = addr;
+      for (var c = 0; c < 3; c++) {
+        data[i++] = color[c];
+      }
+
+      if (broadcast && lastSignature && cellSig != lastSignature) {
+        broadcast = false;
+      }
+      lastSignature = cellSig;
+      lastAddr = addr;
+    });
+
+    // Broadcast update
+    if (false && broadcast && lastSignature) {
+      tx.start(MessageParser.TYPE_COLOR);
+      tx.setAddress(MessageParser.BROADCAST_ADDRESS);
+      tx.write(discoCntrl.getCellByAddress(lastAddr).getColor());
+      tx.send().then(this.nextStage.bind(this));
+    }
+    // Batch update
+    else {
+
+      // Calculate CRC
+      crc = tx.generateCRC(null, data.slice(2));
+      data[i++] = (crc >> 8) & 0xFF;
+      data[i++] = crc & 0xff;
+
+      // Send
+      tx.start();
+      tx.sendRawData(data).then(this.nextStage.bind(this));
+    }
+  };
+
+  /**
     Handle the node update stage
   */
   this.update = function() {
@@ -299,7 +361,7 @@ function Comm(){
       if (!lastSent || cmdID != lastSent.cmdID || cellSig != lastSent.signature) {
         updates[addr] = cell;
 
-        if (broadcast && cellSig != lastSignature) {
+        if (broadcast && lastSignature && cellSig != lastSignature) {
           broadcast = false;
         }
         lastSignature = cellSig;
@@ -451,69 +513,6 @@ function colorSignatureForCell(cell) {
   }
 
   return signature.join(',');
-}
-
-/**
-  Process the status received from on of the floor
-  nodes and sync it with the FloorCell that represents it.
-
-  Here's how it work:
-    * The FloorCell is the source of truth for the color & fading state of the node
-    * If the node color and the FloorCell color do not match, update the node
-    * If the fading status between the node and the Floor cell are different:
-      + If the node's color is the same as the FloorCell's target color, tell the FloorCell the fade is complete
-      + Otherwise, sync the node
-  * Update the FloorCell value to match the node's sensor value -- only if it has changed;
-
-  Does the FloorCell object match the status of
-  what was returned from the bus
-
-  @private
-  @function processStatus
-  @param {byte} addr The node address
-  @param {FloorCell} cell
-  @param {Array of bytes} status
-  @return {boolean} True if the node and FloorCell are in sync
-*/
-function processStatus(addr, cell, status) {
-  var hasFadeFlag = (status[0] & FADING),
-      sensorDetect = (status[0] & SENSOR_DETECT) ? 1 : 0,
-      color = cell.getColor(),
-      statusColor = status.slice(1, 4),
-      targetColor = (cell.isFading()) ? cell.getFadeColor() : color,
-      statusTargetColor = (hasFadeFlag) ? status.slice(4, 7) : statusColor;
-
-  // Set FloorCell value to match sensor value
-  if (sensorDetect != cell.getValue()) {
-    // console.log('Detected change: '+ sensorDetect +' on '+ addr);
-    cell.setValue(sensorDetect ? 1 : 0);
-    return false;
-  }
-
-  // Stop fading node
-  if (hasFadeFlag && !cell.isFading()) {
-    console.log('Fading mismatch', cell.isFading(), status[0]);
-    return false;
-  }
-
-  // Node finished fading, update state
-  else if (!hasFadeFlag && cell.isFading() && _.isEqual(statusColor, targetColor)) {
-    cell.stopFade();
-  }
-
-  // Colors don't match
-  else if (!_.isEqual(targetColor, statusTargetColor)) {
-    // console.log('Color mismatch', addr, targetColor, statusTargetColor);
-    return false;
-  }
-
-  // Update color for fade step from the floor
-  else if (cell.isFading() && !_.isEqual(color, statusColor)) {
-    // console.log('Update FadeCell');
-    cell.setColor(statusColor, !hasFadeFlag);
-  }
-
-  return true;
 }
 
 /**

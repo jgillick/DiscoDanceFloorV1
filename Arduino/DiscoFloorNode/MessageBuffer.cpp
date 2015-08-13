@@ -11,11 +11,13 @@ MessageBuffer::MessageBuffer(uint8_t txCntl, uint8_t rxCntl) {
 }
 
 void MessageBuffer::start(uint8_t messageType) {
+  secondaryType = 0;
   bufferPos = 0;
   headerPos = 0;
   destAddress = myAddress;
   calculatedCRC = ~0;
   msgLengthCounter = 0;
+  batchMsgCounter = 0;
 
   // The last message type determined that this message should be streamed
   if (messageState == MSG_STATE_STM) {
@@ -92,14 +94,14 @@ bool MessageBuffer::addressedToMe() {
   // All messages heard by master are for master
   if (weAreMaster) return true;
 
-  // Wildcard
-  if (destAddress == BROADCAST_ADDRESS) return true;
+  // Broadcast address
+  else if (destAddress == BROADCAST_ADDRESS) return true;
 
   // We have not set our address
-  if (myAddress == 0) return false;
+  else if (myAddress == 0) return false;
 
   // Exact match
-  if (destAddress == myAddress) return true;
+  else if (destAddress == myAddress) return true;
 
   return false;
 }
@@ -152,7 +154,7 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     }
 
     // Set streaming bit for the next message
-    else if (type == TYPE_STREAMING) {
+    else if (type == TYPE_STRM_RESP) {
 
       // Invalid if the type was not passed in the body
       if (bufferPos == 0) {
@@ -170,6 +172,39 @@ uint8_t MessageBuffer::parse(uint8_t c) {
     return messageState = MSG_STATE_RDY;
   }
 
+  // Batch update
+  else if (type == TYPE_BATCH && messageState == MSG_STATE_BOD) {
+    msgLengthCounter++;
+
+    // We're in our message in the batch
+    if (msgLengthCounter >= batchMsgStart && msgLengthCounter <= batchMsgEnd) {
+      switch(batchMsgCounter++) {
+        // First two bytes should be our address
+        case 0:
+        case 1:
+          if (c != myAddress) {
+            return messageState = MSG_STATE_ABT;
+          }
+        break;
+        default:
+          write(c);
+      }
+    }
+    // End of the batch message, not checking CRC on this one
+    else if (msgLengthCounter >= msgLength + 2) {
+
+      // We received a message
+      if (batchMsgCounter > 0 && batchMsgCounter == batchLength) {
+        type = secondaryType;
+        return messageState = MSG_STATE_RDY;
+      }
+      // Invalid message
+      else {
+        return messageState = MSG_STATE_IDL;
+      }
+    }
+  }
+
   // Message body
   else if (messageState == MSG_STATE_BOD) {
 
@@ -178,7 +213,7 @@ uint8_t MessageBuffer::parse(uint8_t c) {
       return messageState = MSG_STATE_ABT;
     }
     // End of the message, get CRC
-    else if (msgLength == msgLengthCounter) {
+    else if (msgLengthCounter == msgLength) {
 
       // If this was a streaming message, we're not returning it anyways
       if (streaming) {
@@ -236,7 +271,7 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
       msgLength = c;
 
       // Not addressed to us (waited until length so we know how many characters to ignore)
-      if (myAddress && !addressedToMe()) {
+      if (!addressedToMe()) {
         messageState = MSG_STATE_IGN;
       }
     break;
@@ -245,8 +280,28 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
     case 2:
       type = c;
       msgLengthCounter++;
+      if (type != TYPE_BATCH) {
+        return messageState = MSG_STATE_BOD;
+      }
+    break;
+
+    // Batch content length
+    case 3:
+      msgLengthCounter++;
+
+      batchLength = c + 2;                               // length plus double address
+      msgLength = (msgLength * batchLength) + 3;         // Full message length
+      batchMsgStart = (myAddress - 1) * batchLength + 4; // Start of our part of the message
+      batchMsgEnd = batchMsgStart + batchLength - 1;     // End of our part of the message
+    break;
+
+    // Batch Secondary type
+    case 4:
+      msgLengthCounter++;
+      secondaryType = c;
       messageState = MSG_STATE_BOD;
     break;
+
   }
   headerPos++;
   return messageState;
@@ -267,7 +322,7 @@ uint8_t MessageBuffer::read() {
   }
   timeoutCounter++;
 
-  // Timeout message
+  // Timeout current message
   if (timeoutCounter > 1000) {
     type = 0;
     streaming = 0;
@@ -275,8 +330,8 @@ uint8_t MessageBuffer::read() {
   }
 
   // Respond in the streaming message
-  // (FYI, if type=streaming, that means we're in the message announcing that streaming is coming)
-  if (streaming && streamingValueSet && type != TYPE_STREAMING && myAddress > 0 && msgLengthCounter == myAddress) {
+  // (FYI, if type is TYPE_STRM_RESP, we're in the streaming pre-message)
+  if (streaming && streamingValueSet && type != TYPE_STRM_RESP && myAddress > 0 && msgLengthCounter == myAddress) {
     digitalWrite(txControl, RS485Transmit);
     digitalWrite(rxControl, RS485Transmit);
 

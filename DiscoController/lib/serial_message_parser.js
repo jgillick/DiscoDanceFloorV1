@@ -30,6 +30,7 @@ const TYPE_NULL      = 0x00; // Reset node
 const TYPE_ACK       = 0x01; // Acknowledge command
 const TYPE_ADDR      = 0xF1; // Announce address
 const TYPE_STREAMING = 0x02; // Set streaming mode
+const TYPE_BATCH     = 0x03;
 const TYPE_COLOR     = 0x04; // Set color
 const TYPE_FADE      = 0x05; // Set fade
 const TYPE_STATUS    = 0x06; // Set or Get node status
@@ -181,7 +182,7 @@ MessageParser.prototype = {
 
     if (type) {
       this._actualMsgLen++;
-      this._calculatedCRC = crc16_update(this._calculatedCRC, type);
+      this._calculatedCRC = this.generateCRC(this._calculatedCRC, type);
     }
 
     if (destAddress !== undefined) {
@@ -217,7 +218,7 @@ MessageParser.prototype = {
   setAddress: function(address){
     this._state = MSG_STATE_BOD;
     this.address = address;
-    this._calculatedCRC = crc16_update(this._calculatedCRC, this.address);
+    this._calculatedCRC = this.generateCRC(this._calculatedCRC, this.address);
   },
 
   /**
@@ -268,6 +269,8 @@ MessageParser.prototype = {
       return this._state;
     }
 
+    // console.log(' > '+ c);
+
     // Debug buffers
     // this._fullBuffer.push(c);
     // this._fullBufferChars.push(String.fromCharCode(c));
@@ -283,7 +286,7 @@ MessageParser.prototype = {
 
       this._actualMsgLen++;
       this._buffer.push(c);
-      this._calculatedCRC = crc16_update(this._calculatedCRC, c);
+      this._calculatedCRC = this.generateCRC(this._calculatedCRC, c);
 
       // Received all output, end streaming
       if (this._actualMsgLen == this._msgLen) {
@@ -331,14 +334,14 @@ MessageParser.prototype = {
       else {
         this._actualMsgLen++;
         this._buffer.push(c);
-        this._calculatedCRC = crc16_update(this._calculatedCRC, c);
+        this._calculatedCRC = this.generateCRC(this._calculatedCRC, c);
       }
       return this._state;
     }
 
     // Header
     if (this._state == MSG_STATE_HDR) {
-      this._calculatedCRC = crc16_update(this._calculatedCRC, c);
+      this._calculatedCRC = this.generateCRC(this._calculatedCRC, c);
       return this.processHeader(c);
     }
 
@@ -375,12 +378,12 @@ MessageParser.prototype = {
     var checksum = 0;
     if (this._state != MSG_STATE_RDY && this._state != MSG_STATE_BOD) return 0;
 
-    checksum = crc16_update(checksum, this.addressDestRange[0]);
-    checksum = crc16_update(checksum, this.addressDestRange[1]);
-    checksum = crc16_update(checksum, this.srcAddress);
-    checksum = crc16_update(checksum, this.type);
+    checksum = this.generateCRC(checksum, this.addressDestRange[0]);
+    checksum = this.generateCRC(checksum, this.addressDestRange[1]);
+    checksum = this.generateCRC(checksum, this.srcAddress);
+    checksum = this.generateCRC(checksum, this.type);
     for(var i = 0; i < this._buffer.length; i++ ){
-      checksum = crc16_update(checksum, this._buffer[i]);
+      checksum = this.generateCRC(checksum, this._buffer[i]);
     }
 
     return checksum;
@@ -454,7 +457,7 @@ MessageParser.prototype = {
       header = [MSG_SOM, MSG_SOM, BROADCAST_ADDRESS, this._msgLen, type];
 
       this._calculatedCRC = 0xFFFF;
-      this._calculatedCRC = crc16_update(this._calculatedCRC, header.slice(2));
+      this._calculatedCRC = this.generateCRC(this._calculatedCRC, header.slice(2));
       this.sendRawData(header)
         .then(this._startStreamingTimeout.bind(this));
 
@@ -508,7 +511,7 @@ MessageParser.prototype = {
 
       this._buffer.push(0);
       this._actualMsgLen++;
-      this._calculatedCRC = crc16_update(this._calculatedCRC, 0);
+      this._calculatedCRC = this.generateCRC(this._calculatedCRC, 0);
       this.sendRawData([0])
         .then(this._startStreamingTimeout.bind(this));
     }.bind(this), STREAMING_TIMEOUT);
@@ -534,8 +537,8 @@ MessageParser.prototype = {
     @return {Promise} Resolves with the number of bytes sent or error
   */
   send: function(){
-
     return new Promise(function(resolve, reject) {
+    try{
       var data = [],
           crc = 0xFFFF;
 
@@ -551,7 +554,7 @@ MessageParser.prototype = {
       data = data.concat(this._buffer);
 
       // Calculate CRC
-      crc = crc16_update(crc, data);
+      crc = this.generateCRC(crc, data);
       data.push((crc >> 8) & 0xFF);
       data.push(crc & 0xff);
 
@@ -560,7 +563,7 @@ MessageParser.prototype = {
       data.unshift(MSG_SOM);
 
       // if (this.type != TYPE_STREAMING) {
-      //   console.log('SEND: '+ data.join(', '));
+        // console.log('SEND: '+ data.join(', '));
       // }
 
       // Send
@@ -569,6 +572,9 @@ MessageParser.prototype = {
           this.sentAt = new Date();
           resolve.call(this);
         }.bind(this), reject);
+    } catch(e) {
+      console.log(e.message);
+    }
     }.bind(this));
   },
 
@@ -703,53 +709,59 @@ MessageParser.prototype = {
         return 'STRM';
     }
     return 'UNKNOWN';
+  },
+
+  /**
+    Calculate a 16-bit CRC.
+    Initial crc value should be 0xFFFF
+    ported from http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html
+
+    @param {int} crc Current CRC number, if set to undefined, it will be created automatically
+    @param {int or array} d Value to add to the CRC
+  */
+  generateCRC: function(crc, d) {
+
+    if (crc === undefined || crc === null) {
+      crc = 0xFFFF;
+    }
+
+    // CRC an array
+    if (typeof d == 'object') {
+      if (!d.length) return crc;
+
+      d.forEach(function(val){
+        crc = this.generateCRC(crc, val);
+      }.bind(this));
+      return crc;
+    }
+
+    crc ^= d;
+    for (var i = 0; i < 8; ++i) {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0xA001;
+      else
+        crc = (crc >> 1);
+    }
+
+    // Wrap into 16-bit word
+    if (crc > 0xFFFF) {
+      crc = crc % 0xFFFF;
+    }
+
+    return crc;
   }
 
 };
 
-/**
-  Calculate a 16-bit CRC.
-  Initial crc value should be 0xFFFF
-  ported from http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html
-
-  @param {int} crc Current CRC number
-  @param {int or array} d Value to add to the CRC
-*/
-function crc16_update(crc, d) {
-
-  // CRC an array
-  if (typeof d == 'object') {
-    if (!d.length) return crc;
-
-    d.forEach(function(val){
-      crc = crc16_update(crc, val);
-    });
-    return crc;
-  }
-
-  crc ^= d;
-  for (var i = 0; i < 8; ++i) {
-    if (crc & 1)
-      crc = (crc >> 1) ^ 0xA001;
-    else
-      crc = (crc >> 1);
-  }
-
-  // Wrap into 16-bit word
-  if (crc > 0xFFFF) {
-    crc = crc % 0xFFFF;
-  }
-
-  return crc;
-}
-
 module.exports = MessageParser;
 
+module.exports.MSG_SOM = MSG_SOM;
 module.exports.BROADCAST_ADDRESS = BROADCAST_ADDRESS;
 
 module.exports.TYPE_NULL   = TYPE_NULL;
 module.exports.TYPE_ACK    = TYPE_ACK;
 module.exports.TYPE_ADDR   = TYPE_ADDR;
+module.exports.TYPE_BATCH  = TYPE_BATCH;
 module.exports.TYPE_COLOR  = TYPE_COLOR;
 module.exports.TYPE_FADE   = TYPE_FADE;
 module.exports.TYPE_STATUS = TYPE_STATUS;
