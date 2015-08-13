@@ -2,7 +2,7 @@
 
 var Promise    = require("bluebird"),
     discoUtils = require('../lib/utils.js'),
-    audio      = require('../javascript/audio.js');
+    audio      = require('../lib/audio.js');
 
 var floorController,
     running = false,

@@ -36,6 +36,9 @@ MessageBuffer txBuffer(TX_CONTROL, RX_CONTROL);
 MessageBuffer rxBuffer(TX_CONTROL, RX_CONTROL);
 
 void setup() {
+  // Reboot if the node stalls for 2 seconds
+  wdt_enable(WDTO_2S);
+
   pinMode(NEXT_NODE,   OUTPUT);
   pinMode(TX_CONTROL,  OUTPUT);
   pinMode(RX_CONTROL,  OUTPUT);
@@ -44,6 +47,9 @@ void setup() {
   digitalWrite(TX_CONTROL, RS485Receive);
   digitalWrite(RX_CONTROL, RS485Receive);
 
+  // Init serial communication
+  Serial.begin(250000);
+
   // Pull address from EEPROM
   uint8_t addr = EEPROM.read(EEPROM_CELL_ADDR);
   if (addr > 0 && addr < 255) {
@@ -51,13 +57,6 @@ void setup() {
     txBuffer.setMyAddress(myAddress);
     rxBuffer.setMyAddress(myAddress);
   }
-
-  // Init serial communication
-  Serial.begin(250000);
-  Serial.println("START!");
-
-  // Reboot if the node stalls for 2 seconds
-  wdt_enable(WDTO_2S);
 
   // sensor.setGain(3);
   // sensor.filterTuning(0.3, 40, 320);
@@ -76,7 +75,12 @@ void loop() {
     timeout = 0;
     processMessage();
   }
+  else if (rxBuffer.getType() > MSG_STATE_IDL && rxBuffer.getType() < MSG_STATE_ABT) {
+    timeout = 0;
+  }
+
   if (rxBuffer.isStreaming() && !rxBuffer.isStreamingValueSet()) {
+    timeout = 0;
     setStreamingValue();
   }
 
@@ -85,42 +89,6 @@ void loop() {
     fadeCtrl.setColor(0, 0, 0);
     timeout = 0;
   }
-}
-
-void loopz() {
-  // long now = millis();
-
-  // The program is still alive
-  wdt_reset();
-
-  // Update non-blocking LED fade
-  // updateLEDs();
-
-  // Process message received from the bus
-  rxBuffer.read();
-  if (rxBuffer.isReady()) {
-    processMessage();
-  }
-  if (rxBuffer.isStreaming() && !rxBuffer.isStreamingValueSet()) {
-    setStreamingValue();
-  }
-
-  // if (sensor.sensorValue() >= SENSOR_THRESHOLD) {
-  //   setColor(0, 250, 0);
-  // } else {
-  //   setColor(0, 0, 0);
-  // }
-  // Serial.println(sensor.sensorValue());
-
-  // if (now > lastPrint + 100) {
-  //   Serial.println(sensor.sensorValue());
-  //   lastPrint = now;
-  // }
-
-  // Resend message
-  // if (needsAck && now > txBuffer.sentAt + ACK_TIMEOUT) {
-  //   txBuffer.send();
-  // }
 }
 
 void processMessage() {
@@ -175,6 +143,7 @@ void myMessage() {
 
   switch(rxBuffer.getType()) {
     case TYPE_RESET:
+      digitalWrite(NEXT_NODE, LOW);
       myAddress = 0;
       txBuffer.setMyAddress(myAddress);
       rxBuffer.setMyAddress(myAddress);
@@ -191,7 +160,6 @@ void myMessage() {
     break;
     case TYPE_STATUS:
       if (rxBuffer.addressedToMe()) {
-        // Serial.print(F("S!")); delay(1);
         sendStatus();
       }
       // Preload sensor value, since we're up soon and the call is blocking.
@@ -227,8 +195,6 @@ void masterMessage() {
     case TYPE_STATUS:
       // If the previous node sent it's status to mater, send ours next.
       if (rxBuffer.getBodyLen() > 0 && src + 1 == myAddress) {
-        // Serial.print(F("S~")); delay(1);
-        delay(5);
         sendStatus();
       }
     break;
@@ -246,9 +212,6 @@ uint8_t getStatusFlag() {
     flag |= FADING;
   }
 
-  // Serial.print("\nSensor: ");
-  // Serial.println(sensor.sensorValue());
-
   // if (sensor.sensorValue() >= SENSOR_THRESHOLD) {
   //   flag |= SENSOR_DETECT;
   // }
@@ -265,16 +228,10 @@ void sendStatus() {
   txBuffer.write(flag);
 
   // Current color
-  // txBuffer.write(rgb[0].get_value());
-  // txBuffer.write(rgb[1].get_value());
-  // txBuffer.write(rgb[2].get_value());
   txBuffer.write(fadeCtrl.getColor(), 3);
 
   // Target color
   if (isFading()){
-    // txBuffer.write(rgb[0].get_target_value());
-    // txBuffer.write(rgb[1].get_target_value());
-    // txBuffer.write(rgb[2].get_target_value());
     txBuffer.write(fadeCtrl.getTargetColor(), 3);
   }
 
@@ -300,28 +257,23 @@ bool sensorValue() {
 
 // Set the LED color
 void handleColorMessage() {
-  // Serial.println(F("Set color!"));
-
   uint8_t *data = rxBuffer.getBody();
   uint8_t len = rxBuffer.getBodyLen();
 
   // Invalid message
-  if (rxBuffer.getBodyLen() != 4) return;
+  if (rxBuffer.getBodyLen() < 3) return;
 
   // Set colors
   setColor(data[0], data[1], data[2]);
 
   // Command ID
-  lastCmdID = data[3];
-
-  Serial.print("NEW CMD: ");
-  Serial.println(lastCmdID);
+  if (len > 3) {
+    lastCmdID = data[3];
+  }
 }
 
 // Set LED fade
 void handleFadeMessage() {
-  // Serial.println(F("Set fade!"));
-
   uint8_t *data = rxBuffer.getBody();
   uint16_t duration;
 
@@ -330,17 +282,6 @@ void handleFadeMessage() {
 
   // Duration is two bytes that make up 16 bits
   duration = (data[3] << 8) | data[4];
-  // duration = data[3] * FADE_DIVIDER;
-  // if (len > 4) {
-  //   for (int i = 4; i < len; i++) {
-  //     duration += data[i] * FADE_DIVIDER;
-  //   }
-  // }
-
-  Serial.print("\nDURATION: ");
-  Serial.print(data[3]);
-  Serial.print(" AND ");
-  Serial.println(data[4]);
 
   // Set colors
   fadeToColor(data[0], data[1], data[2], duration);
@@ -412,10 +353,5 @@ void setColor(uint8_t red, uint8_t green, uint8_t blue) {
 }
 
 void fadeToColor(uint8_t red, uint8_t green, uint8_t blue, uint16_t time) {
-  // rgb[0].fade(red, time);
-  // rgb[1].fade(green, time);
-  // rgb[2].fade(blue, time);
-  Serial.print("\nTOTALS: ");
-  Serial.println(time);
   fadeCtrl.fadeTo(red, green, blue, time);
 }

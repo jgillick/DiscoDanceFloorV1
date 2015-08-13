@@ -1,7 +1,7 @@
 'use strict';
 
 var Promise = require("bluebird"),
-    audio = require('../javascript/audio.js'),
+    audio = require('../lib/audio.js'),
     discoUtils = require('../lib/utils.js');
 
 var floorController = null,
