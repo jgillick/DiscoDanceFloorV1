@@ -83,9 +83,6 @@ module.exports = {
           color2[color2Select] = 255;
         }
 
-
-
-
       }, colorChangeTime);
     })();
   }
@@ -144,9 +141,11 @@ function visualizeAudio() {
 
       if (!cell) continue;
       if (y <= height) {
-        cell.setColor(primaryColor);
+        // cell.setColor(primaryColor);
+        cell.fadeToColor(primaryColor, 50);
       } else {
-        cell.setColor(secondaryColor);
+        // cell.setColor(secondaryColor);
+        cell.fadeToColor(secondaryColor, 50);
       }
     }
   }
