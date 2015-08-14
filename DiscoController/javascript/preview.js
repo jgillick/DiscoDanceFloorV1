@@ -171,10 +171,8 @@ function serialSetup(){
     });
 
     // Frame rate
-    comm.on('stage-change', function(newStage, oldStage) {
-      if (oldStage == 'updating') {
-        cycles++;
-      }
+    comm.on('floor-updated', function(newStage, oldStage) {
+      cycles++;
     });
     setInterval(function() {
       var fps = Math.floor(cycles / 2);

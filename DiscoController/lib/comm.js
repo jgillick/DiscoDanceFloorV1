@@ -72,7 +72,8 @@ function Comm(){
 
     serialPort = new Serial(port, {
       baudrate: BAUD_RATE,
-      parser: serialParser
+      parser: serialParser,
+      rtscts: false,
     });
 
     // Open and process incoming data
@@ -120,7 +121,9 @@ function Comm(){
           if (txBuffer) {
             txBuffer.stopSending();
           }
-          // serialPort.set({rts:false}, function(){});
+
+          // Bring enable pin low
+          // serialPort.set({rts:true}, function(){});
 
           stage = STATUSING;
           this.emit('done-addressing', nodeRegistration.length);
@@ -134,7 +137,7 @@ function Comm(){
         stage = UPDATING;
       break;
       case UPDATING:
-        stage = STATUSING;
+        // stage = STATUSING;
       break;
     }
 
@@ -151,8 +154,10 @@ function Comm(){
     // Setup and call the new status handler on the next tick of the event loop
     switch(stage) {
       case ADDRESSING:
-        // process.nextTick(this.addressing.bind(this));
-        setTimeout(this.addressing.bind(this), DELAY_BETWEEN_STAGES);
+        serialPort.set({rts:false}, function(){
+          // process.nextTick(this.addressing.bind(this));
+          setTimeout(this.addressing.bind(this), DELAY_BETWEEN_STAGES);
+        }.bind(this));
       break;
       case STATUSING:
         // console.log('STATUSING');
@@ -208,10 +213,8 @@ function Comm(){
 
     // Enable the first node and then start addresses
     if (!txBuffer) {
-      // serialPort.set({rts:true}, function(){
-        txBuffer = sendAddressingRequest();
-        addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
-      // }.bind(this));
+      txBuffer = sendAddressingRequest();
+      addressingStageTimeout = setTimeout(this.nextStage.bind(this), ADDRESSING_TIMEOUT);
     }
 
     // Register new address
@@ -275,58 +278,66 @@ function Comm(){
     Do a batch color update in a single message
   */
   this.batchUpdate = function() {
-    var tx = new MessageParser(),
-        data = [],
-        broadcast = true,
-        lastAddr, lastSignature,
-        i, crc;
+    try {
+      var tx = new MessageParser(),
+          data = [],
+          now = Date.now(),
+          broadcast = true,
+          lastColor, lastSignature,
+          i, crc;
 
-    // Start batch message
-    data = [MessageParser.MSG_SOM, MessageParser.MSG_SOM,
-            MessageParser.BROADCAST_ADDRESS,
-            nodeRegistration.length,
-            MessageParser.TYPE_BATCH,
-            3,
-            MessageParser.TYPE_COLOR];
-    i = data.length;
+      // Start batch message
+      data = [MessageParser.MSG_SOM, MessageParser.MSG_SOM,
+              MessageParser.BROADCAST_ADDRESS,
+              nodeRegistration.length,
+              MessageParser.TYPE_BATCH,
+              3,
+              MessageParser.TYPE_COLOR];
+      i = data.length;
 
-    // Build message data
-    nodeRegistration.forEach(function(addr){
-      var cell      = discoCntrl.getCellByAddress(addr),
-          color     = cell.getColor(),
-          cellSig   = colorSignatureForCell(cell);
+      // Build message data
+      nodeRegistration.forEach(function(addr){
+        var cell      = discoCntrl.getCellByAddress(addr),
+            color     = (cell.isFading()) ? cell.processFadeIncrement(now) : cell.getColor(),
+            cellSig   = colorSignatureForCell(cell);
 
-      data[i++] = addr;
-      data[i++] = addr;
-      for (var c = 0; c < 3; c++) {
-        data[i++] = color[c];
+        data[i++] = addr;
+        data[i++] = addr;
+        for (var c = 0; c < 3; c++) {
+          data[i++] = color[c];
+        }
+
+        if (broadcast && lastSignature && (cellSig != lastSignature || color.join(',') != lastColor.join(','))) {
+          broadcast = false;
+        }
+        lastColor = color;
+        lastSignature = cellSig;
+      });
+
+      // Broadcast update
+      if (broadcast && lastSignature) {
+        tx.start(MessageParser.TYPE_COLOR);
+        tx.setAddress(MessageParser.BROADCAST_ADDRESS);
+        tx.write(discoCntrl.getCells()[0].getColor());
+        tx.send().then(this.nextStage.bind(this));
+      }
+      // Batch update
+      else {
+
+        // Calculate CRC
+        crc = tx.generateCRC(null, data.slice(2));
+        data[i++] = (crc >> 8) & 0xFF;
+        data[i++] = crc & 0xff;
+
+        // Send
+        tx.start();
+        tx.sendRawData(data).then(this.nextStage.bind(this));
       }
 
-      if (broadcast && lastSignature && cellSig != lastSignature) {
-        broadcast = false;
-      }
-      lastSignature = cellSig;
-      lastAddr = addr;
-    });
-
-    // Broadcast update
-    if (false && broadcast && lastSignature) {
-      tx.start(MessageParser.TYPE_COLOR);
-      tx.setAddress(MessageParser.BROADCAST_ADDRESS);
-      tx.write(discoCntrl.getCellByAddress(lastAddr).getColor());
-      tx.send().then(this.nextStage.bind(this));
-    }
-    // Batch update
-    else {
-
-      // Calculate CRC
-      crc = tx.generateCRC(null, data.slice(2));
-      data[i++] = (crc >> 8) & 0xFF;
-      data[i++] = crc & 0xff;
-
-      // Send
-      tx.start();
-      tx.sendRawData(data).then(this.nextStage.bind(this));
+      this.emit('floor-updated');
+    } catch(e) {
+      console.error(e.message);
+      this.nextStage.bind(this);
     }
   };
 
@@ -383,6 +394,7 @@ function Comm(){
       }
     }
 
+    this.emit('floor-updated');
     this.nextStage();
   };
 }

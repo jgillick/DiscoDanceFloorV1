@@ -66,32 +66,47 @@ module.exports = {
 };
 
 function program() {
-  var cells = floorController.getCells(),
-      rgb, color;
+  var dimensions = floorController.getDimensions(),
+      length = dimensions.x * dimensions.y,
+      x = 0, y = 0,
+      rgb, color, cell;
 
   offsState = (offsState) ? 0 : 1;
   globalSelect = discoUtils.wrap(globalSelect + 1, 0, 2);
 
-  for (var i = 0, last = 0, len = cells.length; i < len; i++) {
-    color = [0,0,0];
-    rgb = colorSelect[i] || last;
+  for (var i = 0, last = 0; i < length; i++) {
+    try {
+      color = [0,0,0];
+      rgb = colorSelect[i] || last;
+      cell = floorController.getCell(x, y);
 
-    if (mode == 'running') {
-      rgb = discoUtils.wrap(rgb + 1, 0, 2);
-      last = rgb;
-      colorSelect[i] = rgb;
+      if (mode == 'running') {
+        rgb = discoUtils.wrap(rgb + 1, 0, 2);
+        last = rgb;
+        colorSelect[i] = rgb;
 
-      color[rgb] = 255;
-    }
-    else if (mode == 'offs' && offsState){
-      color[rgb] = 255;
-    }
-    else if (mode == 'all') {
-      color[globalSelect] = 255;
-    }
+        color[rgb] = 255;
+      }
+      else if (mode == 'offs' && offsState){
+        color[rgb] = 255;
+      }
+      else if (mode == 'all') {
+        color[globalSelect] = 255;
+      }
 
-    cells[i].fadeToColor(color, fadeDuration);
-    // cells[i].setColor(color);
+      cell.fadeToColor(color, fadeDuration);
+
+      // Increase x/y
+      x++;
+      if (x >= dimensions.x) {
+        x = 0;
+        y++;
+      }
+
+    } catch(e) {
+      console.error(e.message);
+      console.error(e.stack);
+    }
   }
 
   timeout = setTimeout(program, fadeDuration * 1.5);

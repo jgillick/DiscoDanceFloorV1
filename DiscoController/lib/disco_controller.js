@@ -1,15 +1,11 @@
 'use strict';
 
-var fs = require('fs'),
-    path = require('path'),
-    events = require('events'),
+var events = require('events'),
     util = require('util'),
-    discoUtils = require('./utils.js'),
-    FloorCell = require('./floor_cell.js'),
+    FloorLayout = require('../layouts/four_by_four.js'),
     Promise = require("bluebird");
 
-var eventEmitter = new events.EventEmitter(),
-  controller;
+var eventEmitter = new events.EventEmitter();
 
 /**
   Are we emulating the floor or actually communicating
@@ -47,10 +43,19 @@ var DiscoController = function(x, y){
     Map of cell addresses to their index in the `cells` array.
 
     @property cellAddresses
-    @type Hash of addresses address to index numbers
+    @type Object of addresses to index numbers
     @private
   */
   var cellAddresses = {};
+
+  /**
+    Map of x/y coordinates to cell index
+
+    @property cellMap
+    @type Object of x/y to index
+    @private
+  */
+  var cellMap = {};
 
   /**
     Events emitted from the floor controller:
@@ -76,18 +81,18 @@ var DiscoController = function(x, y){
     @returns int
   */
   function getCellIndex(x, y) {
-    var index, cell,
-      xMax = dimensions.x;
+    var index, cell;
 
-    if (x < 0 || y < 0 || x >= xMax || y >= dimensions.y) {
-      throw util.format('Invalid x/y coordinate: %sx%s', x, y);
+    try {
+      index = cellMap[x][y];
+      cell = cells[index];
+    } catch(e) {
+      console.error(util.format('Could not get the cell at: %s x %s -- %s', x, y, e.message));
+      console.log(cellMap);
+      console.log(cellMap[x]);
     }
 
-    // Unwind the x/y coordinates into flat index
-    index = (y * xMax) + x;
-    cell = cells[index];
-
-    // Validate index or search for it manually
+    // Validate index
     if (!cell || (cell && cell.getX() != x || cell.getY() != y)) {
       throw util.format('Internal Error: Cell at index %s doesn\'t match x/y coordinate expected: %sx%s', index, x, y);
     }
@@ -107,10 +112,10 @@ var DiscoController = function(x, y){
     @param {int} y Floor height
   */
   this.setDimensions = function(x, y) {
-    var i = 0;
+    var len = x * y;
 
-    if (typeof x != "number" || typeof y != "number") {
-      throw "Dimensions need to be be greater than zero.";
+    if (typeof x != 'number' || typeof y != 'number') {
+      throw 'Dimensions need to be be greater than zero.';
     }
 
     eventEmitter.emit('dimensions.willChange', x, y);
@@ -118,25 +123,25 @@ var DiscoController = function(x, y){
     dimensions.x = x;
     dimensions.y = y;
 
-    // Create cells
-    for (var yPos = 0; yPos < y; yPos++) {
-      for (var xPos = 0; xPos < x; xPos++) {
-        var cell = cells[i];
-        if (cell){
-          cell.setXY(xPos, yPos);
-        } else {
-          cells[i] = new FloorCell(xPos, yPos, this);
-        }
-        i++;
-      }
-    }
+    // Build floor layout
+    cellMap = FloorLayout.generateFloor(dimensions, cells, this);
 
     // Remove unused nodes
-    if (cells[i]) {
-      cells = cells.slice(0, i);
+    if (cells.length > len) {
+      cells = cells.slice(0, len);
     }
 
     eventEmitter.emit('dimensions.changed', x, y);
+  };
+
+  /**
+    Get the floor dimensions
+
+    @method getDimensions
+    @return {Object} Object with the floor's x/y values
+  */
+  this.getDimensions = function() {
+    return dimensions;
   };
 
   /**
@@ -169,16 +174,6 @@ var DiscoController = function(x, y){
     }
 
     this.setDimensions(x, y);
-    return dimensions;
-  };
-
-  /**
-    Get the floor dimensions
-
-    @method getDimensions
-    @return {Object} Object with the floor's x/y values
-  */
-  this.getDimensions = function() {
     return dimensions;
   };
 
@@ -253,6 +248,15 @@ var DiscoController = function(x, y){
   };
 
   /**
+    Remove all the cells from the floor
+
+    @method removeCells
+  */
+  this.removeCells = function() {
+    cells = [];
+  },
+
+  /**
     Make a global change to all floor cells
 
     @method changeAllCells
@@ -261,22 +265,24 @@ var DiscoController = function(x, y){
     @return Promise
   */
   this.changeAllCells = function(color, fadeDuration) {
-    var i = 0;
+    var i = 0,
+        changePromise = Promise.resolve();
+
     for (var len = cells.length; i < len; i++) {
       if (fadeDuration) {
-        cells[i].fadeToColor(color, fadeDuration);
+        changePromise = cells[i].fadeToColor(color, fadeDuration);
       } else {
         cells[i].setColor(color);
       }
     }
 
     // Return the promise of the last cell
-    return cells[i - 1].getFadePromise() || Promise.resolve();
+    return changePromise;
   };
 
+  cells = Array(x * y);
   this.setDimensions(x, y);
 };
 
 // Init a new controller
-controller = new DiscoController(8, 8);
-module.exports.controller = controller;
+module.exports.controller = new DiscoController(8, 8);

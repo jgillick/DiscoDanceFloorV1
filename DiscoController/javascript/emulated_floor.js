@@ -144,7 +144,7 @@ var controller = disco.controller;
     // color increment, which will update the floor via the 'cell.colorChanged' event
     var cells = controller.getCells();
     for (var i = 0, len = cells.length; i < len; i++) {
-      cells[i].getColor();
+      cells[i].processFadeIncrement();
     }
 
     requestAnimationFrame(emulatedFloorAnimationFrame);
