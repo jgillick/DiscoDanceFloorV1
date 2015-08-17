@@ -2,7 +2,6 @@
   See README for description and pin assignment
 */
 
-// #include "LEDFader.h"
 #include "RGBFade.h"
 // #include "CapacitiveSensor.h"
 // #include "CapacitiveTouch.h"
@@ -13,18 +12,17 @@
 #include <avr/wdt.h>
 
 uint8_t myAddress = 0,
-        lastCmdID = 0;
-uint32_t lastPrint = 0;
+        lastCmdID = 0,
+        enablePin = 0,
+        nextPin   = 0;
 
 boolean needsAck          = false, // TRUE if we're waiting for an ACK
         enabledState      = false, // is the node enabled
         gotSensorValue    = false,
-        lastSensorValue   = false;
+        lastSensorValue   = false,
+        daisyPinsSet      = false;
 
 // The RGB LEDs
-// LEDFader rgb[3] = { LEDFader(LED_RED),
-//                     LEDFader(LED_GREEN),
-//                     LEDFader(LED_BLUE) };
 RGBFade fadeCtrl;
 
 // Sensor
@@ -39,16 +37,15 @@ void setup() {
   // Reboot if the node stalls for 2 seconds
   wdt_enable(WDTO_2S);
 
-  pinMode(NEXT_NODE,   OUTPUT);
+  resetDaisyPins();
   pinMode(TX_CONTROL,  OUTPUT);
   pinMode(RX_CONTROL,  OUTPUT);
-  pinMode(ENABLE_NODE, INPUT);
 
   digitalWrite(TX_CONTROL, RS485Receive);
   digitalWrite(RX_CONTROL, RS485Receive);
 
   // Init serial communication
-  Serial.begin(250000);
+  Serial.begin(SERIAL_BAUD);
 
   // Pull address from EEPROM
   uint8_t addr = EEPROM.read(EEPROM_CELL_ADDR);
@@ -68,8 +65,29 @@ void setup() {
 void loop() {
   static uint32_t timeout = 0;
   wdt_reset();
-
   timeout++;
+
+  // Check polarity of daisy chain pins (enable/next)
+  if (!daisyPinsSet) {
+    if (digitalRead(DAISY_1) == HIGH) {
+      enablePin = DAISY_1;
+      nextPin = DAISY_2;
+      daisyPinsSet = true;
+    }
+    else if (digitalRead(DAISY_2) == HIGH) {
+      enablePin = DAISY_2;
+      nextPin = DAISY_1;
+      daisyPinsSet = true;
+    }
+
+    if (daisyPinsSet) {
+      pinMode(nextPin, OUTPUT);
+      digitalWrite(nextPin, LOW);
+    }
+  }
+
+  // Read from bus
+  setStreamingValue();
   rxBuffer.read();
   if (rxBuffer.isReady()) {
     timeout = 0;
@@ -81,7 +99,6 @@ void loop() {
 
   if (rxBuffer.isStreaming() && !rxBuffer.isStreamingValueSet()) {
     timeout = 0;
-    setStreamingValue();
   }
 
   // If we haven't heard from master in awhile, we should turn everything off
@@ -91,7 +108,20 @@ void loop() {
   }
 }
 
+void resetDaisyPins() {
+  nextPin = 0;
+  enablePin = 0;
+  daisyPinsSet = false;
+  pinMode(DAISY_1, INPUT);
+  pinMode(DAISY_2, INPUT);
+}
+
 void processMessage() {
+
+  // Looks like we're past addressing, drop daisy chain pins
+  if (daisyPinsSet && rxBuffer.getType() < TYPE_ADDR && rxBuffer.getType() > TYPE_ACK) {
+    resetDaisyPins();
+  }
 
   // No ID defined yet
   if (myAddress == 0) {
@@ -112,17 +142,28 @@ void processMessage() {
 // Process an ACK received
 void processACK() {
   needsAck = false;
-
-  // Address set, tell next node to set address
   if (txBuffer.getType() == TYPE_ADDR) {
     addressConfirmed();
+  }
+}
+
+// Process a NACK
+void processNACK() {
+  needsAck = false;
+  if (txBuffer.getType() == TYPE_ADDR) {
+    myAddress = 0;
+    rxBuffer.setMyAddress(0);
+    txBuffer.setMyAddress(0);
+    txBuffer.reset();
   }
 }
 
 // Out address has been confirmed, enable the next node
 void addressConfirmed() {
   EEPROM.write(EEPROM_CELL_ADDR, myAddress);
-  digitalWrite(NEXT_NODE, HIGH);
+  if (daisyPinsSet) {
+    digitalWrite(nextPin, HIGH);
+  }
 }
 
 // Provided a value for the streaming response
@@ -143,14 +184,17 @@ void myMessage() {
 
   switch(rxBuffer.getType()) {
     case TYPE_RESET:
-      digitalWrite(NEXT_NODE, LOW);
+      resetDaisyPins();
       myAddress = 0;
-      txBuffer.setMyAddress(myAddress);
-      rxBuffer.setMyAddress(myAddress);
+      txBuffer.setMyAddress(0);
+      rxBuffer.setMyAddress(0);
       setColor(0,0,0);
     break;
     case TYPE_ACK:
       processACK();
+    break;
+    case TYPE_NACK:
+      processNACK();
     break;
     case TYPE_COLOR:
       handleColorMessage();
@@ -294,23 +338,23 @@ void handleFadeMessage() {
 // Set an address if one hasn't been defined yet
 void setAddress() {
   uint8_t addr,
-          enabled = digitalRead(ENABLE_NODE);
+          enabled = (daisyPinsSet) ? digitalRead(enablePin) : 0;
 
   // Must have crashed and rebooted because we're enabled,
   // and the RX message is past the addressing stage
   // Get address from the EEPROM
-  if (enabled && rxBuffer.getType() > TYPE_ADDR) {
-    addr = EEPROM.read(EEPROM_CELL_ADDR);
-    if (addr > 0 && addr < 255) {
-      myAddress = addr;
-      txBuffer.setMyAddress(myAddress);
-      rxBuffer.setMyAddress(myAddress);
-      return;
-    }
-    else {
-      addr = 0;
-    }
-  }
+  // if (enabled && rxBuffer.getType() < TYPE_ADDR) {
+  //   addr = EEPROM.read(EEPROM_CELL_ADDR);
+  //   if (addr > 0 && addr < 255) {
+  //     myAddress = addr;
+  //     txBuffer.setMyAddress(myAddress);
+  //     rxBuffer.setMyAddress(myAddress);
+  //     return;
+  //   }
+  //   else {
+  //     addr = 0;
+  //   }
+  // }
 
   // Just enabled, clear RX and wait for next address (in case current RX is stale)
   if (enabled && enabledState == false) {
@@ -334,21 +378,11 @@ void setAddress() {
   }
 }
 
-void updateLEDs() {
-  // rgb[0].update();
-  // rgb[1].update();
-  // rgb[2].update();
-}
-
 bool isFading() {
   return fadeCtrl.isFading();
-  // return rgb[0].is_fading() || rgb[1].is_fading() || rgb[2].is_fading();
 }
 
 void setColor(uint8_t red, uint8_t green, uint8_t blue) {
-  // rgb[0].set_value(red);
-  // rgb[1].set_value(green);
-  // rgb[2].set_value(blue);
   fadeCtrl.setColor(red, green, blue);
 }
 

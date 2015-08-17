@@ -25,7 +25,6 @@ void MessageBuffer::start(uint8_t messageType) {
   }
   else {
     streaming = 0;
-    streamingValueSet = 0;
   }
 
   type = messageType;

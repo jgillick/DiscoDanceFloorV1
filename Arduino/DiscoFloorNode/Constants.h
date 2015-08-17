@@ -2,16 +2,17 @@
 // Commands codes
 #define TYPE_NULL         0x00
 #define TYPE_ACK          0x01  // Acknowledge command
-#define TYPE_STRM_RESP    0x02  // Set streaming response mode
-#define TYPE_BATCH        0x03  // Set batch update mode
-#define TYPE_COLOR        0x04  // Set color
-#define TYPE_FADE         0x05  // Set fade
-#define TYPE_STATUS       0x06  // Set or Get node status
-#define TYPE_SENSE_ENABLE 0x07  // Enable or disable the capacitive sensor
-#define TYPE_SENSE        0x08  // Manually retrieve a sensor reading
+#define TYPE_NACK         0x02  // Unacknowledge command (the command that was sent was invalid)
+#define TYPE_STRM_RESP    0x03  // Set streaming response mode
+#define TYPE_BATCH        0x04  // Set batch update mode
+#define TYPE_COLOR        0x05  // Set color
+#define TYPE_FADE         0x06  // Set fade
+#define TYPE_STATUS       0x07  // Set or Get node status
 #define TYPE_RESET        0x10  // Reset node
 #define TYPE_ADDR         0xF1  // Addressing
 
+
+#define SERIAL_BAUD      500000
 
 // Flags
 #define FADING           0b00100000 // 0x20
@@ -36,10 +37,12 @@
 #define LED_RED          5 // PD5 (OC0B)
 #define LED_GREEN        6 // PD6 (OC0A)
 #define LED_BLUE         3 // PD3 (OC2B)
-#define NEXT_NODE        A4
-#define ENABLE_NODE      A3
 #define SENSOR_SEND      10
 #define SENSOR_TOUCH     8
+
+// Daisy chain pins
+#define DAISY_1          A3 // labeled "prev" on board
+#define DAISY_2          A4 // labeled "next" on board
 
 // RX/TX enable
 #define RS485Transmit    HIGH
