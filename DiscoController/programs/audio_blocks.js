@@ -192,6 +192,7 @@ function AudioBox(index, band, from, to) {
       // Fill in the cells
       for (var n = 0; n < ring.length; n++) {
         var cell = floorController.getCell(ring[n][0], ring[n][1]);
+        if (!cell) continue;
         cell.fadeToColor(color, 200);
       }
     }
