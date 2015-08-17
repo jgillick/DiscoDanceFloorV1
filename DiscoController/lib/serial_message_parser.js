@@ -28,14 +28,15 @@ const BROADCAST_ADDRESS = 0x00;
 // Message types
 const TYPE_NULL      = 0x00; // Reset node
 const TYPE_ACK       = 0x01; // Acknowledge command
-const TYPE_ADDR      = 0xF1; // Announce address
-const TYPE_STREAMING = 0x02; // Set streaming mode
-const TYPE_BATCH     = 0x03;
-const TYPE_COLOR     = 0x04; // Set color
-const TYPE_FADE      = 0x05; // Set fade
-const TYPE_STATUS    = 0x06; // Set or Get node status
-const TYPE_MODE      = 0x07; // Set or Get node status
+const TYPE_NACK      = 0x02; // Unacknowledge command
+const TYPE_STREAMING = 0x03; // Set streaming mode
+const TYPE_BATCH     = 0x04;
+const TYPE_COLOR     = 0x05; // Set color
+const TYPE_FADE      = 0x06; // Set fade
+const TYPE_STATUS    = 0x07; // Set or Get node status
+const TYPE_MODE      = 0x08; // Set or Get node status
 const TYPE_RESET     = 0x10; // Reset node
+const TYPE_ADDR      = 0xF1; // Announce address
 
 // Message parsing status
 const MSG_STATE_IDL  = 0x00; // no data received
@@ -573,7 +574,7 @@ MessageParser.prototype = {
           resolve.call(this);
         }.bind(this), reject);
     } catch(e) {
-      console.log(e.message);
+      console.log(e);
     }
     }.bind(this));
   },
@@ -760,6 +761,7 @@ module.exports.BROADCAST_ADDRESS = BROADCAST_ADDRESS;
 
 module.exports.TYPE_NULL   = TYPE_NULL;
 module.exports.TYPE_ACK    = TYPE_ACK;
+module.exports.TYPE_NACK   = TYPE_NACK;
 module.exports.TYPE_ADDR   = TYPE_ADDR;
 module.exports.TYPE_BATCH  = TYPE_BATCH;
 module.exports.TYPE_COLOR  = TYPE_COLOR;
