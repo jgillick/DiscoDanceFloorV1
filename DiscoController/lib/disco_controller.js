@@ -57,6 +57,10 @@ var DiscoController = function(x, y){
   */
   var cellMap = {};
 
+  this.getCellMap = function() {
+    return cellMap;
+  };
+
   /**
     Events emitted from the floor controller:
 
@@ -86,18 +90,16 @@ var DiscoController = function(x, y){
     try {
       index = cellMap[x][y];
       cell = cells[index];
+
+      // Validate index
+      if (cell && cell.getX() != x || cell.getY() != y) {
+        console.error(util.format('Cell at index %s doesn\'t match x/y coordinate expected: %sx%s', index, x, y));
+      }
     } catch(e) {
-      console.error(util.format('Could not get the cell at: %s x %s -- %s', x, y, e.message));
-      console.log(cellMap);
-      console.log(cellMap[x]);
+      console.error(util.format('Could not get the cell at %sx%s -- %s', x, y, e.message));
     }
 
-    // Validate index
-    if (!cell || (cell && cell.getX() != x || cell.getY() != y)) {
-      throw util.format('Internal Error: Cell at index %s doesn\'t match x/y coordinate expected: %sx%s', index, x, y);
-    }
-
-    return index;
+    return (index === undefined) ? -1 : index;
   }
 
   /**
@@ -112,8 +114,6 @@ var DiscoController = function(x, y){
     @param {int} y Floor height
   */
   this.setDimensions = function(x, y) {
-    var len = x * y;
-
     if (typeof x != 'number' || typeof y != 'number') {
       throw 'Dimensions need to be be greater than zero.';
     }
@@ -125,13 +125,7 @@ var DiscoController = function(x, y){
 
     // Build floor layout
     cellMap = FloorLayout.generateFloor(dimensions, cells, this);
-
-    // Remove unused nodes
-    if (cells.length > len) {
-      cells = cells.slice(0, len);
-    }
-
-    eventEmitter.emit('dimensions.changed', x, y);
+    eventEmitter.emit('dimensions.changed', dimensions.x, dimensions.y);
   };
 
   /**
@@ -209,6 +203,8 @@ var DiscoController = function(x, y){
   */
   this.setCellAddress = function(x, y, address){
     var index = getCellIndex(x, y);
+    if (index === -1) return null;
+
     cellAddresses[address] = index;
     return cells[index];
   };
@@ -229,10 +225,12 @@ var DiscoController = function(x, y){
     @method getCell
     @param {int} x The x position of the cell
     @param {int} y The y position of the cell
-    @return FloorCell
+    @return FloorCell or null
   */
   this.getCell = function(x, y) {
-    return cells[getCellIndex(x, y)];
+    var index = getCellIndex(x, y);
+    if (index === -1) return null;
+    return cells[index];
   };
 
   /**
@@ -280,7 +278,7 @@ var DiscoController = function(x, y){
     return changePromise;
   };
 
-  cells = Array(x * y);
+  cells = new Array(x * y);
   this.setDimensions(x, y);
 };
 

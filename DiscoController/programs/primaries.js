@@ -67,45 +67,41 @@ module.exports = {
 
 function program() {
   var dimensions = floorController.getDimensions(),
-      length = dimensions.x * dimensions.y,
-      x = 0, y = 0,
+      i = 0, last = 0,
       rgb, color, cell;
 
   offsState = (offsState) ? 0 : 1;
   globalSelect = discoUtils.wrap(globalSelect + 1, 0, 2);
 
-  for (var i = 0, last = 0; i < length; i++) {
-    try {
-      color = [0,0,0];
-      rgb = colorSelect[i] || last;
-      cell = floorController.getCell(x, y);
+  for (var y = 0; y < dimensions.y; y++) {
+    for (var x = 0; x < dimensions.x; x++) {
+      try {
+        color = [0,0,0];
+        rgb = colorSelect[i] || last;
+        cell = floorController.getCell(x, y);
 
-      if (mode == 'running') {
-        rgb = discoUtils.wrap(rgb + 1, 0, 2);
-        last = rgb;
-        colorSelect[i] = rgb;
+        if (!cell) continue;
+        if (mode == 'running') {
+          rgb = discoUtils.wrap(rgb + 1, 0, 2);
+          last = rgb;
+          colorSelect[i] = rgb;
 
-        color[rgb] = 255;
+          color[rgb] = 255;
+        }
+        else if (mode == 'offs' && offsState){
+          color[rgb] = 255;
+        }
+        else if (mode == 'all') {
+          color[globalSelect] = 255;
+        }
+
+        cell.fadeToColor(color, fadeDuration);
+
+      } catch(e) {
+        console.error(e);
+        // console.error(e.stack);
       }
-      else if (mode == 'offs' && offsState){
-        color[rgb] = 255;
-      }
-      else if (mode == 'all') {
-        color[globalSelect] = 255;
-      }
-
-      cell.fadeToColor(color, fadeDuration);
-
-      // Increase x/y
-      x++;
-      if (x >= dimensions.x) {
-        x = 0;
-        y++;
-      }
-
-    } catch(e) {
-      console.error(e.message);
-      console.error(e.stack);
+      i++;
     }
   }
 

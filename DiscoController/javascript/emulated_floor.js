@@ -29,6 +29,7 @@ var controller = disco.controller;
         y = parseInt($('#floor-max-y').val() );
 
       if (!isNaN(x) && !isNaN(y)) {
+        controller.removeCells();
         controller.setDimensions(x, y);
       }
     });

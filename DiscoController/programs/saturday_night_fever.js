@@ -115,6 +115,7 @@ function lightInward (){
   color = colors[phaseState.color];
   for (var c = 0; c < ring.length; c++) {
     cell = controller.getCell.apply(controller, ring[c]);
+    if (!cell) continue;
     cell.fadeToColor(color, 300);
   }
 
@@ -164,6 +165,7 @@ function alternatingRings() {
 
     for (var c = 0; c < ring.length; c++) {
       cell = controller.getCell.apply(controller, ring[c]);
+      if (!cell) continue;
       cell.fadeToColor(color, 300);
     }
   }
@@ -199,6 +201,7 @@ function runningRings() {
   color = colors[phaseState.color];
   for (var c = 0; c < ring.length; c++) {
     cell = controller.getCell(ring[c][1], ring[c][1]);
+    if (!cell) continue;
     cell.setColor(color);
   }
 
@@ -245,6 +248,7 @@ function blinkFloor() {
 
     for (var c = 0; c < ring.length; c++) {
       cell = controller.getCell.apply(controller, ring[c]);
+      if (!cell) continue;
       cell.setColor(color);
     }
   }

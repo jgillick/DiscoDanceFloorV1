@@ -13,7 +13,8 @@ module.exports = {
 			name: 'Step Trails',
 			description: 'Lights up each step and slowly fades out when stepped off.',
 			interactive: true,
-			miniumumTime: 1
+			miniumumTime: 1,
+			disabled: true
 	},
 
 	/**
@@ -93,6 +94,7 @@ function changeColor(){
 */
 function stepOn(x, y) {
 	var cell = controller.getCell(x, y);
+	if (!cell) return;
 	cell.fadeToColor(color, 800);
 	// cell.setColor(color);
 }
@@ -104,6 +106,7 @@ function stepOn(x, y) {
 */
 function stepOff(x, y) {
 	var cell = controller.getCell(x, y);
+	if (!cell) return;
 	cell.fadeToColor([0,0,0], 2000);
 	// cell.setColor([0,0,0]);
 }

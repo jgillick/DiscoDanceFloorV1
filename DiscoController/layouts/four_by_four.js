@@ -31,16 +31,21 @@ var FloorCell = require('../lib/floor_cell.js');
   @return {Array} Object mapping x/y to cell index
 */
 function fourByFour(dimensions, cells, discoController) {
-
   var x = 0,
       y = 0,
       xDir = 1,
       yDir = 1,
       map = {},
-      length = dimensions.x * dimensions.y,
+      len = cells.length,
       xFlipped = false,
       yFlipped = false;
 
+  // Update dimensions, if they don't fit 4x4 sections
+  if (len % 16 === 0 && (dimensions.x % 16 !== 0 || dimensions.y % 16 !== 0)) {
+    setDimensions(len, dimensions);
+  }
+
+  // Build grid
   for (var i = 0; i < cells.length; i++) {
     var cell = cells[i];
 
@@ -56,7 +61,7 @@ function fourByFour(dimensions, cells, discoController) {
     map[x][y] = i;
 
     // Move up and down by 4s
-    // If we hit the top or bottom or 4s, switch y direction
+    // If we hit the top or bottom of 4s, switch y direction
     if (!yFlipped && (
         ((y + 1) % 4 === 0 && yDir > 0)  ||
         (y % 4 === 0 && yDir < 0))){
@@ -74,6 +79,10 @@ function fourByFour(dimensions, cells, discoController) {
       xDir *= -1;
       y += 4;
 
+      if (y > dimensions.y) {
+        y = dimensions.y - 1;
+      }
+
       if (x >= dimensions.x){
         x = dimensions.x - 1;
       } else {
@@ -88,6 +97,40 @@ function fourByFour(dimensions, cells, discoController) {
   }
 
   return map;
+}
+
+/**
+  Given the number of floor cells,
+  determine the optimal grid made of 4x4 sections
+
+  @method setDimensions
+  @params {int} num Number of floor cells
+  @params {Object} dimensions Existing dimensions object
+  @return {Object}
+*/
+function setDimensions(num, dimensions) {
+  var sections = Math.ceil(num / 16),
+      sqrt = Math.sqrt(sections),
+      x, y;
+
+  // Try to divide it evenly
+  if (sections % Math.floor(sqrt) === 0) {
+    y = Math.floor(sqrt);
+    x = sections / y;
+  } else {
+    x = Math.ceil(sqrt);
+    y = Math.round(sqrt);
+  }
+
+  // Cut down the extra empty sections in the grid
+  while ((x * y) - sections > 1) {
+    x++;
+    y--;
+  }
+
+  dimensions.x = x * 4;
+  dimensions.y = y * 4;
+  return dimensions;
 }
 
 module.exports.fourByFour = fourByFour;
