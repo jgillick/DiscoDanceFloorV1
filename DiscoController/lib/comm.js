@@ -12,13 +12,14 @@ var EventEmitter  = require('events').EventEmitter,
     Serial        = require('serialport').SerialPort,
     MessageParser = require('./serial_message_parser.js'),
     disco         = require('./disco_controller.js'),
+    Promise       = require('bluebird'),
     _             = require('underscore');
 
-const BAUD_RATE            = 250000;
+const BAUD_RATE            = 500000;
 const ACK_TIMEOUT          = 100;
 const STATUS_TIMEOUT       = 50;
-const ADDRESSING_TIMEOUT   = 500;
-const DELAY_BETWEEN_STAGES = 10;
+const ADDRESSING_TIMEOUT   = 1000;
+const DELAY_BETWEEN_STAGES = 5;
 const NULL_SIGNATURE       = '0,0,0,0';
 
 // Program stages
@@ -91,6 +92,32 @@ function Comm(){
     }.bind(this));
 
     return serialPort;
+  };
+
+  /**
+    Disconnect the serial port
+
+    @method close
+    @return Promise
+  */
+  this.close = function() {
+    return new Promise(function(resolve, reject) {
+      try {
+        if (serialPort && serialPort.isOpen()) {
+          serialPort.close(function(err){
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        } else {
+          resolve();
+        }
+      } catch(e) {
+        reject(e.message);
+      }
+    }.bind(this));
   };
 
   /**
@@ -249,6 +276,11 @@ function Comm(){
       }
       else {
         console.log('Invalid address:', addr);
+        txBuffer.start(MessageParser.TYPE_NACK, addr);
+        txBuffer.send()
+        .then(function(){
+          txBuffer = sendAddressingRequest();
+        });
       }
     }
   };

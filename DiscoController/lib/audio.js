@@ -37,3 +37,21 @@ module.exports.init = function(navigator){
   );
 };
 
+/**
+  Close the Audio API
+*/
+module.exports.close = function() {
+  return new Promise(function(resolve) {
+    try {
+      if (audioCtx && audioCtx.state == 'running') {
+        if (audioCtx.close) audioCtx.close().then(resolve);
+        else if (audioCtx.suspend) audioCtx.suspend().then(resolve);
+      }
+    } catch(e) {
+      console.error(e.message);
+      resolve();
+    }
+  }.bind(this));
+};
+
+
