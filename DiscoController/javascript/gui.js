@@ -1,19 +1,30 @@
 var gui = require('nw.gui'),
-	exec = require('child_process').exec;;
+    exec = require('child_process').exec,
+    comm = require('./lib/comm.js'),
+    audio = require('./lib/audio.js');
 
 
-win = gui.Window.get();
-var nativeMenuBar = new gui.Menu({ type: "menubar" });
+var win = gui.Window.get(),
+    nativeMenuBar = new gui.Menu({ type: 'menubar' });
 
 // console.log('Arguments!', gui.App.argv);
 
 // Add native keyboard shortcuts
 try {
-  nativeMenuBar.createMacBuiltin("Disco Controller");
+  nativeMenuBar.createMacBuiltin('DiscoController');
   win.menu = nativeMenuBar;
 } catch (ex) {
   console.log(ex.message);
 }
+
+// Disconnect on exit
+win.on('close', function(){
+  comm.close().then(function(){
+    audio.close().then(function(){
+      this.close(true);
+    }.bind(this));
+  }.bind(this));
+});
 
 // Compile SASS templates
 var sassCompiler = exec('sass -I ./ --update ./scss:./public/stylesheets', function (error, stdout, stderr) {
