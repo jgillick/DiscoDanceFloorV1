@@ -112,13 +112,17 @@ function serialSetup(){
   // Add serial ports to the list
   function updatePorts(){
     serialPort.list(function (err, ports) {
-      var list = $('#serial-ports-list');
+      var list = $('#serial-ports-list'),
+          lastPort = localStorage.port || false;
 
       if (ports && ports.length != lastPortNum) {
         list.empty();
         lastPortNum = ports.length;
         ports.forEach(function(port) {
-          list.append('<option>'+ port.comName +'</option>');
+          var name = port.comName,
+              selected = (name == lastPort) ? 'selected' : '';
+
+          list.append('<option '+ selected +'>'+ name +'</option>');
         });
       }
     });
@@ -144,9 +148,11 @@ function serialSetup(){
 
     // Connect
     disco.emulatedFloor = false;
+    controller.removeCells();
     controller.setDimensions(0, 0);
     el.addClass('connect');
     comm.start(port);
+    localStorage.port = port;
     $(document).trigger('emulated-floor', [false]);
 
     // Show status
