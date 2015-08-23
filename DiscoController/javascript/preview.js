@@ -84,6 +84,8 @@ $(document).ready(function(){
   Build the list of programs
 */
 function buildProgramList() {
+  $('#reset-addresses').get(0).checked = (localStorage.uiResetChecked === true);
+
   // Load program list
   programCtrl.getProgramList(programFilter)
   .then(function(programs){
@@ -143,17 +145,22 @@ function serialSetup(){
     var el = $('#serial-setup'),
         status = el.find('p.status'),
         port = $('#serial-ports-list').val(),
+        reset = $('#reset-addresses').is(':checked'),
         cycles = 0,
         foundNodes = 0;
+
+    console.log('Reset', reset);
 
     // Connect
     disco.emulatedFloor = false;
     controller.removeCells();
     controller.setDimensions(0, 0);
     el.addClass('connect');
-    comm.start(port);
-    localStorage.port = port;
+    comm.start(port, reset, parseInt(localStorage.nodeCount));
     $(document).trigger('emulated-floor', [false]);
+
+    localStorage.port = port;
+    localStorage.uiResetChecked = reset;
 
     // Show status
     comm.on('new-node', function(){
@@ -172,6 +179,7 @@ function serialSetup(){
         status.html('No floor cells were found.');
         return;
       }
+      localStorage.nodeCount = nodeCount;
       $('#preview').addClass('connected');
       $('#serial-setup').addClass('closed');
     });
