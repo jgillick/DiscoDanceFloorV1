@@ -288,7 +288,7 @@ uint8_t MessageBuffer::processHeader(uint8_t c) {
     case 3:
       msgLengthCounter++;
 
-      batchLength = c + 2;                               // length plus double address
+      batchLength = c + 2;                               // length plus double address which starts each batch message
       msgLength = (msgLength * batchLength) + 3;         // Full message length
       batchMsgStart = (myAddress - 1) * batchLength + 4; // Start of our part of the message
       batchMsgEnd = batchMsgStart + batchLength - 1;     // End of our part of the message

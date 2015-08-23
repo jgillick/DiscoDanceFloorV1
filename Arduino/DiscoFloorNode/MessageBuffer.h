@@ -107,16 +107,16 @@ class MessageBuffer {
              calculatedCRC,
              timeoutCounter,
              msgLength,
-             msgLengthCounter;
+             msgLengthCounter,
+             batchLength,
+             batchMsgStart,
+             batchMsgEnd,
+             batchMsgCounter;
 
     uint8_t buffer[MSG_BUFFER_LEN + 1];
 
     uint8_t  type,
              secondaryType,
-             batchLength,
-             batchMsgStart,
-             batchMsgEnd,
-             batchMsgCounter,
              myAddress,
              destAddress,
              bufferPos,
