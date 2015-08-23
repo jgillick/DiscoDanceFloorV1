@@ -18,7 +18,7 @@ var EventEmitter  = require('events').EventEmitter,
 const BAUD_RATE            = 500000;
 const ACK_TIMEOUT          = 100;
 const STATUS_TIMEOUT       = 50;
-const ADDRESSING_TIMEOUT   = 1000;
+const ADDRESSING_TIMEOUT   = 4000;
 const DELAY_BETWEEN_STAGES = 5;
 const NULL_SIGNATURE       = '0,0,0,0';
 
@@ -66,9 +66,11 @@ function Comm(){
     over the serial port
 
     @param {String} port The serial port to the RS485 bus
+    @param {boolean} reAddress (optional) Set to FALSE to skip the addressing phase
+    @param {int} nodeCount (optional) If reAddress is `true`, set to the number of cells are on the floor
     @return SerialPort
   */
-  this.start = function (port){
+  this.start = function (port, reAddress, nodeCount){
     nodeRegistration = [];
 
     serialPort = new Serial(port, {
@@ -85,6 +87,15 @@ function Comm(){
       MessageParser.events.on('message-ready', function(message) {
         this.handleMessage(message);
       }.bind(this));
+
+      // Skip floor addressing and just add all the floor nodes from last time
+      if (reAddress === false && typeof nodeCount == 'number' && nodeCount > 0) {
+        for (var i = 1; i < nodeCount + 1; i++) {
+          this.registerNode(i);
+        }
+        this.emit('done-addressing', nodeRegistration.length);
+        stage = UPDATING;
+      }
 
       // Start node address registration
       txBuffer = null;
@@ -152,7 +163,7 @@ function Comm(){
           // Bring enable pin low
           // serialPort.set({rts:true}, function(){});
 
-          stage = STATUSING;
+          stage = UPDATING;
           this.emit('done-addressing', nodeRegistration.length);
         }
         // Nothing found, continue
@@ -164,6 +175,7 @@ function Comm(){
         stage = UPDATING;
       break;
       case UPDATING:
+        stage = UPDATING;
         // stage = STATUSING;
       break;
     }
@@ -171,10 +183,6 @@ function Comm(){
     // Declare stage change
     if (lastStage != stage) {
       this.emit('stage-change', stage, lastStage);
-    //  if (lastStage) {
-    //    console.log(stringForStage(lastStage), ' took', (now - stageTimer) +'ms');
-    //  }
-    //  stageTimer = now;
       lastStage = stage;
     }
 
@@ -251,18 +259,7 @@ function Comm(){
       // New address must be larger than the last one added
       if (addr > lastNodeAddr) {
         txBuffer.stopSending();
-
-        nodeRegistration.push(addr);
-        cellSentSignatures[addr] = {
-          cmdID: 0,
-          signature: colorSignatureForCell(null)
-        };
-
-        discoCntrl.addCellWithAddress(addr);
-        console.log('Add node at address', addr);
-
-        lastNodeAddr = addr;
-        this.emit('new-node', addr);
+        this.registerNode(addr);
 
         // Send ACK, and then query for the next address
         sendACK(addr)
@@ -316,7 +313,8 @@ function Comm(){
           now = Date.now(),
           broadcast = true,
           lastColor, lastSignature,
-          i, crc;
+          batch = 0,
+          i, crc, batchTimer;
 
       // Start batch message
       data = [MessageParser.MSG_SOM, MessageParser.MSG_SOM,
@@ -350,7 +348,7 @@ function Comm(){
       if (broadcast && lastSignature) {
         tx.start(MessageParser.TYPE_COLOR);
         tx.setAddress(MessageParser.BROADCAST_ADDRESS);
-        tx.write(discoCntrl.getCells()[0].getColor());
+        tx.write(lastColor);
         tx.send().then(this.nextStage.bind(this));
       }
       // Batch update
@@ -361,14 +359,25 @@ function Comm(){
         data[i++] = (crc >> 8) & 0xFF;
         data[i++] = crc & 0xff;
 
-        // Send
-        tx.start();
-        tx.sendRawData(data).then(this.nextStage.bind(this));
-      }
+        // Send in 50 byte batches, since the arduino serial buffer is only 64 bytes
+        batchTimer = setInterval(function(){
+          var start = batch * 50;
+          batch++;
 
-      this.emit('floor-updated');
+          if (start < data.length) {
+            tx.start();
+            tx.sendRawData(data.slice(start, start + 50));
+          } else {
+            clearInterval(batchTimer);
+            this.nextStage();
+            this.emit('floor-updated');
+          }
+
+        }.bind(this), 1);
+      }
     } catch(e) {
       console.error(e.message);
+      console.error(e.stack);
       this.nextStage.bind(this);
     }
   };
@@ -429,6 +438,26 @@ function Comm(){
     this.emit('floor-updated');
     this.nextStage();
   };
+
+  /**
+    Register a new node
+
+    @param {int} addr The address of the new node
+  */
+  this.registerNode = function(addr) {
+    nodeRegistration.push(addr);
+    cellSentSignatures[addr] = {
+      cmdID: 0,
+      signature: colorSignatureForCell(null)
+    };
+
+    discoCntrl.addCellWithAddress(addr);
+    console.log('Add node at address', addr);
+
+    lastNodeAddr = addr;
+    this.emit('new-node', addr);
+  };
+
 }
 util.inherits(Comm, EventEmitter);
 
@@ -522,7 +551,7 @@ function updateFloorCell(addr, cell, broadcast) {
   }
   tx.write(data);
   tx.send().then(function(){
-    cellSentSignatures[addr] = sendSignature
+    cellSentSignatures[addr] = sendSignature;
   });
 
   return tx;
