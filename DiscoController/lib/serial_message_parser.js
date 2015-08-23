@@ -240,8 +240,10 @@ MessageParser.prototype = {
     @param {byte} c An byte to add to the message
   */
   write: function(c) {
+    if (typeof c == 'undefined' || c === null) return;
+
     // String or buffer of data
-    if (c.length) {
+    if (c && c.length) {
       for (var i = 0; i < c.length; i++) {
         this.write(c[i]);
       }

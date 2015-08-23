@@ -92,7 +92,7 @@ var DiscoController = function(x, y){
       cell = cells[index];
 
       // Validate index
-      if (cell && cell.getX() != x || cell.getY() != y) {
+      if (cell && (cell.getX() != x || cell.getY() != y)) {
         console.error(util.format('Cell at index %s doesn\'t match x/y coordinate expected: %sx%s', index, x, y));
       }
     } catch(e) {
