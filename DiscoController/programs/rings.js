@@ -1,27 +1,33 @@
 'use strict';
 
-var Promise = require("bluebird");
+var Promise = require("bluebird"),
+    discoUtils = require('../lib/utils.js');;
 
 var controller,
     floorMap = [],
     colors = [
-      [255, 0,   0],   // Red
+      [0,   0,   0],   // Black
       [0,   0,   255], // Blue
+      [255, 0,   0],   // Red
       [255, 255, 0],   // Yellow
       [255, 0,   255], // Purple
-      [0,   255, 0],    // Green
-      [255, 140, 0]   // Orange
+      [130, 215, 190], // Teal
+      [0,   255, 0],   // Green
+      [255, 140, 0],   // Orange
+      [0,   234, 255], // Cyan
+      [255, 255, 255]  // White
     ],
     running = false,
+    runningRingsDir = 1,
     phase = -1,
-    phaseNum = 3,
+    phaseNum = 2,
     phaseState, phaseTimer, animateTimer;
 
 module.exports = {
 
   info: {
-    name: 'Saturday Night Fever',
-    description: 'Light display similar to the floor from Saturday Night Fever',
+    name: 'Rings',
+    description: 'Creates rings of color that flash and run',
     interactive: false,
     lightShow: true,
     miniumumTime: 1
@@ -84,12 +90,14 @@ function runPhase() {
 function nextPhase() {
   if (!running) return;
 
+  clearTimeout(animateTimer);
+  clearTimeout(phaseTimer);
+
   phase++;
   if (phase >= phaseNum) {
     phase = 0;
   }
   phaseState = null;
-  clearTimeout(animateTimer);
   runPhase();
 }
 
@@ -106,7 +114,7 @@ function lightInward (){
   if (!phaseState) {
     phaseState = {
       ring: 0,
-      color: 0
+      color: 1
     };
   }
 
@@ -128,7 +136,7 @@ function lightInward (){
 
   // All done
   if (phaseState.ring >= floorMap.length) {
-    phaseTimer = setTimeout(nextPhase, 800);
+    phaseTimer = setTimeout(nextPhase, 400);
   }
   // Again!
   else {
@@ -155,7 +163,7 @@ function alternatingRings() {
 
   for (var i = 0; i < floorMap.length; i++) {
     ring = floorMap[i];
-    colorIndex = (colorIndex + 1 < colors.length) ? ++colorIndex : 0;
+    colorIndex = (colorIndex + 1 < colors.length) ? ++colorIndex : 1;
     color = colors[colorIndex];
 
     // Turn off ever other ring
@@ -174,7 +182,8 @@ function alternatingRings() {
   phaseState.cycle++;
 
   if (phaseState.cycle > 4) {
-    phaseTimer = setTimeout(nextPhase, 800);
+    clearTimeout(phaseTimer);
+    phaseTimer = setTimeout(nextPhase, 500);
   } else {
     animateTimer = setTimeout(alternatingRings, 500);
   }
@@ -189,36 +198,44 @@ function runningRings() {
   var cell, ring, color;
 
   if (!phaseState) {
+    runningRingsDir *= -1;
     phaseState = {
       color: 0,
-      ring: floorMap.length - 1,
+      colors: [],
+      ring: (runningRingsDir < 0) ? floorMap.length - 1 : 0,
       cycle: 0
     };
   }
 
   // Set ring color
   ring = floorMap[phaseState.ring];
+  if (phaseState.color == phaseState.colors[phaseState.ring]) {
+    phaseState.color = discoUtils.wrap(phaseState.color + 2, colors.length-1);
+  }
   color = colors[phaseState.color];
+  phaseState.colors[phaseState.ring] = phaseState.color;
+
   for (var c = 0; c < ring.length; c++) {
-    cell = controller.getCell(ring[c][1], ring[c][1]);
+    cell = controller.getCell(ring[c][0], ring[c][1]);
     if (!cell) continue;
-    cell.setColor(color);
+    // cell.setColor(color);
+    cell.fadeToColor(color, 100);
   }
 
-  phaseState.ring--;
+  phaseState.ring += runningRingsDir;
   phaseState.color = (phaseState.color + 1 < colors.length) ? ++phaseState.color : 0;
 
   // New cycle
-  if (phaseState.ring < 0) {
-    phaseState.ring = floorMap.length - 1;
+  if (phaseState.ring < 0 || phaseState.ring >= floorMap.length) {
+    phaseState.ring = (runningRingsDir < 0) ? floorMap.length - 1 : 0;
     phaseState.cycle++;
-    phaseState.color = (phaseState.color + 2 < colors.length) ? phaseState.color + 2 : 0;
+    phaseState.color = discoUtils.wrap(phaseState.color + 2, colors.length-1);
 
     if (phaseState.cycle > 4) {
-      phaseTimer = setTimeout(nextPhase, 1000);
+      phaseTimer = setTimeout(nextPhase, 500);
     }
   }
-  animateTimer = setTimeout(runningRings, 300);
+  animateTimer = setTimeout(runningRings, 100);
 }
 
 /**
