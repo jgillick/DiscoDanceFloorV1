@@ -16,7 +16,6 @@
 	@param {int} max
 */
 module.exports.wrap = function(value, min, max) {
-	var diff;
 
 	if (arguments.length === 2){
 		max = min;
