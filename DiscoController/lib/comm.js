@@ -516,7 +516,7 @@ function sendAddressingRequest() {
   @return MessageParser
 */
 function updateFloorCell(addr, cell, broadcast) {
-  if (disco.emulatedFloor) return Promise.resolve();
+  if (discoCntrl.emulatedFloor) return Promise.resolve();
 
   var tx = new MessageParser(),
       type, data, duration,

@@ -9,15 +9,15 @@ var controller = disco.controller;
 (function() {
   var fadeProcessing = false;
 
+  // Emulated floor listener
+  $(document).on('emulated-floor', function(event, isEmulated) {
+    if (isEmulated) {
+      emulatedFloorAnimationFrame();
+    }
+  });
+
   $(document).ready(function(){
     var dimensions = controller.getDimensions();
-
-    // Emulated floor
-    $(document).on('emulated-floor', function(event, isEmulated) {
-      if (isEmulated) {
-        emulatedFloorAnimationFrame();
-      }
-    });
 
     // Set floor dimensions
     $('#floor-max-x').val(dimensions.x);
@@ -139,15 +139,9 @@ var controller = disco.controller;
 
   // Updates the fading color of all floor cells
   function emulatedFloorAnimationFrame() {
-    if (!disco.emulatedFloor) return;
-
-    // If the cell is fading, calling getColor will process the next
-    // color increment, which will update the floor via the 'cell.colorChanged' event
-    var cells = controller.getCells();
-    for (var i = 0, len = cells.length; i < len; i++) {
-      cells[i].processFadeIncrement();
-    }
-
+    if (!controller.emulatedFloor) return;
+    controller.updateFadeFrame();
     requestAnimationFrame(emulatedFloorAnimationFrame);
+    // setTimeout(emulatedFloorAnimationFrame, 100);
   }
 })();

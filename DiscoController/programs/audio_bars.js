@@ -141,11 +141,11 @@ function visualizeAudio() {
 
       if (!cell) continue;
       if (y <= height) {
-        // cell.setColor(primaryColor);
-        cell.fadeToColor(primaryColor, 50);
+        cell.setColor(primaryColor);
+        // cell.fadeToColor(primaryColor, 50);
       } else {
-        // cell.setColor(secondaryColor);
-        cell.fadeToColor(secondaryColor, 50);
+        cell.setColor(secondaryColor);
+        // cell.fadeToColor(secondaryColor, 50);
       }
     }
   }

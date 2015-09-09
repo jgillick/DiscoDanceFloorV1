@@ -69,7 +69,7 @@ process.stdin.on('data', function (s) {
 
 // Start floor
 var port;
-disco.emulatedFloor = false;
+disco.controller.emulatedFloor = false;
 disco.controller.setDimensions(0, 0);
 port = comm.start(args.serialPort);
 port.on('error', function (err) {

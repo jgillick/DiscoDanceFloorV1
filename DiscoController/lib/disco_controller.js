@@ -7,21 +7,21 @@ var events = require('events'),
 
 var eventEmitter = new events.EventEmitter();
 
-/**
-  Are we emulating the floor or actually communicating
-  with a real one?
-
-  @property emulatedFloor
-  @type boolean
-*/
-module.exports.emulatedFloor = true;
-
 
 /**
   The central controller for the disco floor.
   @class DiscoController
 */
 var DiscoController = function(x, y){
+
+  /**
+    Are we emulating the floor or actually communicating
+    with a real one?
+
+    @property emulatedFloor
+    @type boolean
+  */
+  this.emulatedFloor = true;
 
   /**
     Floor max x/y dimensions
@@ -56,10 +56,6 @@ var DiscoController = function(x, y){
     @private
   */
   var cellMap = {};
-
-  this.getCellMap = function() {
-    return cellMap;
-  };
 
   /**
     Events emitted from the floor controller:
@@ -103,6 +99,21 @@ var DiscoController = function(x, y){
   }
 
   /**
+    Kickoff the fade animation on all cells.
+    This needs to be called after updating the fade on cells to
+    keep the floor in sync. If your program changes the fade frequently
+    and does not call this method, the cells might not fade at all.
+
+    @method updateFadeFrame
+  */
+  this.updateFadeFrame = function() {
+    var now = Date.now();
+    for (var i = 0, len = cells.length; i < len; i++) {
+      cells[i].processFadeIncrement(now);
+    }
+  };
+
+  /**
     Set floor dimensions
 
     Fires the following PubSub topics:
@@ -119,6 +130,14 @@ var DiscoController = function(x, y){
     }
 
     eventEmitter.emit('dimensions.willChange', x, y);
+
+    // Create cells to fit floor
+    if (this.emulatedFloor) {
+      this.removeCells();
+      for (var i = 0, len = x*y; i < len; i++) {
+        this.addCellWithAddress(i+1);
+      }
+    }
 
     dimensions.x = x;
     dimensions.y = y;
@@ -151,6 +170,8 @@ var DiscoController = function(x, y){
     @returns Object with new x/y values
   */
   this.autoSetDimensions = function() {
+    if (this.emulatedFloor) return; // emulated floors have defined dimensions
+
     // No cells
     if (cells.length === 0) {
       this.setDimensions(0, 0);

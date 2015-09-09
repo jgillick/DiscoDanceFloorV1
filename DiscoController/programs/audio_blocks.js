@@ -103,6 +103,7 @@ function processAudio() {
     blocks[0].update(data);
   }
 
+  floorController.updateFadeFrame();
   window.requestAnimationFrame(processAudio);
 }
 
@@ -193,7 +194,8 @@ function AudioBox(index, band, from, to) {
       for (var n = 0; n < ring.length; n++) {
         var cell = floorController.getCell(ring[n][0], ring[n][1]);
         if (!cell) continue;
-        cell.fadeToColor(color, 200);
+        // cell.fadeToColor(color, 200);
+        cell.setColor(color);
       }
     }
   };

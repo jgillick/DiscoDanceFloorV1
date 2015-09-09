@@ -105,5 +105,6 @@ function program() {
     }
   }
 
+  floorController.updateFadeFrame();
   timeout = setTimeout(program, fadeDuration * 1.5);
 }

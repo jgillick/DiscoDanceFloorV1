@@ -4,8 +4,8 @@
 	<title>Disco Dance Floor Controller</title>
 	<script type="text/javascript" src="javascript/frameworks/jquery-2.1.1.js"></script>
 	<script type="text/javascript" src="javascript/frameworks/jquery-ui-1.11.4.js"></script>
-	<script type="text/javascript" src="javascript/emulated_floor.js"></script>
 
+	<script type="text/javascript" src="javascript/emulated_floor.js"></script>
 	<script type="text/javascript" src="javascript/gui.js"></script>
 	<script type="text/javascript" src="javascript/preview.js"></script>
 
@@ -22,6 +22,7 @@
 			<tbody></tbody>
 		</table>
 		<div class="status">
+			<button class="disconnect" title="Disconnect">&#61527;</button>
 			<div class="frame-rate">
 				Updating <span class="rate">-</span> fps
 			</div>
@@ -51,19 +52,19 @@
 		<ol class="filters">
 			<li>
 				<label>
-					<input type="checkbox" name="filter" value="lightShow" checked title="Programs that play on their own" />
+					<input type="checkbox" name="filter" id="filter-lightShow" value="lightShow" checked title="Programs that play on their own" />
 					Light shows
 				</label>
 			</li>
 			<li>
 				<label>
-					<input type="checkbox" name="filter" value="audio" checked title="Sound reactive programs" />
+					<input type="checkbox" name="filter" id="filter-audio" value="audio" checked title="Sound reactive programs" />
 					Audio visualizations
 				</label>
 			</li>
 			<li>
 				<label>
-					<input type="checkbox" name="filter" value="interactive" checked title="Step reactive programs" />
+					<input type="checkbox" name="filter" id="filter-interactive" value="interactive" checked title="Step reactive programs" />
 					Interactive
 				</label>
 			</li>
@@ -107,6 +108,7 @@
 			<p class="status">
 				Finding floor cells...
 			</p>
+			<p class="cancel"><button>Cancel</button></p>
 		</section>
 	</div>
 </div>

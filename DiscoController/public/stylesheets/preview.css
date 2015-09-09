@@ -1,3 +1,8 @@
+@font-face {
+  font-family: 'FontAwesome';
+  src: url("../fonts/fontawesome-webfont.woff2?v=4.4.0") format("woff2");
+  font-weight: normal;
+  font-style: normal; }
 body {
   font: normal 14px "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
   background: #999; }
@@ -37,7 +42,8 @@ body {
     font-size: 12px; }
   #serial-setup .connecting {
     display: none; }
-    #serial-setup .connecting p.status {
+    #serial-setup .connecting p.status,
+    #serial-setup .connecting p.cancel {
       text-align: center; }
   #serial-setup.connect .selection {
     display: none; }
@@ -60,7 +66,21 @@ body {
     right: 0;
     height: 40px;
     background: #333;
-    box-shadow: 0 -3px 14px 0px #666; }
+    box-shadow: 0 -3px 14px 0px #666;
+    padding: 0 45px; }
+  #preview .emulator .disconnect {
+    color: #BBB;
+    position: absolute;
+    left: 5px;
+    top: 0;
+    bottom: 0;
+    font-size: 22px;
+    font-family: 'FontAwesome';
+    background: none;
+    border: none;
+    outline: none; }
+    #preview .emulator .disconnect:hover {
+      color: #999; }
   #preview .emulator .dimensions fieldset {
     border: none;
     padding: 0;
@@ -143,9 +163,10 @@ body {
       #preview .programs select option.selected {
         padding-left: 5px; }
         #preview .programs select option.selected:before {
-          content: '\25B6';
-          font-size: 10px;
-          margin: 0 5px 0 0; }
+          content: '\f144';
+          font-size: 13px;
+          margin: 0 5px 0 0;
+          font-family: 'FontAwesome'; }
       #preview .programs select option:first-child {
         padding-left: 5px; }
   #preview .programs .actions {
