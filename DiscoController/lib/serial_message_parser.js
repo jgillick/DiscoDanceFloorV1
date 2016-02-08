@@ -719,10 +719,15 @@ MessageParser.prototype = {
     Initial crc value should be 0xFFFF
     ported from http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html
 
-    @param {int} crc Current CRC number, if set to undefined, it will be created automatically
+    @param {int} crc (optional) Current CRC number, it not set it will default to 0xFFFF
     @param {int or array} d Value to add to the CRC
   */
   generateCRC: function(crc, d) {
+
+    if (arguments.length == 1) {
+      d = crc;
+      crc = 0xFFFF;
+    }
 
     if (crc === undefined || crc === null) {
       crc = 0xFFFF;
