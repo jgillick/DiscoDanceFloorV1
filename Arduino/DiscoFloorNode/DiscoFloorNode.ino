@@ -3,10 +3,9 @@
 */
 
 #include "RGBFade.h"
-// #include "CapacitiveSensor.h"
-// #include "CapacitiveTouch.h"
 #include "MessageBuffer.h"
 #include "Constants.h"
+#include "RS485.h"
 
 #include <EEPROM.h>
 #include <avr/wdt.h>
@@ -20,14 +19,10 @@ boolean needsAck          = false, // TRUE if we're waiting for an ACK
         enabledState      = false, // is the node enabled
         gotSensorValue    = false,
         lastSensorValue   = false,
-        daisyPinsSet      = false;
+        daisyDirectionSet = false;
 
 // The RGB LEDs
 RGBFade fadeCtrl;
-
-// Sensor
-// CapacitiveSensor sensor = CapacitiveSensor(SENSOR_SEND, SENSOR_TOUCH);
-// CapacitiveTouch sensor = CapacitiveTouch(SENSOR_SEND);
 
 // Message buffers
 MessageBuffer txBuffer(TX_CONTROL, RX_CONTROL);
@@ -38,11 +33,7 @@ void setup() {
   wdt_enable(WDTO_2S);
 
   resetDaisyPins();
-  pinMode(TX_CONTROL,  OUTPUT);
-  pinMode(RX_CONTROL,  OUTPUT);
-
-  digitalWrite(TX_CONTROL, RS485Receive);
-  digitalWrite(RX_CONTROL, RS485Receive);
+  RS485::init();
 
   // Init serial communication
   Serial.begin(SERIAL_BAUD);
@@ -55,10 +46,6 @@ void setup() {
     rxBuffer.setMyAddress(myAddress);
   }
 
-  // sensor.setGain(3);
-  // sensor.filterTuning(0.3, 40, 320);
-  // sensor.begin();
-
   fadeCtrl.begin();
 }
 
@@ -68,19 +55,19 @@ void loop() {
   timeout++;
 
   // Check polarity of daisy chain pins (enable/next)
-  if (!daisyPinsSet) {
+  if (!daisyDirectionSet) {
     if (digitalRead(DAISY_1) == HIGH) {
       enablePin = DAISY_1;
       nextPin = DAISY_2;
-      daisyPinsSet = true;
+      daisyDirectionSet = true;
     }
     else if (digitalRead(DAISY_2) == HIGH) {
       enablePin = DAISY_2;
       nextPin = DAISY_1;
-      daisyPinsSet = true;
+      daisyDirectionSet = true;
     }
 
-    if (daisyPinsSet) {
+    if (daisyDirectionSet) {
       pinMode(nextPin, OUTPUT);
       digitalWrite(nextPin, LOW);
     }
@@ -111,7 +98,7 @@ void loop() {
 void resetDaisyPins() {
   nextPin = 0;
   enablePin = 0;
-  daisyPinsSet = false;
+  daisyDirectionSet = false;
   pinMode(DAISY_1, INPUT);
   pinMode(DAISY_2, INPUT);
 }
@@ -119,7 +106,7 @@ void resetDaisyPins() {
 void processMessage() {
 
   // Looks like we're past addressing, drop daisy chain pins
-  if (daisyPinsSet && rxBuffer.getType() < TYPE_ADDR && rxBuffer.getType() > TYPE_ACK) {
+  if (daisyDirectionSet && rxBuffer.getType() < TYPE_ADDR && rxBuffer.getType() > TYPE_ACK) {
     resetDaisyPins();
   }
 
@@ -161,7 +148,7 @@ void processNACK() {
 // Out address has been confirmed, enable the next node
 void addressConfirmed() {
   EEPROM.write(EEPROM_CELL_ADDR, myAddress);
-  if (daisyPinsSet) {
+  if (daisyDirectionSet) {
     digitalWrite(nextPin, HIGH);
   }
 }
@@ -338,7 +325,7 @@ void handleFadeMessage() {
 // Set an address if one hasn't been defined yet
 void setAddress() {
   uint8_t addr,
-          enabled = (daisyPinsSet) ? digitalRead(enablePin) : 0;
+          enabled = (daisyDirectionSet) ? digitalRead(enablePin) : 0;
 
   // Must have crashed and rebooted because we're enabled,
   // and the RX message is past the addressing stage
