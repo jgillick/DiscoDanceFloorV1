@@ -18,7 +18,7 @@ import {DiscoFloor} from './floor.ts';
 @Component({
   selector: 'app-root',
   directives: [ROUTER_DIRECTIVES],
-  templateUrl: './tmpl/layout.html'
+  templateUrl: './html/layout.html'
 })
 @RouteConfig([
   { path: '/', name: 'DiscoFloor', component: DiscoFloor }

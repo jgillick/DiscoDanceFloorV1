@@ -3,7 +3,7 @@ import {RouteParams} from 'angular2/router';
 
 @Component({
   selector: 'disco-floor',
-  templateUrl: './tmpl/disco-floor.html'
+  templateUrl: './html/disco-floor.html'
 })
 export class DiscoFloor {
   constructor() {
