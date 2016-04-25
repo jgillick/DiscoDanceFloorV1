@@ -1,0 +1,10 @@
+
+///
+/// Use Font Awesome Icon
+///
+@mixin icon($icon) {
+  &:before {
+    @extend .fa;
+    @extend .fa-#{$icon};
+  }
+}
