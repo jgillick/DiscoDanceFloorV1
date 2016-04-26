@@ -1,33 +1,38 @@
 
-nav {
+.main-nav {
   padding: 0 20px;
   background: #333;
   height: $header-height;
 
-  button {
+  a {
     color: #bbb;
     cursor: pointer;
+
+    &:active {
+      outline: none;
+    }
   }
 
   li {
     font-size: 30px;
-    line-height: $header-height;
-    display: block;
-    padding: 0 15px;
     margin: 0;
     float: left;
 
-    &:hover {
-      background: #222;
-    }
-    &.selected {
-      background: #000;
-      height: $header-height + 5px;
-      line-height: 1.2em;
-      border-radius: 0 0 10px 10px;
-      box-shadow: 1px 1px 10px 0px rgba(0,0,0,0.49);
+    a {
+      display: block;
+      min-width: 60px;
+      text-align: center;
+      line-height: $header-height;
 
-      button {
+      &:hover {
+        background: #222;
+      }
+      &.router-link-active {
+        background: #000;
+        height: $header-height + 5px;
+        line-height: 1.2em;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 1px 1px 10px 0px rgba(0,0,0,0.49);
         line-height: $header-height + 5px;
       }
     }

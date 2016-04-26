@@ -1,0 +1,36 @@
+
+form {
+  width: 500px;
+  margin: 0 auto;
+
+  fieldset {
+    border-radius: 20px;
+    padding: 1.8em 20px 20px;
+    margin: 15px 0;
+    background: #aaa;
+    color: #333;
+
+    legend {
+      position: relative;
+      top: 1em;
+      font-size: 1.3em;;
+      display: block;
+      width: 100%;
+    }
+  }
+
+  li {
+    margin: 10px 0;
+  }
+  p {
+    margin: 12px 0;
+  }
+
+  button {
+    color: #999;
+    background: #333;
+    border-radius: 15px;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+}

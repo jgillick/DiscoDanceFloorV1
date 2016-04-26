@@ -2,33 +2,19 @@ import '../styles/main.scss';
 
 import {bootstrap} from 'angular2/platform/browser'
 import {provide, Component} from 'angular2/core';
+import {ROUTER_PROVIDERS} from 'angular2/router';
 import {
-  APP_BASE_HREF,
-  RouteConfig,
-  ROUTER_DIRECTIVES,
-  ROUTER_PROVIDERS,
+  LocationStrategy,
   HashLocationStrategy,
-  LocationStrategy} from 'angular2/router';
+  APP_BASE_HREF} from 'angular2/platform/common';
 
-import {DiscoFloor} from './floor.ts';
+import {AppHomeComponent} from './components/home.ts';
 
-//
-// Root Component
-//
-@Component({
-  selector: 'app-root',
-  directives: [ROUTER_DIRECTIVES],
-  templateUrl: './html/layout.html'
-})
-@RouteConfig([
-  { path: '/', name: 'DiscoFloor', component: DiscoFloor }
-])
-export class AppRootComponent {}
 
 //
 // Bootstrap
 //
-bootstrap(AppRootComponent, [
+bootstrap(AppHomeComponent, [
    ROUTER_PROVIDERS,
    provide(LocationStrategy, { useClass: HashLocationStrategy }),
    provide(APP_BASE_HREF, { useValue: '/' })

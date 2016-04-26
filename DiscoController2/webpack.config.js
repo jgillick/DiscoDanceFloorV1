@@ -1,6 +1,6 @@
 var webpack = require('webpack');
 
-module.exports = {
+var config = {
   context: __dirname + '/src/scripts',
   entry: {
     "app": "./main.ts",
@@ -8,7 +8,7 @@ module.exports = {
   },
 
   output: {
-    path: __dirname + '/build/webpack',
+    path: __dirname + '/build',
     filename: '[name].js',
     publicPath: 'http://localhost:8080/build/'
   },
@@ -32,3 +32,10 @@ module.exports = {
     new webpack.optimize.CommonsChunkPlugin("vendor", "vendor.js")
   ]
 };
+
+// Local public path for dist
+if (process.env.ENVIRONMENT === 'DIST') {
+  config.output.publicPath = '../build/';
+}
+
+module.exports = config;

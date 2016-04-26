@@ -4,9 +4,12 @@ $fa-font-path: "../../node_modules/font-awesome/fonts";
 @import "node_modules/font-awesome/scss/font-awesome.scss";
 
 // Includes
-@import "reset",
-        "variables",
-        "mixins",
-        'global',
+@import "./includes/reset",
+        "./includes/variables",
+        "./includes/mixins",
+        './includes/global',
+        './includes/forms',
         "nav",
-        "floor";
+        "floor",
+        "settings",
+        "connect";

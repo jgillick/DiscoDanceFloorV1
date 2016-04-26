@@ -46,6 +46,14 @@ table {
   border-collapse: collapse;
   border-spacing: 0;
 }
+a,
+a:link,
+a:visited,
+a:active {
+  color: inherit;
+  outline: none;
+  text-decoration: none;
+}
 button {
   background: none;
   border: none;

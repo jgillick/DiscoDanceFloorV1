@@ -12,11 +12,11 @@
       // Include main UI script
       //
       function includeBundle(name) {
-        var path = './build/'+ name +'.js',
+        var path = '../build/'+ name +'.js',
             scriptEl = document.createElement('script');;
 
         if(typeof process !== 'undefined' && process.env.ENVIRONMENT === 'DEV') {
-          path = 'http://localhost:8080/'+ path;
+          path = 'http://localhost:8080/build/'+ name +'.js';
         }
 
         scriptEl.src = path;
