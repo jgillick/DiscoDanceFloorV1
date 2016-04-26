@@ -1,14 +1,14 @@
 var webpack = require('webpack');
 
 module.exports = {
-  context: __dirname + '/scripts',
+  context: __dirname + '/src/scripts',
   entry: {
     "app": "./main.ts",
     "vendor": "./vendor.ts"
   },
 
   output: {
-    path: __dirname + '/build',
+    path: __dirname + '/build/webpack',
     filename: '[name].js',
     publicPath: 'http://localhost:8080/build/'
   },
