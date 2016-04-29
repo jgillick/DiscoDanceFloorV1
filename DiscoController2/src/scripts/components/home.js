@@ -3,9 +3,9 @@ import {
   RouteConfig,
   ROUTER_DIRECTIVES} from 'angular2/router';
 
-import {DiscoFloorComponent} from './floor.ts';
-import {SettingsComponent} from './settings.ts';
-import {ConnectComponent} from './connect.ts';
+import {DiscoFloorComponent} from './floor';
+import {SettingsComponent} from './settings';
+import {ConnectComponent} from './connect';
 
 //
 // Root Component

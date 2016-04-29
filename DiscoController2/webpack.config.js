@@ -3,27 +3,32 @@ var webpack = require('webpack');
 var config = {
   context: __dirname + '/src/scripts',
   entry: {
-    "app": "./main.ts",
-    "vendor": "./vendor.ts"
+    "main": "./main.js",
+    "vendor": "./vendor.js"
   },
 
   output: {
-    path: __dirname + '/build',
-    filename: '[name].js',
-    publicPath: 'http://localhost:8080/build/'
+    path: __dirname + '/build/scripts/',
+    filename: '[name].js'
   },
 
   devtool: 'source-map',
 
   module: {
+    noParse: [ /.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/ ],
     loaders: [
-      { test: /\.scss$/, loader: 'style-loader!css-loader!sass-loader' },
-
-      // Typescript
-      { test: /\.ts/, loader: 'ts-loader', exclude: /node_modules/ },
-
-      // Static files
-      { test: /\.(jpe|jpg|woff|woff2|eot|ttf|svg|html)(\?.*$|$)/, loader: 'file' }
+      {
+        test: /\.js$/,
+        loader: 'babel',
+        exclude: /(node_modules)/,
+        query: {
+          presets: ['es2015'],
+          plugins: [
+            'angular2-annotations',
+            'transform-decorators-legacy'
+          ]
+        }
+      }
     ]
   },
 
