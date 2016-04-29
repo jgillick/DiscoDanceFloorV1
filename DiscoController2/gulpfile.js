@@ -17,7 +17,8 @@ const STATIC_GLOB = [
   SRC+ '**/*.png',
 ]
 const DIST_ICONS = {
-  'darwin': './src/images/app_icon.icns'
+  'darwin': './src/images/app_icon.icns',
+  'win32': './src/images/app_icon.ico',
 }
 
 // Run the program
@@ -86,6 +87,18 @@ gulp.task('dist-linux', ['build'], function(cb){
     dir: '.',
     out: DIST,
     platform: 'linux',
+    arch: 'x64',
+    ignore: distIgnore,
+    'overwrite': true
+  }, cb)
+});
+
+// Create a Windows distribution
+gulp.task('dist-win', ['build'], function(cb){
+  packager({
+    dir: '.',
+    out: DIST,
+    platform: 'win32',
     arch: 'x64',
     ignore: distIgnore,
     'overwrite': true
