@@ -5,13 +5,20 @@ on [Electron](http://electron.atom.io/).
 
 ## Installation and Running
 
-You need to have node 5.11+ installed. This will install and run the app
-in development mode:
+### Prerequisites
+
+ * [node 5.11+](https://nodejs.org/en/)
+ * [gulp](http://gulpjs.com/)
+
+
+### Install
+
+This will install and run the app in development mode:
 
 ```sh
 npm install
-npm run watch
 
-# While watch is running, open a new terminal and run:
-npm run start
+gulp # run
 ```
+
+## Create App
