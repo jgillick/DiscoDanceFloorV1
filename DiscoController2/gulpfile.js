@@ -81,7 +81,7 @@ gulp.task('dist-osx', ['build'], function(cb){
 });
 
 // Create a Linux distribution
-gulp.task('dist-osx', ['build'], function(cb){
+gulp.task('dist-linux', ['build'], function(cb){
   packager({
     dir: '.',
     out: DIST,
