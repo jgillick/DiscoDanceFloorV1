@@ -6,7 +6,7 @@ import {
   HashLocationStrategy,
   APP_BASE_HREF} from 'angular2/platform/common';
 
-import {AppHomeComponent} from './components/home';
+import {AppHomeComponent} from './scripts/components/home';
 
 //
 // Bootstrap

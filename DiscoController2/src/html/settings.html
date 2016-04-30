@@ -4,22 +4,25 @@
   <form>
     <fieldset class="dimensions">
       <legend>Floor Dimensions</legend>
-      <input type="number" />
+      <input type="number" [(ngModel)]="settings.dimensions.x" (ngModelChange)="saveForm($event)" />
       x
-      <input type="number" />
+      <input type="number" [(ngModel)]="settings.dimensions.y" (ngModelChange)="saveForm($event)" />
     </fieldset>
     <fieldset>
       <legend>Startup</legend>
       <ol>
         <li>
           <label>
-            <input type="checkbox">
-            Connect using last successful settings.
+            <input type="checkbox" [(ngModel)]="settings.autoConnect" (ngModelChange)="saveForm($event)" />
+            Automatically reconnect to the floor
           </label>
+          <p class="note">
+            This does not reset node addresses.
+          </p>
         </li>
         <li>
           <label>
-            <input type="checkbox">
+            <input type="checkbox" [(ngModel)]="settings.autoPlay" (ngModelChange)="saveForm($event)" />
             Start playing programs automatically.
           </label>
         </li>
