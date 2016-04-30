@@ -1,13 +1,14 @@
 'use strict';
 
 const gulp = require('gulp');
+const babel = require('gulp-babel');
+const gutil = require('gulp-util');
 const sass = require('gulp-sass');
+const sourcemaps = require('gulp-sourcemaps');
 const del = require('del');
 const exec = require('child_process').exec;
 const packager = require('electron-packager')
-const webpack = require('webpack');
-const webpackConfig = require('./webpack.config.js');
-const connect = require('gulp-connect');
+const shell = require('gulp-shell')
 
 const SRC = './src/';
 const BUILD = './build/';
@@ -16,6 +17,8 @@ const DIST = './dist/';
 const STATIC_GLOB = [
   SRC+ '**/*.html',
   SRC+ '**/*.png',
+  SRC+ '**/*.ico',
+  SRC+ '**/*.icns',
 ]
 const DIST_ICONS = {
   'darwin': './src/images/app_icon.icns',
@@ -23,58 +26,60 @@ const DIST_ICONS = {
 }
 
 // Run the program
-gulp.task('default', ['build', 'watch'], function(cb){
-
-  // For live asset reloading
-  connect.server({
-    root: '.',
-    livereload: true
-  });
-
-  // Launch app
-  exec('ENVIRONMENT=DEV ./node_modules/.bin/electron .', function (err, stdout, stderr) {
-    console.log(stdout);
-    console.log(stderr);
-    cb(stderr);
-  });
-})
-
+gulp.task('default', ['build', 'watch'], shell.task([
+  'ENVIRONMENT=DEV ./node_modules/.bin/electron .'
+]));
 
 // Build the files
 gulp.task('build', ['clean', 'static', 'sass', 'js']);
 
 // Update files when then change
 gulp.task('watch', function() {
-  gulp.watch(STATIC_GLOB, ['static']);
-  gulp.watch(SRC +'/styles/**/*.scss', ['sass']);
-  gulp.watch(SRC +'/scripts/**/*.js', ['js']);
+  gulp.watch(STATIC_GLOB, ['static:watch']);
+  gulp.watch(SRC +'/styles/**/*.scss', ['sass:watch']);
+  gulp.watch(SRC +'/scripts/**/*.js', ['js:watch']);
 });
 
-gulp.task('clean', function () {
+gulp.task('clean', function (cb) {
   return del(BUILD +'/**/*.*');
 });
 
 // Copy static files over
-gulp.task('static', function(){
+gulp.task('static', ['clean'], staticTask);
+gulp.task('static:watch', staticTask);
+function staticTask(){
   return gulp
     .src(STATIC_GLOB, { base: SRC })
-    .pipe(gulp.dest(BUILD))
-    .pipe(connect.reload());
-})
+    .pipe(gulp.dest(BUILD));
+}
 
 // Process SCSS files
-gulp.task('sass', function(){
+gulp.task('sass', ['clean'], sassTask);
+gulp.task('sass:watch', sassTask);
+function sassTask() {
   return gulp
     .src(SRC + '/styles/**/*.scss')
     .pipe(sass().on('error', sass.logError))
-    .pipe(gulp.dest(BUILD +'/styles'))
-    .pipe(connect.reload());
-});
+    .pipe(gulp.dest(BUILD +'/styles'));
+}
 
 // Transpile ES6 files
-gulp.task('js', function(cb){
-  webpack(webpackConfig).run(cb);
-});
+gulp.task('js', ['clean'], jsTask);
+gulp.task('js:watch', jsTask);
+function jsTask() {
+  return gulp
+    .src(SRC + '/scripts/**/*.js')
+    .pipe(sourcemaps.init())
+    .pipe(babel({
+      presets: ['es2015'],
+      plugins: [
+        'angular2-annotations',
+        'transform-decorators-legacy'
+      ]
+    }))
+    .pipe(sourcemaps.write('.'))
+    .pipe(gulp.dest(BUILD +'/scripts'));
+}
 
 // Create an OSX distribution
 gulp.task('dist-osx', ['build'], function(cb){

@@ -8,25 +8,29 @@
   "license": "MIT",
   "main": "src/app.js",
   "devDependencies": {
+    "angular2": "^2.0.0-beta.16",
     "babel-loader": "^6.2.4",
     "babel-plugin-angular2-annotations": "^5.0.0",
     "babel-plugin-transform-decorators-legacy": "^1.3.4",
     "babel-preset-es2015": "^6.6.0",
     "del": "^2.2.0",
     "electron-packager": "^7.0.1",
-    "gulp": "^3.9.1",
-    "gulp-connect": "^4.0.0",
-    "gulp-sass": "^2.3.1",
-    "gulp-watch": "^4.3.5",
-    "webpack": "^1.13.0"
-  },
-  "dependencies": {
-    "angular2": "^2.0.0-beta.16",
     "electron-prebuilt": "^0.37.7",
-    "font-awesome": "^4.6.1",
+    "gulp": "^3.9.1",
+    "gulp-babel": "^6.1.2",
+    "gulp-sass": "^2.3.1",
+    "gulp-shell": "^0.5.2",
+    "gulp-sourcemaps": "^2.0.0",
+    "gulp-util": "^3.0.7",
+    "gulp-watch": "^4.3.5",
     "reflect-metadata": "^0.1.3",
     "rxjs": "5.0.0-beta.6",
+    "webpack": "^1.13.0",
     "zone.js": "^0.6.12"
+  },
+  "dependencies": {
+    "font-awesome": "^4.6.1",
+    "node-persist": "0.0.11"
   },
   "scripts": {}
 }
