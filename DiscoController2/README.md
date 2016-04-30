@@ -18,7 +18,15 @@ This will install and run the app in development mode:
 ```sh
 npm install
 
-gulp # run
+gulp
 ```
 
-## Create App
+## Create the App
+
+To create the production app:
+
+```sh
+gulp dist-osx    # Mac
+gulp dist-linux  # Linux
+gulp dist-win    # Windows
+```
