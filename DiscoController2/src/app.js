@@ -20,7 +20,13 @@ app.on('ready', function() {
 
   // Create the browser window and load index.html
   mainWindow = new BrowserWindow({width: 800, height: 600});
-  mainWindow.loadURL('file://' + __dirname + '/../build/index.html');
+
+  // Live reloading dev server
+  if (process.env.ENVIRONMENT === 'DEV') {
+    mainWindow.loadURL('http://localhost:8080/build/index.html');
+  } else {
+    mainWindow.loadURL('file://' + __dirname + '/../build/index.html');
+  }
 
   // Open dev tools
   // mainWindow.webContents.openDevTools();

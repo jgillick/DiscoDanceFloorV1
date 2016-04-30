@@ -15,6 +15,7 @@
     "del": "^2.2.0",
     "electron-packager": "^7.0.1",
     "gulp": "^3.9.1",
+    "gulp-connect": "^4.0.0",
     "gulp-sass": "^2.3.1",
     "gulp-watch": "^4.3.5",
     "webpack": "^1.13.0"
@@ -27,6 +28,5 @@
     "rxjs": "5.0.0-beta.6",
     "zone.js": "^0.6.12"
   },
-  "scripts": {
-  }
+  "scripts": {}
 }

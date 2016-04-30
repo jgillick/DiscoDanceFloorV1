@@ -7,6 +7,7 @@ const exec = require('child_process').exec;
 const packager = require('electron-packager')
 const webpack = require('webpack');
 const webpackConfig = require('./webpack.config.js');
+const connect = require('gulp-connect');
 
 const SRC = './src/';
 const BUILD = './build/';
@@ -23,23 +24,28 @@ const DIST_ICONS = {
 
 // Run the program
 gulp.task('default', ['build', 'watch'], function(cb){
-  exec('./node_modules/.bin/electron .', function (err, stdout, stderr) {
+
+  // For live asset reloading
+  connect.server({
+    root: '.',
+    livereload: true
+  });
+
+  // Launch app
+  exec('ENVIRONMENT=DEV ./node_modules/.bin/electron .', function (err, stdout, stderr) {
     console.log(stdout);
     console.log(stderr);
     cb(stderr);
   });
-
-  gulp.watch(STATIC_GLOB, ['static']);
-  gulp.watch(SRC +'/styles/**/*.scss', ['sass']);
-  gulp.watch(SRC +'/scripts/**/*.js', ['js']);
 })
 
+
 // Build the files
-gulp.task('build', ['clean', 'static', 'sass', 'js'], function() {
-});
+gulp.task('build', ['clean', 'static', 'sass', 'js']);
 
 // Update files when then change
 gulp.task('watch', function() {
+  gulp.watch(STATIC_GLOB, ['static']);
   gulp.watch(SRC +'/styles/**/*.scss', ['sass']);
   gulp.watch(SRC +'/scripts/**/*.js', ['js']);
 });
@@ -52,7 +58,8 @@ gulp.task('clean', function () {
 gulp.task('static', function(){
   return gulp
     .src(STATIC_GLOB, { base: SRC })
-    .pipe(gulp.dest(BUILD));
+    .pipe(gulp.dest(BUILD))
+    .pipe(connect.reload());
 })
 
 // Process SCSS files
@@ -60,7 +67,8 @@ gulp.task('sass', function(){
   return gulp
     .src(SRC + '/styles/**/*.scss')
     .pipe(sass().on('error', sass.logError))
-    .pipe(gulp.dest(BUILD +'/styles'));
+    .pipe(gulp.dest(BUILD +'/styles'))
+    .pipe(connect.reload());
 });
 
 // Transpile ES6 files
