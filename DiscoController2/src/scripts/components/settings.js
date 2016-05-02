@@ -1,13 +1,17 @@
 import {Component} from 'angular2/core';
-
-const path = require('path');
-const storage = require('node-persist');
+import {StorageService} from '../services/storage';
 
 @Component({
   templateUrl: './html/settings.html',
 })
 export class SettingsComponent{
-  constructor() {
+  // Inject dependencies
+  static get parameters() {
+    return [[StorageService]]
+  }
+
+  constructor(storageService) {
+    this._storage = storageService;
     this.settings = {
       dimensions: {x: 8, y: 8},
       autoConnect: false,
@@ -19,10 +23,8 @@ export class SettingsComponent{
    * Load the settings
    */
   ngOnInit() {
-    storage.initSync({ dir: path.join(process.env.INIT_CWD, '.data'), });
-
     // get values
-    var settings = storage.getItem("settings");
+    var settings = this._storage.getItem("settings");
     this.settings.dimensions = settings.dimensions || { x: 8, y: 8 };
     this.settings.autoConnect = !!(settings.autoConnect);
     this.settings.autoPlay = !!(settings.autoPlay);
@@ -32,6 +34,6 @@ export class SettingsComponent{
    * Save settings
    */
   saveForm(evt) {
-    storage.setItemSync("settings", this.settings);
+    this._storage.setItem("settings", this.settings);
   }
 }

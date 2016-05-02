@@ -8,7 +8,7 @@
   "license": "MIT",
   "main": "src/app.js",
   "devDependencies": {
-    "angular2": "^2.0.0-beta.16",
+    "angular2": "^2.0.0-beta.17",
     "babel-loader": "^6.2.4",
     "babel-plugin-angular2-annotations": "^5.0.0",
     "babel-plugin-transform-decorators-legacy": "^1.3.4",
@@ -20,7 +20,7 @@
     "gulp-babel": "^6.1.2",
     "gulp-sass": "^2.3.1",
     "gulp-shell": "^0.5.2",
-    "gulp-sourcemaps": "^2.0.0",
+    "gulp-sourcemaps": "^2.0.0-alpha",
     "gulp-util": "^3.0.7",
     "gulp-watch": "^4.3.5",
     "reflect-metadata": "^0.1.3",
@@ -30,7 +30,8 @@
   },
   "dependencies": {
     "font-awesome": "^4.6.1",
-    "node-persist": "0.0.11"
+    "node-persist": "0.0.11",
+    "jquery": "^2.2.3"
   },
   "scripts": {}
 }

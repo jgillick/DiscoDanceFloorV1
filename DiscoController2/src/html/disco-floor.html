@@ -1,122 +1,40 @@
-<div class="disco-floor">
-  <div class="row">
+<div class="disco-floor" (window:resize)="sizeFloor($event)">
+
+  <div class="floor-area">
     <table>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+      <tr *ngFor="let yItem of tableCells">
+        <td
+          *ngFor="let cell of yItem"
+          [style.height.px]="cellSize"
+          [style.width.px]="cellSize"
+          [class.empty]="!cell"></td>
       </tr>
     </table>
+  </div>
 
-    <div class="controller">
+  <div class="controller">
 
-      <div class="controls">
-        <button class="prev"><i class="fa fa-step-backward"></i></button>
-        <button class="play"><i class="fa fa-play"></i></button>
-        <button class="next"><i class="fa fa-step-forward"></i></button>
-      </div>
+    <div class="controls">
+      <button class="prev"><i class="fa fa-step-backward"></i></button>
+      <button class="play"><i class="fa fa-play"></i></button>
+      <button class="next"><i class="fa fa-step-forward"></i></button>
+    </div>
 
-      <ul class="programs">
-        <li>Audio Bars</li>
-        <li>Audio Blocks</li>
-        <li>Audio Color</li>
-        <li>Primaries</li>
-        <li>Rain</li>
-        <li>Random</li>
-        <li>Rings</li>
-      </ul>
+    <ul class="programs">
+      <li>Audio Bars</li>
+      <li>Audio Blocks</li>
+      <li>Audio Color</li>
+      <li>Primaries</li>
+      <li>Rain</li>
+      <li>Random</li>
+      <li>Rings</li>
+    </ul>
 
-      <div class="controls">
-        <button class="shuffle"><i class="fa fa-random"></i></button>
-        <button class="repeat"><i class="fa fa-repeat"></i></button>
-      </div>
+    <div class="controls">
+      <button class="shuffle"><i class="fa fa-random"></i></button>
+      <button class="repeat"><i class="fa fa-repeat"></i></button>
     </div>
   </div>
-  <div class="status">
-  </div>
+</div>
+<div class="floor-status">
 </div>

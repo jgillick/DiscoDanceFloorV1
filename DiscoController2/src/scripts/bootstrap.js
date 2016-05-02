@@ -6,12 +6,12 @@ import {
   HashLocationStrategy,
   APP_BASE_HREF} from 'angular2/platform/common';
 
-import {AppHomeComponent} from './scripts/components/home';
+import {AppComponent} from './scripts/components/main';
 
 //
 // Bootstrap
 //
-bootstrap(AppHomeComponent, [
+bootstrap(AppComponent, [
    ROUTER_PROVIDERS,
    provide(LocationStrategy, { useClass: HashLocationStrategy }),
    provide(APP_BASE_HREF, { useValue: '/' })
