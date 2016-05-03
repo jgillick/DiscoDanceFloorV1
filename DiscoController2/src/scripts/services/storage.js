@@ -9,6 +9,13 @@ export class StorageService {
   constructor() {
     this.storage = require('node-persist');
     this.storage.initSync({ dir: path.join(process.env.INIT_CWD, '.data'), });
+    
+    // Setup default values
+    let settings = this.getItem('settings') || {};
+    settings.dimensions = settings.dimensions || { x: 8, y: 8 };
+    settings.autoConnect = !!(settings.autoConnect);
+    settings.autoPlay = !!(settings.autoPlay);
+    this.setItem('settings', settings);
   }
 
   /**

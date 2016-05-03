@@ -1,0 +1,17 @@
+<div class="controller">
+
+  <div class="controls">
+    <button class="prev"><i class="fa fa-step-backward"></i></button>
+    <button class="play"><i class="fa fa-play"></i></button>
+    <button class="next"><i class="fa fa-step-forward"></i></button>
+  </div>
+
+  <ul class="programs">
+    <li *ngFor="let program of programList">{{program.info.name}}</li>
+  </ul>
+
+  <div class="controls">
+    <button class="shuffle"><i class="fa fa-random"></i></button>
+    <button class="repeat"><i class="fa fa-repeat"></i></button>
+  </div>
+</div>

@@ -8,6 +8,7 @@ import {SettingsComponent} from './settings';
 import {ConnectComponent} from './connect';
 import {StorageService} from '../services/storage';
 import {FloorBuilderService} from '../services/floor_builder';
+import {ProgramService} from '../services/program';
 
 //
 // Root Component
@@ -18,7 +19,8 @@ import {FloorBuilderService} from '../services/floor_builder';
   directives: [ROUTER_DIRECTIVES],
   providers: [
     StorageService,
-    FloorBuilderService
+    FloorBuilderService,
+    ProgramService
   ]
 })
 @RouteConfig([

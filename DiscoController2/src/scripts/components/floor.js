@@ -1,10 +1,20 @@
+/**
+ * Builds the disco floor area on the page.
+ */
+
 import {Component, ElementRef} from 'angular2/core';
+
 import {StorageService} from '../services/storage';
 import {FloorBuilderService} from '../services/floor_builder';
 
+import {ProgramControllerComponent} from './program_controller';
+
 @Component({
   selector: 'disco-floor',
-  templateUrl: './html/disco-floor.html'
+  templateUrl: './html/disco-floor.html',
+  directives: [
+    ProgramControllerComponent
+   ],
 })
 export class DiscoFloorComponent {
   // Inject dependencies
@@ -45,7 +55,6 @@ export class DiscoFloorComponent {
         this.tableCells[y] = this.tableCells[y] || [];
         this.tableCells[y][x] = cell;
       }
-      console.log(this.tableCells);
     }
   }
 

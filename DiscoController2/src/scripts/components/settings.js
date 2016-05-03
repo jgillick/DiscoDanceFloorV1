@@ -1,3 +1,7 @@
+/**
+ * The settings pages.
+ */
+
 import {Component} from 'angular2/core';
 import {StorageService} from '../services/storage';
 
@@ -24,10 +28,7 @@ export class SettingsComponent{
    */
   ngOnInit() {
     // get values
-    var settings = this._storage.getItem("settings");
-    this.settings.dimensions = settings.dimensions || { x: 8, y: 8 };
-    this.settings.autoConnect = !!(settings.autoConnect);
-    this.settings.autoPlay = !!(settings.autoPlay);
+    let settings = this._storage.getItem("settings") || {};
   }
 
   /**
