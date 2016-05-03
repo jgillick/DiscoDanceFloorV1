@@ -1,0 +1,55 @@
+program-controller {
+  height: 100%;
+  width: 200px;
+  flex-grow: 0;
+  flex-shrink: 0;
+  padding: 10px;
+
+  display: flex;
+  flex-direction: column;
+  align-content: stretch;
+   
+   
+  // Play controls  
+  .controls {
+    display: flex;
+    text-align: center;
+    flex-grow: 0;
+    flex-shrink: 0;
+
+    button {
+      flex-grow: 1;
+      font-size: 30px;
+      padding: 5px 0;
+      cursor: pointer;
+      border-radius: 5px;
+
+      &:hover {
+        background: #333;
+      }
+    }
+  }
+    
+  // Program List
+  .programs {
+    flex-grow: 1;
+    min-height: 120px;
+    margin: 10px;
+    overflow: auto;
+    font-size: 20px;
+    color: #333;
+    background: #888;
+    overflow: auto;
+
+    li {
+      padding: 7px 10px;
+      border-bottom: 1px solid #666;
+      cursor: pointer;
+
+      &:hover {
+        color: #999;
+        background: #333;
+      }
+    }
+  }
+}

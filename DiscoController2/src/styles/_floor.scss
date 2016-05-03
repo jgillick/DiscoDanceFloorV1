@@ -1,17 +1,23 @@
 
 .disco-floor {
   position: absolute;
-  top: $header-height; left: 0; right: 0; bottom: 0;
+  top: $header-height; 
+  left: 0; 
+  right: 0; 
+  bottom: 35px;
   display: flex;
   margin: 0 0 35px;
+  overflow: auto;
 
   //
   // Floor
   //
   .floor-area {
+    height: 100%;
     flex-grow: 1;
     margin: auto;
     padding: 10px;
+    display: flex;
 
     table {
       margin: auto;
@@ -31,61 +37,6 @@
     }
   }
 
-  //
-  // Program Controls
-  //
-  .controller {
-    width: 200px;
-    flex-grow: 0;
-    flex-shrink: 0;
-    padding: 10px;
-
-    display: flex;
-    flex-direction: column;
-    align-content: stretch;
-  }
-  .controls {
-    display: flex;
-    text-align: center;
-    flex-grow: 0;
-    flex-shrink: 0;
-
-    button {
-      flex-grow: 1;
-      font-size: 30px;
-      padding: 5px 0;
-      cursor: pointer;
-      border-radius: 5px;
-
-      &:hover {
-        background: #333;
-      }
-    }
-  }
-
-  //
-  // Program List
-  //
-  .programs {
-    flex-grow: 1;
-    margin: 10px;
-    overflow: auto;
-    font-size: 20px;
-    color: #333;
-    background: #888;
-    overflow: auto;
-
-    li {
-      padding: 7px 10px;
-      border-bottom: 1px solid #666;
-      cursor: pointer;
-
-      &:hover {
-        color: #999;
-        background: #333;
-      }
-    }
-  }
 }
 
 //
