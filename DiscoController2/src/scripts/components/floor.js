@@ -84,13 +84,13 @@ export class DiscoFloorComponent {
     // Set based on width
     if (width > ratio * height) {
       size = ratio * height;
-      size = (size > width) ? width : size;
+      size = (size > height) ? height : size;
       this.cellSize = Math.floor(size / this.x);
     }
     // Set based on height
     else if (height > width / ratio) {
       size = width / ratio;
-      size = (size > height) ? height : size;
+      size = (size > width) ? width : size;
       this.cellSize = Math.floor(size / this.y);
     }
   }

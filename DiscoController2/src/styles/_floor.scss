@@ -6,8 +6,6 @@
   right: 0; 
   bottom: 35px;
   display: flex;
-  margin: 0 0 35px;
-  overflow: auto;
 
   //
   // Floor
@@ -18,6 +16,7 @@
     margin: auto;
     padding: 10px;
     display: flex;
+    box-sizing: border-box;
 
     table {
       margin: auto;
