@@ -11,7 +11,7 @@ const BrowserWindow = electron.BrowserWindow;  // Module to create native browse
 const ROOT_PATH = path.join(__dirname, '..', 'build');
 
 // Local storage
-storage.initSync({ dir: path.join(__dirname, '.data'), });
+storage.initSync({ dir: path.join(__dirname, '..', '.data'), });
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.

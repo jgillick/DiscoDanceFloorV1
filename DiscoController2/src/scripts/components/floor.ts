@@ -1,12 +1,12 @@
 /**
- * Builds the disco floor area on the page.
+ * Builds a visual representation of the dance floor which scales with the page. 
  */
 
-import {Component, ElementRef} from 'angular2/core';
+import {Component, ElementRef, OnInit} from 'angular2/core';
 
+import {FloorCell} from '../models/floor_cell';
 import {StorageService} from '../services/storage';
 import {FloorBuilderService} from '../services/floor_builder';
-
 import {ProgramControllerComponent} from './program_controller';
 
 @Component({
@@ -16,39 +16,49 @@ import {ProgramControllerComponent} from './program_controller';
     ProgramControllerComponent
    ],
 })
-export class DiscoFloorComponent {
-  // Inject dependencies
-  static get parameters() {
-    return [
-      [ElementRef],
-      [StorageService],
-      [FloorBuilderService]
-    ];
-  }
+export class DiscoFloorComponent implements OnInit  {
+  
+  /**
+   * The height/width CSS value for each floor cell
+   */
+  cellSize:any = "100%";
+  
+  /**
+   * The x length of the floor
+   */
+  x:number = 0;
+  
+  /**
+   * The y length of the floor
+   */
+  y:number = 0;
+  
+  /**
+   * The table cell grid.
+   * A nested array of x and then y.
+   */
+  tableCells:FloorCell[][] = [];
 
-  constructor(elementRef, storageService, floorBuilderService) {
-    this._store = storageService;
-    this._builder = floorBuilderService;
-    this._element = elementRef;
+  constructor(private element:ElementRef, private store:StorageService, private builder:FloorBuilderService) {
   }
 
   /**
    * Load floor
    */
   ngOnInit() {
-    var settings = this._store.getItem('settings');
+    var settings = this.store.getItem('settings');
 
     if (settings && settings.dimensions) {
       this.x = settings.dimensions.x;
       this.y = settings.dimensions.y;
       this.cellSize = "100%";
 
-      this._builder.build(this.x * this.y, this.x, this.y);
+      this.builder.build(this.x * this.y, this.x, this.y);
 
       // Build Y/X axis for table
       this.tableCells = [];
-      for (var i = 0; i < this._builder.cells.length; i++) {
-        var cell = this._builder.cells[i],
+      for (var i = 0; i < this.builder.cells.length; i++) {
+        var cell = this.builder.cells[i],
             y = cell.y,
             x = cell.x;
 
@@ -70,7 +80,7 @@ export class DiscoFloorComponent {
    * so all cells are square
    */
   sizeFloor() {
-    var component = $(this._element.nativeElement),
+    var component = $(this.element.nativeElement),
         container = component.find('.floor-area'),
         width = container.width(),
         height = container.height(),

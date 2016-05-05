@@ -12,6 +12,8 @@ const PROGRAM_DIR = 'programs'
 
 @Injectable() 
 export class ProgramService {
+  programs:any[] = [];
+  
   constructor() {
   }
   

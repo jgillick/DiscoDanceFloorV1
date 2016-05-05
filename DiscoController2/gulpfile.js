@@ -2,13 +2,13 @@
 
 const gulp = require('gulp');
 const babel = require('gulp-babel');
-const gutil = require('gulp-util');
+const notify = require("gulp-notify");
 const sass = require('gulp-sass');
+const shell = require('gulp-shell');
 const sourcemaps = require('gulp-sourcemaps');
 const del = require('del');
-const exec = require('child_process').exec;
-const packager = require('electron-packager')
-const shell = require('gulp-shell')
+const packager = require('electron-packager');
+const path = require('path');
 
 const SRC = './src/';
 const BUILD = './build/';
@@ -25,26 +25,35 @@ const DIST_ICONS = {
   'win32': './src/images/app_icon.ico',
 }
 
-// Run the program
+/**
+ * Run the program
+ */
 gulp.task('default', ['build', 'watch'], shell.task([
   'ENVIRONMENT=DEV ./node_modules/.bin/electron .'
 ]));
 
-// Build the files
-gulp.task('build', ['clean', 'static', 'sass', 'js']);
+/**
+ * Build the files
+ */
+gulp.task('build', ['clean', 'static', 'sass', 'js', 'typescript']);
 
-// Update files when then change
+/**
+ * Update files when then change
+ */
 gulp.task('watch', function() {
   gulp.watch(STATIC_GLOB, ['static:watch']);
   gulp.watch(SRC +'/styles/**/*.scss', ['sass:watch']);
   gulp.watch(SRC +'/scripts/**/*.js', ['js:watch']);
+  gulp.watch(SRC +'/scripts/**/*.ts', ['typescript:watch']);
 });
 
 gulp.task('clean', function (cb) {
   return del(BUILD +'/**/*.*');
 });
 
-// Copy static files over
+/**
+ * Copy static files over
+ */
 gulp.task('static', ['clean'], staticTask);
 gulp.task('static:watch', staticTask);
 function staticTask(){
@@ -53,17 +62,25 @@ function staticTask(){
     .pipe(gulp.dest(BUILD));
 }
 
-// Process SCSS files
+/**
+ * Process SCSS files
+ */
 gulp.task('sass', ['clean'], sassTask);
 gulp.task('sass:watch', sassTask);
 function sassTask() {
   return gulp
     .src(SRC + '/styles/**/*.scss')
     .pipe(sass().on('error', sass.logError))
-    .pipe(gulp.dest(BUILD +'/styles'));
+    .pipe(gulp.dest(BUILD +'/styles'))
+    .on("error", notify.onError({
+      title: "Error building CSS",
+      message: "<%= error.message %>"
+    }));
 }
 
-// Transpile ES6 files
+/**
+ * Transpile ES6 files
+ */
 gulp.task('js', ['clean'], jsTask);
 gulp.task('js:watch', jsTask);
 function jsTask() {
@@ -78,10 +95,40 @@ function jsTask() {
       ]
     }))
     .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest(BUILD +'/scripts'));
+    .pipe(gulp.dest(BUILD +'/scripts'))
+    .on("error", notify.onError({
+      title: "Error building JavaScript",
+      message: "<%= error.message %>"
+    }));
 }
 
-// Create an OSX distribution
+/**
+ * Compile TypeScript sources
+ */
+gulp.task('typescript', tsTask);
+gulp.task('typescript:watch', tsTask);
+function tsTask() {
+  return gulp
+  .src(path.join(SRC, 'scripts/main.ts'), {read: false})
+  .pipe(shell(
+    [
+      './node_modules/.bin/tsc --sourceRoot <%= src %> --outDir <%= out %> --sourceMap'
+    ],
+    { 
+      templateData: {
+        src: SRC,
+        out: path.join(BUILD, 'scripts')
+      } 
+    }
+  ))
+  .on("error", notify.onError({
+    title: "Error building TypeScript"
+  }), {emitError: false});
+};
+
+/**
+ * Create an OSX distribution
+ */
 gulp.task('dist-osx', ['build'], function(cb){
   packager({
     dir: '.',
@@ -94,7 +141,9 @@ gulp.task('dist-osx', ['build'], function(cb){
   }, cb)
 });
 
-// Create a Linux distribution
+/**
+ * Create a Linux distribution
+ */
 gulp.task('dist-linux', ['build'], function(cb){
   packager({
     dir: '.',
@@ -106,7 +155,9 @@ gulp.task('dist-linux', ['build'], function(cb){
   }, cb)
 });
 
-// Create a Windows distribution
+/**
+ * Create a Windows distribution
+ */
 gulp.task('dist-win', ['build'], function(cb){
   packager({
     dir: '.',

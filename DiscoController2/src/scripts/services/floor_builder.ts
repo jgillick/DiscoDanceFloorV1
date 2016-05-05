@@ -27,11 +27,14 @@ import {FloorCell} from '../models/floor_cell';
  * ```
  */
 export class FloorBuilderService {
+  
+  public cells:FloorCell[] = [];
+  
+  private cellMap = {};
+  private x:number = 0;
+  private y:number = 0;
+  
   constructor() {
-    this.cells = [];
-    this.cellMap = {}
-    this.x = 0;
-    this.y = 0;
   }
 
   /**
@@ -47,6 +50,7 @@ export class FloorBuilderService {
         xDir = 1,
         yDir = 1,
         map = {},
+        cells = [],
         xFlipped = false,
         yFlipped = false;
 
@@ -115,8 +119,44 @@ export class FloorBuilderService {
         xFlipped = false;
       }
     }
-
+    
+    // Shrint cell array
+    if (this.cells.length > num) {
+      this.cells.splice(num);
+    }
+    
     this.cellMap = map;
+    return this.cells;
+  }
+  
+  /**
+   * Get the floor dimensions as an x/y object.
+   * @return {Object} An object with x, y and num properties
+   */
+  get dimensions() {
+    return {
+      x: this.x,
+      y: this.y,
+      num: this.cells.length
+    }
+  }
+  
+  /**
+   * Get a cell at an x/y position
+   * @param {int} x The x coordinate
+   * @param {int} y The y coordinate
+   * @return {FloorCell}
+   */
+  getCell(x, y) {
+    return this.cellMap[x][y];
+  }
+  
+  /**
+   * Get all the floor cells. 
+   * This returns a FloorCellList, that lets you run all the 
+   * visual cell manipulations on the entire list.
+   */
+  get allCells() {
     return this.cells;
   }
 

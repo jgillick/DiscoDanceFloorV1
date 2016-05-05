@@ -9,13 +9,10 @@ import {StorageService} from '../services/storage';
   templateUrl: './html/settings.html',
 })
 export class SettingsComponent{
-  // Inject dependencies
-  static get parameters() {
-    return [[StorageService]]
-  }
+  
+  settings:Object;
 
-  constructor(storageService) {
-    this._storage = storageService;
+  constructor(private _storage:StorageService) {
     this.settings = {
       dimensions: {x: 8, y: 8},
       autoConnect: false,

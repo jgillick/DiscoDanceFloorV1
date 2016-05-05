@@ -3,9 +3,22 @@ import * as path from 'path';
 
 /**
  * Provides a simple key/value local storage system.
+ * 
+ * Usage:
+ * ```
+ * let store = new StorageService();
+ * 
+ * store.setItem('foo', 'bar');
+ * store.getItem('foo'); // returns 'bar'
+ * 
+ * store.setItem('conf', {things: true});
+ * store.getItem('conf'); // returns {things: true}
+ * ```
  */
 @Injectable()
 export class StorageService {
+  storage:any; // node-persist object
+  
   constructor() {
     this.storage = require('node-persist');
     this.storage.initSync({ dir: path.join(process.env.INIT_CWD, '.data'), });
@@ -23,7 +36,7 @@ export class StorageService {
    * @param {String} name  The name to save the value under
    * @param {Object} value The value to assign to this name (can be any valid JavaScript type)
    */
-  setItem(key, value) {
+  setItem(key, value):void {
     this.storage.setItemSync(key, value);
   }
 
@@ -32,7 +45,7 @@ export class StorageService {
    * @param  {String} key The name of the setting to retrieve
    * @return {Object} The setting value
    */
-  getItem(key) {
+  getItem(key): any {
     return this.storage.getItem(key);
   }
 
@@ -41,7 +54,7 @@ export class StorageService {
    * @param {String} key The name of the item to remove
    * @return {Promise}
    */
-  removeItem(key) {
+  removeItem(key): Promise<any> {
     return this.storage.removeItem(key);
   }
 }

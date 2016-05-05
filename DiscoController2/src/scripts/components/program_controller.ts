@@ -9,14 +9,9 @@ import {ProgramService} from '../services/program';
   templateUrl: './html/program_controller.html'
 })
 export class ProgramControllerComponent {
-  // Inject dependencies
-  static get parameters() {
-    return [[ProgramService]];
-  }
+  programList:any[];
   
-  constructor(programService) {
-    this._programService = programService;
-    this.programList = [];
+  constructor(private _programService:ProgramService) {
   }
   
   ngOnInit() {
