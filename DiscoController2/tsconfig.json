@@ -8,9 +8,11 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "removeComments": false,
-    "noImplicitAny": false
+    "suppressImplicitAnyIndexErrors": true
   },
   "exclude": [
+    "build",
+    "dist",
     "node_modules",
     "typings/main",
     "typings/main.d.ts"

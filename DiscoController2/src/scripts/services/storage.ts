@@ -1,16 +1,16 @@
-import {Injectable} from 'angular2/core';
+import {Injectable} from '@angular/core';
 import * as path from 'path';
 
 /**
  * Provides a simple key/value local storage system.
- * 
+ *
  * Usage:
  * ```
  * let store = new StorageService();
- * 
+ *
  * store.setItem('foo', 'bar');
  * store.getItem('foo'); // returns 'bar'
- * 
+ *
  * store.setItem('conf', {things: true});
  * store.getItem('conf'); // returns {things: true}
  * ```
@@ -18,11 +18,11 @@ import * as path from 'path';
 @Injectable()
 export class StorageService {
   storage:any; // node-persist object
-  
+
   constructor() {
     this.storage = require('node-persist');
     this.storage.initSync({ dir: path.join(process.env.INIT_CWD, '.data'), });
-    
+
     // Setup default values
     let settings = this.getItem('settings') || {};
     settings.dimensions = settings.dimensions || { x: 8, y: 8 };

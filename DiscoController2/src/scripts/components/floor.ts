@@ -1,8 +1,8 @@
 /**
- * Builds a visual representation of the dance floor which scales with the page. 
+ * Builds a visual representation of the dance floor which scales with the page.
  */
 
-import {Component, ElementRef, OnInit} from 'angular2/core';
+import {Component, ElementRef, OnInit} from '@angular/core';
 
 import {FloorCell} from '../models/floor_cell';
 import {StorageService} from '../services/storage';
@@ -17,22 +17,22 @@ import {ProgramControllerComponent} from './program_controller';
    ],
 })
 export class DiscoFloorComponent implements OnInit  {
-  
+
   /**
    * The height/width CSS value for each floor cell
    */
   cellSize:any = "100%";
-  
+
   /**
    * The x length of the floor
    */
   x:number = 0;
-  
+
   /**
    * The y length of the floor
    */
   y:number = 0;
-  
+
   /**
    * The table cell grid.
    * A nested array of x and then y.

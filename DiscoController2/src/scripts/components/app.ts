@@ -1,7 +1,7 @@
-import {Component} from 'angular2/core';
+import {Component} from '@angular/core';
 import {
   RouteConfig,
-  ROUTER_DIRECTIVES} from 'angular2/router';
+  ROUTER_DIRECTIVES} from '@angular/router-deprecated';
 
 import {DiscoFloorComponent} from './floor';
 import {SettingsComponent} from './settings';

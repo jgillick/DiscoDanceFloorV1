@@ -2,14 +2,14 @@
  * The settings pages.
  */
 
-import {Component} from 'angular2/core';
+import {Component} from '@angular/core';
 import {StorageService} from '../services/storage';
 
 @Component({
   templateUrl: './html/settings.html',
 })
 export class SettingsComponent{
-  
+
   settings:Object;
 
   constructor(private _storage:StorageService) {

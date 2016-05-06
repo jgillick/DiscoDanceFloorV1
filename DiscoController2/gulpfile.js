@@ -10,6 +10,8 @@ const del = require('del');
 const packager = require('electron-packager');
 const path = require('path');
 
+const PACKAGE_JSON = require('./package.json');
+
 const SRC = './src/';
 const BUILD = './build/';
 const DIST = './dist/';
@@ -45,6 +47,7 @@ gulp.task('watch', function() {
   gulp.watch(SRC +'/styles/**/*.scss', ['sass:watch']);
   gulp.watch(SRC +'/scripts/**/*.js', ['js:watch']);
   gulp.watch(SRC +'/scripts/**/*.ts', ['typescript:watch']);
+  gulp.watch('./tsconfig.json', ['typescript:watch']);
 });
 
 gulp.task('clean', function (cb) {
@@ -89,10 +92,7 @@ function jsTask() {
     .pipe(sourcemaps.init())
     .pipe(babel({
       presets: ['es2015'],
-      plugins: [
-        'angular2-annotations',
-        'transform-decorators-legacy'
-      ]
+      plugins: []
     }))
     .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(BUILD +'/scripts'))
@@ -114,11 +114,11 @@ function tsTask() {
     [
       './node_modules/.bin/tsc --sourceRoot <%= src %> --outDir <%= out %> --sourceMap'
     ],
-    { 
+    {
       templateData: {
         src: SRC,
         out: path.join(BUILD, 'scripts')
-      } 
+      }
     }
   ))
   .on("error", notify.onError({
@@ -174,12 +174,18 @@ gulp.task('dist-win', ['build'], function(cb){
  * Used to determine which files to not package up in the dist
  */
 function distIgnore(file) {
-  // Font awesome
-  if (file.indexOf('node_modules/font-awesome') > -1) {
+
+  // get module name from path
+  var dependencies = Object.keys(PACKAGE_JSON.dependencies),
+      moduleMatch = file.match(/node_modules\/?([^\/]*)?\/?.*/),
+      moduleName = (!!moduleMatch) ? moduleMatch[1] : null;
+
+  // Non-dev dependencies in package.json should be packaged
+  if (moduleName && dependencies.indexOf(moduleName) > -1) {
     return false;
   }
   // Ignore all other modules
-  if (file.indexOf('node_modules/') > -1) {
+  else if (moduleName) {
     return true;
   }
   return false;

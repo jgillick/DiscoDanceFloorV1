@@ -1,11 +1,11 @@
 
-import {bootstrap} from 'angular2/platform/browser'
-import {provide, Component} from 'angular2/core';
-import {ROUTER_PROVIDERS} from 'angular2/router';
+import {bootstrap} from '@angular/platform-browser-dynamic'
+import {provide, Component} from '@angular/core';
+import {ROUTER_PROVIDERS} from '@angular/router-deprecated';
 import {
   LocationStrategy,
   HashLocationStrategy,
-  APP_BASE_HREF} from 'angular2/platform/common';
+  APP_BASE_HREF} from '@angular/common';
 
 // import {AppComponent} from './components/app';
 var app = require('./scripts/components/app');
