@@ -1,6 +1,6 @@
 
-import { FloorCell } from '../models/floor_cell';
-import { FloorCellList } from '../models/floor_cell_list';
+import { FloorCell } from '../../../shared/floor_cell';
+import { FloorCellList } from '../../../shared/floor_cell_list';
 
 /**
  * Given the floor dimensions, this will add all the

@@ -8,7 +8,7 @@ import {Injectable} from '@angular/core';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const PROGRAM_DIR = 'programs'
+const PROGRAM_DIR = 'build/programs';
 
 @Injectable()
 export class ProgramService {

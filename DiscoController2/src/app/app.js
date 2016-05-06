@@ -8,10 +8,10 @@ const storage = require('node-persist');
 const app = electron.app;  // Module to control application life.
 const BrowserWindow = electron.BrowserWindow;  // Module to create native browser window.
 
-const ROOT_PATH = path.join(__dirname, '..', 'build');
+const BUILD_PATH = path.join(__dirname, '../../build');
 
 // Local storage
-storage.initSync({ dir: path.join(__dirname, '..', '.data'), });
+storage.initSync({ dir: path.join(BUILD_PATH, '.data'), });
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -35,7 +35,7 @@ function openMainWindow() {
   var winState = getWindowState({
     width: 800,
     height: 800,
-    icon: path.join(ROOT_PATH, 'images/app_icon.png')
+    icon: path.join(BUILD_PATH, 'app/images/app_icon.png')
   });
 
   // Open window and reset state
@@ -51,7 +51,7 @@ function openMainWindow() {
   if (false && process.env.ENVIRONMENT === 'DEV') {
     mainWindow.loadURL('http://localhost:8080/build/index.html');
   } else {
-    mainWindow.loadURL('file://' + ROOT_PATH + '/../build/index.html');
+    mainWindow.loadURL('file://' + BUILD_PATH + '/app/index.html');
   }
 
   // Open dev tools

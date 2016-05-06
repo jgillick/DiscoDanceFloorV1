@@ -44,9 +44,9 @@ gulp.task('build', ['clean', 'static', 'sass', 'js', 'typescript']);
  */
 gulp.task('watch', function() {
   gulp.watch(STATIC_GLOB, ['static:watch']);
-  gulp.watch(SRC +'/styles/**/*.scss', ['sass:watch']);
-  gulp.watch(SRC +'/scripts/**/*.js', ['js:watch']);
-  gulp.watch(SRC +'/scripts/**/*.ts', ['typescript:watch']);
+  gulp.watch(SRC +'/app/styles/**/*.scss', ['sass:watch']);
+  gulp.watch(SRC +'/**/*.js', ['js:watch']);
+  gulp.watch(SRC +'/**/*.ts', ['typescript:watch']);
   gulp.watch('./tsconfig.json', ['typescript:watch']);
 });
 
@@ -72,9 +72,9 @@ gulp.task('sass', ['clean'], sassTask);
 gulp.task('sass:watch', sassTask);
 function sassTask() {
   return gulp
-    .src(SRC + '/styles/**/*.scss')
+    .src(SRC + '/app/styles/**/*.scss')
     .pipe(sass().on('error', sass.logError))
-    .pipe(gulp.dest(BUILD +'/styles'))
+    .pipe(gulp.dest(BUILD +'/app/styles'))
     .on("error", notify.onError({
       title: "Error building CSS",
       message: "<%= error.message %>"
@@ -88,14 +88,14 @@ gulp.task('js', ['clean'], jsTask);
 gulp.task('js:watch', jsTask);
 function jsTask() {
   return gulp
-    .src(SRC + '/scripts/**/*.js')
+    .src(SRC + '/**/*.js')
     .pipe(sourcemaps.init())
     .pipe(babel({
       presets: ['es2015'],
       plugins: []
     }))
     .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest(BUILD +'/scripts'))
+    .pipe(gulp.dest(BUILD))
     .on("error", notify.onError({
       title: "Error building JavaScript",
       message: "<%= error.message %>"
@@ -109,7 +109,7 @@ gulp.task('typescript', tsTask);
 gulp.task('typescript:watch', tsTask);
 function tsTask() {
   return gulp
-  .src(path.join(SRC, 'scripts/main.ts'), {read: false})
+  .src(path.join(SRC, 'app/scripts/main.ts'), {read: false})
   .pipe(shell(
     [
       './node_modules/.bin/tsc --sourceRoot <%= src %> --outDir <%= out %> --sourceMap'
@@ -117,7 +117,7 @@ function tsTask() {
     {
       templateData: {
         src: SRC,
-        out: path.join(BUILD, 'scripts')
+        out: path.join(BUILD)
       }
     }
   ))

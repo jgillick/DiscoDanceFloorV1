@@ -10,20 +10,10 @@
 
 import {Injectable} from '@angular/core';
 
-import { FloorBuilderService } from '../services/floor_builder';
+import { FloorCellList } from './floor_cell_list';
 
 @Injectable()
 export class DiscoController {
-  constructor(private floor:FloorBuilderService) {
+  constructor(public cells: FloorCellList) {
   }
-
-  /**
-   * Get an array of all floor cells.
-   * @return {FloorCell[]}
-   */
-  get floorCells() {
-    // return this.floor.cells;
-    return false;
-  }
-
 }

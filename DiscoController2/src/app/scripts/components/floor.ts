@@ -4,7 +4,7 @@
 
 import {Component, ElementRef, OnInit} from '@angular/core';
 
-import {FloorCell} from '../models/floor_cell';
+import {FloorCell} from '../../../shared/floor_cell';
 import {StorageService} from '../services/storage';
 import {FloorBuilderService} from '../services/floor_builder';
 import {ProgramControllerComponent} from './program_controller';
