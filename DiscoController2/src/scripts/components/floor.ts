@@ -21,7 +21,7 @@ export class DiscoFloorComponent implements OnInit  {
   /**
    * The height/width CSS value for each floor cell
    */
-  cellSize:any = "100%";
+  cellSize: string|number = "100%";
 
   /**
    * The x length of the floor
@@ -57,8 +57,9 @@ export class DiscoFloorComponent implements OnInit  {
 
       // Build Y/X axis for table
       this.tableCells = [];
-      for (var i = 0; i < this.builder.cells.length; i++) {
-        var cell = this.builder.cells[i],
+      let cells = this.builder.cellList;
+      for (var i = 0; i < cells.length; i++) {
+        let cell = cells.atIndex(i),
             y = cell.y,
             x = cell.x;
 

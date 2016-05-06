@@ -22,14 +22,8 @@ export class DiscoController {
    * @return {FloorCell[]}
    */
   get floorCells() {
-    return this.floor.cells;
-  }
-
-  /**
-   * Get a floor cell by x/y address.
-   */
-  getFloorCell(x, y) {
-
+    // return this.floor.cells;
+    return false;
   }
 
 }
