@@ -10,7 +10,7 @@
 
 import {Injectable} from '@angular/core';
 
-import { FloorCellList } from './floor_cell_list';
+import { FloorCellList } from './floor-cell-list';
 
 @Injectable()
 export class DiscoController {

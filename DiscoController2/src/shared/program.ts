@@ -1,12 +1,18 @@
 
+import { DiscoController } from './disco-controller';
+
 /**
  * The interface that all programs must follow.
  *
  * Program lifecycle:
  *
- * 1. Start: Setup your program. (reset floor colors, set variables, etc)
- * 2. Loop: Will be called repeatedly to receive updates to the floor.
- * 3. Shutdown: Cleanup and shutdown the program.
+ * 1. Init the program instance (happens every time the program starts playing)
+ * 2. Start: Setup your program. (reset floor colors, set variables, etc)
+ * 3. Loop: Will be called repeatedly to receive updates to the floor.
+ * 4. Shutdown: Cleanup and shutdown the program.
+ *
+ * Be sure to `null` out your references in the shutdown function, so the instance can
+ * effectively be garbage colleged.
  */
 export interface IProgram {
 
@@ -16,7 +22,12 @@ export interface IProgram {
   info: IProgramInfo;
 
   /**
-   * Called to start your program.
+   * Init the program instance
+   */
+  constructor(disco: DiscoController);
+
+  /**
+   * Called to setup your program and prepare it for the run loop.
    *
    * @return {Promise} A promise that resloves when your program is ready for the run loop.
    */

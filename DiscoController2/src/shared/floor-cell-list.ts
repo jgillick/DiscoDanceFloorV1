@@ -4,7 +4,7 @@
  * order on the floor.
  */
 
-import { FloorCell } from './floor_cell';
+import { FloorCell } from './floor-cell';
 
 export class FloorCellList {
 
