@@ -23,6 +23,13 @@ export class FloorCell {
   }
 
   /**
+   * Get the cell color
+   */
+  getColor(): [number, number, number] {
+    return this.color;
+  }
+
+  /**
    * Set this cell to a specific RGB color.
    * @param {byte[]} color An array of colors.
    * @param {boolean} stopFade Optional, default = true

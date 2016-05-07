@@ -8,7 +8,7 @@ import {SettingsComponent} from './settings';
 import {ConnectComponent} from './connect';
 import {StorageService} from '../services/storage.service';
 import {FloorBuilderService} from '../services/floor-builder.service';
-import {ProgramService} from '../services/program-controller.service';
+import {ProgramControllerService} from '../services/program-controller.service';
 
 //
 // Root Component
@@ -20,7 +20,7 @@ import {ProgramService} from '../services/program-controller.service';
   providers: [
     StorageService,
     FloorBuilderService,
-    ProgramService
+    ProgramControllerService
   ]
 })
 @RouteConfig([

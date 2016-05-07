@@ -8,7 +8,7 @@ import { FloorCell } from './floor-cell';
 
 export class FloorCellList {
 
-  constructor(private cells: FloorCell[], private map: FloorCell[][]) {
+  constructor(private cells: FloorCell[], private map: FloorCell[][], private x: number, private y: number) {
   }
 
   /**
@@ -16,6 +16,16 @@ export class FloorCellList {
    */
   get length(): number {
     return this.cells.length;
+  }
+  /**
+   * Get the floor dimensions as an x/y object.
+   * @return {Object} An object with x, y and num properties
+   */
+  get dimensions(): {x:number, y:number} {
+    return {
+      x: this.x,
+      y: this.y
+    }
   }
 
   /**

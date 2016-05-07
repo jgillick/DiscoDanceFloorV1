@@ -6,18 +6,28 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import {Injectable} from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import { IProgram } from '../../../shared/program';
+import { FloorBuilderService } from './floor-builder.service';
 
 const PROGRAM_DIR = 'build/programs';
 
+// timeout for program startup and shutdown
+const PROGRAM_TIMEOUT = 5000;
+
+// The number of milliseconds between run loop cycles
+const RUN_LOOP_SPEED = 10;
+
 @Injectable()
-export class ProgramService {
+export class ProgramControllerService {
 
   programs:IProgram[] = [];
   runningProgram: IProgram;
 
-  constructor() {
+  private _runLoopTimer:NodeJS.Timer;
+
+  constructor(@Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService) {
+
   }
 
   /**
@@ -61,27 +71,49 @@ export class ProgramService {
   }
 
   /**
-   * Play a program
+   * Start playing a program (stop the existing program, if one was running)
    *
    * @param {String} name The name of the program to run.
    *
    * @return {Promise} resolves when the program is started and running.
    */
   runProgram(name: String): Promise<void> {
+    console.log(`Starting program ${name}...`);
+
     let program = this.getProgram(name);
     if (program) {
       return new Promise<void>( (resolve, reject) => {
 
         // Stop program and then try to start it.
         this.stopProgram()
-        .then(start, start);
-        function start() {
-          program.start().then(resolve, reject);
-        }
+        .then(start.bind(this), start.bind(this));
 
+        // Startup timeout
+        let timeout = setTimeout(function(){
+          reject({ error: 'timed out' });
+        }, PROGRAM_TIMEOUT);
+
+        function start() {
+          try {
+            program.start(this._floorBuilder.cellList)
+            .then(() => {
+              this.runningProgram = program;
+              clearTimeout(timeout);
+              resolve();
+
+              this.startRunLoop();
+            })
+            .catch((err) => {
+              clearTimeout(timeout);
+              reject(err);
+            });
+          } catch(e) {
+            reject({ error: e.toString() })
+          }
+        }
       });
     }
-    return Promise.reject(null);
+    return Promise.reject({ error: "Could not find program" });
   }
 
   /**
@@ -91,10 +123,52 @@ export class ProgramService {
    */
   stopProgram(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      if (this.runningProgram) {
-        this.runningProgram.shutdown().then(resolve, reject);
+      if (!this.runningProgram) {
+        resolve();
+        return;
       }
+
+      // Shutdown
+      try {
+        this.runningProgram.shutdown().then(resolve, reject);
+      } catch(e) {
+        reject({ error: e.toString() })
+      }
+      this.runningProgram = null;
+
+      // Shutdown timeout
+      setTimeout(function(){
+        reject({ error: 'timed out' });
+      }, PROGRAM_TIMEOUT);
     })
   }
 
+  /**
+   * Start the program run loop
+   */
+  private startRunLoop() {
+    let lastLoopTime = (new Date()).getTime();
+
+    this._runLoopTimer = setInterval(() => {
+
+      let now = (new Date()).getTime(),
+          timeDiff = now - lastLoopTime;
+
+      if (!this.runningProgram) {
+        this.stopRunLoop();
+        return;
+      }
+
+      this.runningProgram.loop(timeDiff);
+      lastLoopTime = now;
+
+    }, RUN_LOOP_SPEED);
+  }
+
+  /**
+   * Stop the program run loop
+   */
+  private stopRunLoop() {
+    clearInterval(this._runLoopTimer);
+  }
 }

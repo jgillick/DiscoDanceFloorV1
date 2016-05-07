@@ -1,5 +1,5 @@
 
-import { DiscoController } from './disco-controller';
+import { FloorCellList } from './floor-cell-list';
 
 /**
  * The interface that all programs must follow.
@@ -24,20 +24,24 @@ export interface IProgram {
   /**
    * Init the program instance
    */
-  constructor(disco: DiscoController);
+  constructor(cellList: FloorCellList);
 
   /**
    * Called to setup your program and prepare it for the run loop.
    *
+   * @param {FloorCellList} cellList The list of floor cells.
+   *
    * @return {Promise} A promise that resloves when your program is ready for the run loop.
    */
-  start(): Promise<void>;
+  start(cellList: FloorCellList): Promise<void>;
 
   /**
    * This manages updating the floor colors and will be called for each draw
    * cycle of the floor.
+   *
+   * @param {number} time The number of milliseconds since the last loop.
    */
-  loop();
+  loop(time:number);
 
   /**
    * Called to stop and shutdown your program.

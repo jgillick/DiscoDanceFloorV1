@@ -1,5 +1,11 @@
 'use strict';
 
+var floorCellList,
+    countdown,
+    startColor;
+
+const ANIMATION_TIME = 500;
+
 module.exports = {
   info: {
     name: 'Primaries',
@@ -7,6 +13,57 @@ module.exports = {
     interactive: false,
     lightShow: true,
     miniumumTime: 1
+  },
+
+  /**
+   * Start the program
+   */
+  start: function(cellList) {
+    floorCellList = cellList;
+    startColor = 0;
+    countdown = ANIMATION_TIME;
+    return Promise.resolve();
+  },
+
+  /**
+   * Floor run loop
+   */
+  loop: function(time) {
+    countdown -= time;
+
+    if (countdown > 0) {
+      return;
+    }
+
+    let colorIndex = startColor,
+        dimensions = floorCellList.dimensions;
+
+    for (let y = 0; y < dimensions.y; y++) {
+      for (let x = 0; x < dimensions.x; x++) {
+        let color = [0, 0, 0],
+            cell = floorCellList.at(x, y);
+
+        color[colorIndex] = 255;
+        cell.setColor(color);
+
+        if (++colorIndex > 2) {
+          colorIndex = 0;
+        }
+      }
+    }
+
+    if (++startColor > 2) {
+      startColor = 0;
+    }
+    countdown = ANIMATION_TIME + countdown;
+  },
+
+  /**
+   * Shutdown the program
+   */
+  shutdown: function() {
+    floorCellList.setColor([0,0,0], 500);
+    return Promise.resolve();
   }
 };
 

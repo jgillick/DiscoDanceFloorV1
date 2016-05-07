@@ -35,7 +35,7 @@ export class FloorBuilderService {
   public cellList: FloorCellList;
 
   private cells: FloorCell[] = [];
-  private cellMap = {};
+  private cellMap:FloorCell[][] = [];
   private x: number = 0;
   private y: number = 0;
 
@@ -108,7 +108,7 @@ export class FloorBuilderService {
       if (!map[x]) {
         map[x] = [];
       }
-      map[x][y] = i;
+      map[x][y] = cell;
 
       // Move up and down by 4s
       // If we hit the top or bottom of 4s, switch y direction
@@ -151,39 +151,9 @@ export class FloorBuilderService {
       this.cells.splice(num);
     }
 
-    this.cellList = new FloorCellList(this.cells, map);
+    this.cellMap = map;
+    this.cellList = new FloorCellList(this.cells, this.cellMap, this.x, this.y);
     return this.cellList;
-  }
-
-  /**
-   * Get the floor dimensions as an x/y object.
-   * @return {Object} An object with x, y and num properties
-   */
-  get dimensions() {
-    return {
-      x: this.x,
-      y: this.y,
-      num: this.cells.length
-    }
-  }
-
-  /**
-   * Get a cell at an x/y position
-   * @param {int} x The x coordinate
-   * @param {int} y The y coordinate
-   * @return {FloorCell}
-   */
-  getCell(x, y) {
-    return this.cellMap[x][y];
-  }
-
-  /**
-   * Get all the floor cells.
-   * This returns a FloorCellList, that lets you run all the
-   * visual cell manipulations on the entire list.
-   */
-  get allCells() {
-    return this.cells;
   }
 
   /**

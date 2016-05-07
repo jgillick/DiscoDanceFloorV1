@@ -39,7 +39,10 @@ export class DiscoFloorComponent implements OnInit  {
    */
   tableCells:FloorCell[][] = [];
 
-  constructor(private element:ElementRef, private store:StorageService, private builder:FloorBuilderService) {
+  constructor(
+    private element:ElementRef,
+    private store:StorageService,
+    private builder:FloorBuilderService) {
   }
 
   /**
@@ -102,5 +105,12 @@ export class DiscoFloorComponent implements OnInit  {
       size = (size > width) ? width : size;
       this.cellSize = Math.floor(size / this.y);
     }
+  }
+
+  /**
+   * Get the color CSS for a floor cell
+   */
+  cellColorCSS(floorCell: FloorCell) {
+    return `rgb(${floorCell.getColor()})`;
   }
 }
