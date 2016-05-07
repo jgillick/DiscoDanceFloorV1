@@ -30,4 +30,7 @@ import {ProgramService} from '../services/program-controller.service';
 ])
 export class AppComponent {
 
+  constructor(private floorBuilder:FloorBuilderService){
+
+  }
 }

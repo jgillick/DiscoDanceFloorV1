@@ -34,9 +34,10 @@
   },
   "dependencies": {
     "font-awesome": "^4.6.1",
-    "node-persist": "0.0.11",
-    "mkdirp": "~0.5.1",
     "jquery": "^2.2.3",
+    "lodash": "^4.11.2",
+    "mkdirp": "~0.5.1",
+    "node-persist": "0.0.11",
     "q": "~1.1.1"
   },
   "scripts": {

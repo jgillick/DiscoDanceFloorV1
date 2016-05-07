@@ -1,5 +1,7 @@
 import {Injectable} from '@angular/core';
+import { Subject } from 'rxjs/Subject';
 import * as path from 'path';
+import * as _ from 'lodash';
 
 /**
  * Provides a simple key/value local storage system.
@@ -17,7 +19,10 @@ import * as path from 'path';
  */
 @Injectable()
 export class StorageService {
-  storage:any; // node-persist object
+  private storageChangeSource = new Subject<{key:String, value:any}>();
+
+  storage:any // node-persist object
+  storageChanged$ = this.storageChangeSource.asObservable();
 
   constructor() {
     this.storage = require('node-persist');
@@ -37,7 +42,19 @@ export class StorageService {
    * @param {Object} value The value to assign to this name (can be any valid JavaScript type)
    */
   setItem(key, value):void {
+    var oldVal = this.storage.getItemSync(key);
+    value = _.cloneDeep(value);
+
+    // No change
+    if (_.isEqual(oldVal, value)) {
+      return;
+    }
+
     this.storage.setItemSync(key, value);
+    this.storageChangeSource.next({
+      key: key,
+      value: value
+    });
   }
 
   /**
@@ -46,7 +63,7 @@ export class StorageService {
    * @return {Object} The setting value
    */
   getItem(key): any {
-    return this.storage.getItem(key);
+    return _.cloneDeep(this.storage.getItem(key));
   }
 
   /**

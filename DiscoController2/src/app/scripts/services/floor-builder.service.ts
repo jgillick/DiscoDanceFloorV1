@@ -1,4 +1,7 @@
 
+import { Inject } from '@angular/core';
+
+import { StorageService } from './storage.service';
 import { FloorCell } from '../../../shared/floor-cell';
 import { FloorCellList } from '../../../shared/floor-cell-list';
 
@@ -36,7 +39,28 @@ export class FloorBuilderService {
   private x: number = 0;
   private y: number = 0;
 
-  constructor() {
+  constructor(@Inject(StorageService) private storage:StorageService) {
+    storage.storageChanged$.subscribe(
+      changed => {
+        // Dimentions might have changed, rebuild floor
+        this._buildFromSettings();
+      }
+    )
+    this._buildFromSettings();
+  }
+
+  /**
+   * Build the floor with the dimensions defined in the local storage settings
+   */
+  private _buildFromSettings() {
+    let settings = this.storage.getItem('settings'),
+        cellNum = settings.floorCellNum;
+
+    if (cellNum === undefined) {
+      cellNum = settings.dimensions.x * settings.dimensions.y;
+    }
+
+    this.build(cellNum, settings.dimensions.x, settings.dimensions.y)
   }
 
   /**
