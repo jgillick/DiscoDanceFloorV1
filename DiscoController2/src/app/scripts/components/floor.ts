@@ -5,9 +5,9 @@
 import {Component, ElementRef, OnInit} from '@angular/core';
 
 import {FloorCell} from '../../../shared/floor_cell';
-import {StorageService} from '../services/storage';
-import {FloorBuilderService} from '../services/floor_builder';
-import {ProgramControllerComponent} from './program_controller';
+import {StorageService} from '../services/storage.service';
+import {FloorBuilderService} from '../services/floor-builder.service';
+import {ProgramControllerComponent} from './program-controller';
 
 @Component({
   selector: 'disco-floor',

@@ -6,9 +6,9 @@ import {
 import {DiscoFloorComponent} from './floor';
 import {SettingsComponent} from './settings';
 import {ConnectComponent} from './connect';
-import {StorageService} from '../services/storage';
-import {FloorBuilderService} from '../services/floor_builder';
-import {ProgramService} from '../services/program';
+import {StorageService} from '../services/storage.service';
+import {FloorBuilderService} from '../services/floor-builder.service';
+import {ProgramService} from '../services/program-controller.service';
 
 //
 // Root Component

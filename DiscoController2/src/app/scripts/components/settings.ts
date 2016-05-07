@@ -3,7 +3,7 @@
  */
 
 import {Component} from '@angular/core';
-import {StorageService} from '../services/storage';
+import {StorageService} from '../services/storage.service';
 
 @Component({
   templateUrl: './html/settings.html',

@@ -2,7 +2,7 @@
  * Builds the program list and handles loading and playing them.
  */
 import {Component} from '@angular/core';
-import {ProgramService} from '../services/program';
+import {ProgramService} from '../services/program-controller.service';
 
 @Component ({
   selector: 'program-controller',
