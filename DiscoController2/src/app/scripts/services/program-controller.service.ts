@@ -11,7 +11,6 @@ import { IProgram } from '../../../shared/program';
 import { FloorBuilderService } from './floor-builder.service';
 
 const PROGRAM_DIR = 'build/programs';
-const SHUTDOWN_TIMEOUT = 5000;
 
 // timeout for program startup and shutdown
 const PROGRAM_TIMEOUT = 5000;
@@ -40,7 +39,7 @@ export class ProgramControllerService {
       // Setup timeout
       var timeout = setTimeout(() => {
         console.log('Timeout');
-        reject();
+        reject({ error: 'timeout' });
       }, milliseconds);
       function cancelTimeout() {
         clearTimeout(timeout);
@@ -117,7 +116,7 @@ export class ProgramControllerService {
 
         function start() {
           try {
-            program.start(this._floorBuilder.cellList)
+            this._promiseTimeout(PROGRAM_TIMEOUT, program.start(this._floorBuilder.cellList))
             .then(() => {
               this.runningProgram = program;
               clearTimeout(timeout);
@@ -152,7 +151,7 @@ export class ProgramControllerService {
 
       // Shutdown
       try {
-        this._promiseTimeout(SHUTDOWN_TIMEOUT, this.runningProgram.shutdown())
+        this._promiseTimeout(PROGRAM_TIMEOUT, this.runningProgram.shutdown())
         .then(resolve, reject);
       } catch(e) {
         reject({ error: e.toString() })
@@ -168,18 +167,20 @@ export class ProgramControllerService {
     let lastLoopTime = (new Date()).getTime();
 
     this._runLoopTimer = setInterval(() => {
+      try {
+        let now = (new Date()).getTime(),
+            timeDiff = now - lastLoopTime;
 
-      let now = (new Date()).getTime(),
-          timeDiff = now - lastLoopTime;
+        if (!this.runningProgram) {
+          this.stopRunLoop();
+          return;
+        }
 
-      if (!this.runningProgram) {
-        this.stopRunLoop();
-        return;
+        this.runningProgram.loop(timeDiff);
+        lastLoopTime = now;
+      } catch(e) {
+        console.error(e);
       }
-
-      this.runningProgram.loop(timeDiff);
-      lastLoopTime = now;
-
     }, RUN_LOOP_SPEED);
   }
 
