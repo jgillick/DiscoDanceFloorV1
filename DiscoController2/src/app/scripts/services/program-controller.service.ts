@@ -11,6 +11,7 @@ import { IProgram } from '../../../shared/program';
 import { FloorBuilderService } from './floor-builder.service';
 
 const PROGRAM_DIR = 'build/programs';
+const SHUTDOWN_TIMEOUT = 5000;
 
 // timeout for program startup and shutdown
 const PROGRAM_TIMEOUT = 5000;
@@ -28,6 +29,29 @@ export class ProgramControllerService {
 
   constructor(@Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService) {
 
+  }
+  
+  /**
+   * Create a promise that times out
+   */
+  private _promiseTimeout(milliseconds:number, promise:Promise<any>): Promise<any>{
+    return new Promise<void>((resolve, reject) => {
+      
+      // Setup timeout
+      var timeout = setTimeout(() => {
+        console.log('Timeout');
+        reject();
+      }, milliseconds);
+      function cancelTimeout() {
+        clearTimeout(timeout);
+      }
+      
+      // Run promise
+      promise
+      .then(cancelTimeout)
+      .then(resolve, reject);
+      
+    });
   }
 
   /**
@@ -62,7 +86,7 @@ export class ProgramControllerService {
    *
    * @return {IProgram}
    */
-  getProgram(name: String) {
+  getProgramByName(name: String) {
     name = name.toLocaleLowerCase();
     return this.programs.find( p => {
       return (p.info.name.toLowerCase() === name);
@@ -77,10 +101,8 @@ export class ProgramControllerService {
    *
    * @return {Promise} resolves when the program is started and running.
    */
-  runProgram(name: String): Promise<void> {
-    console.log(`Starting program ${name}...`);
-
-    let program = this.getProgram(name);
+  runProgram(program: IProgram): Promise<void> {
+    console.log('Play', program);
     if (program) {
       return new Promise<void>( (resolve, reject) => {
 
@@ -130,16 +152,12 @@ export class ProgramControllerService {
 
       // Shutdown
       try {
-        this.runningProgram.shutdown().then(resolve, reject);
+        this._promiseTimeout(SHUTDOWN_TIMEOUT, this.runningProgram.shutdown())
+        .then(resolve, reject);
       } catch(e) {
         reject({ error: e.toString() })
       }
       this.runningProgram = null;
-
-      // Shutdown timeout
-      setTimeout(function(){
-        reject({ error: 'timed out' });
-      }, PROGRAM_TIMEOUT);
     })
   }
 

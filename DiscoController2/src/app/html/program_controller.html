@@ -6,7 +6,9 @@
 </div>
 
 <ul class="programs">
-  <li *ngFor="let program of programList">{{program.info.name}}</li>
+  <li 
+    *ngFor="let program of programList"
+    (click)="playProgram(program)">{{program.info.name}}</li>
 </ul>
 
 <div class="controls">

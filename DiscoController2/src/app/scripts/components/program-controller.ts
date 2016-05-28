@@ -3,6 +3,7 @@
  */
 import {Component} from '@angular/core';
 import {ProgramControllerService} from '../services/program-controller.service';
+import { IProgram } from '../../../shared/program';
 
 @Component ({
   selector: 'program-controller',
@@ -21,5 +22,12 @@ export class ProgramControllerComponent {
       let msg = err.error || '';
       console.log(`Could not start the program: ${msg}`);
     });
+  }
+  
+  /**
+   * Run a program
+   */
+  playProgram(program: IProgram): void {
+    this._programService.runProgram(program);
   }
 }
