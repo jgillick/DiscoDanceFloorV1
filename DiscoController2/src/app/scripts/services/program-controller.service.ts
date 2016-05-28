@@ -38,7 +38,6 @@ export class ProgramControllerService {
       
       // Setup timeout
       var timeout = setTimeout(() => {
-        console.log('Timeout');
         reject({ error: 'timeout' });
       }, milliseconds);
       function cancelTimeout() {
@@ -101,7 +100,6 @@ export class ProgramControllerService {
    * @return {Promise} resolves when the program is started and running.
    */
   runProgram(program: IProgram): Promise<void> {
-    console.log('Play', program);
     if (program) {
       return new Promise<void>( (resolve, reject) => {
 

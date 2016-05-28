@@ -1,14 +1,23 @@
 
 <div class="controls">
   <button class="prev"><i class="fa fa-step-backward"></i></button>
-  <button class="play"><i class="fa fa-play"></i></button>
+  <button class="play">
+    <i class="fa fa-play" 
+      *ngIf="!isProgramRunning()"
+      (click)="playSelected()"></i>
+    <i class="fa fa-stop" 
+      *ngIf="isProgramRunning()"
+      (click)="stopProgram()"></i>
+  </button>
   <button class="next"><i class="fa fa-step-forward"></i></button>
 </div>
 
 <ul class="programs">
   <li 
     *ngFor="let program of programList"
-    (click)="playProgram(program)">{{program.info.name}}</li>
+    (click)="playProgram(program)"
+    [class.selected]="isSelected(program)">
+    {{program.info.name}}</li>
 </ul>
 
 <div class="controls">

@@ -11,13 +11,55 @@ import { IProgram } from '../../../shared/program';
 })
 export class ProgramControllerComponent {
   programList:any[];
+  
+  private _selectedProgram: IProgram;
 
   constructor(private _programService:ProgramControllerService) {
   }
 
   ngOnInit() {
     this.programList = this._programService.loadPrograms();
-    this._programService.runProgram('primaries')
+  }
+  
+  /**
+   * Returns the program which is either running or selected
+   */
+  selectedProgram(): IProgram {
+    var running:IProgram = this._programService.runningProgram;
+    
+    if (running) {
+      this._selectedProgram = running;
+    }
+    
+    return this._selectedProgram;
+  }
+  
+  /**
+   * Check if this is the selected program
+   */
+  isSelected(program:IProgram): boolean {
+    let selected = this.selectedProgram();
+    return (selected && selected.info.name == program.info.name);
+  }
+  
+  /**
+   * Returnes true if a program is currently running
+   */
+  isProgramRunning(): boolean {
+    return !!(this._programService.runningProgram);
+  }
+  
+  /**
+   * Run a program
+   */
+  playProgram(program: IProgram): void {
+    this._selectedProgram = program;
+    
+    if (!program) {
+      return;
+    }
+    
+    this._programService.runProgram(program)
     .catch(err => {
       let msg = err.error || '';
       console.log(`Could not start the program: ${msg}`);
@@ -25,9 +67,16 @@ export class ProgramControllerComponent {
   }
   
   /**
-   * Run a program
+   * Run the selected program
    */
-  playProgram(program: IProgram): void {
-    this._programService.runProgram(program);
+  playSelected(): void {
+    this.playProgram(this.selectedProgram());
+  }
+  
+  /**
+   * Stop the current program
+   */
+  stopProgram(): void {
+    this._programService.stopProgram();
   }
 }

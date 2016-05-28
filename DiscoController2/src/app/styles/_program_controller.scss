@@ -22,6 +22,7 @@ program-controller {
       padding: 5px 0;
       cursor: pointer;
       border-radius: 5px;
+      outline: none;
 
       &:hover {
         background: #333;
@@ -44,8 +45,10 @@ program-controller {
       padding: 7px 10px;
       border-bottom: 1px solid #666;
       cursor: pointer;
+      transition: all 250ms;
 
-      &:hover {
+      &:hover,
+      &.selected {
         color: #999;
         background: #333;
       }
