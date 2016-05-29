@@ -25,7 +25,7 @@ export class ProgramControllerComponent {
    * Returns the program which is either running or selected
    */
   selectedProgram(): IProgram {
-    var running:IProgram = this._programService.runningProgram;
+    let running:IProgram = this._programService.runningProgram;
     
     if (running) {
       this._selectedProgram = running;
@@ -50,6 +50,13 @@ export class ProgramControllerComponent {
   }
   
   /**
+   * Is a program in the process of stopping or starting?
+   */
+  isStoppingOrStarting(): boolean {
+    return (this._programService.isStarting || this._programService.isStopping);
+  }
+  
+  /**
    * Run a program
    */
   playProgram(program: IProgram): void {
@@ -62,7 +69,7 @@ export class ProgramControllerComponent {
     this._programService.runProgram(program)
     .catch(err => {
       let msg = err.error || '';
-      console.log(`Could not start the program: ${msg}`);
+      console.error(`Could not start the program: ${msg}`);
     });
   }
   

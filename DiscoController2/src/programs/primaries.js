@@ -22,6 +22,16 @@ module.exports = {
     floorCellList = cellList;
     startColor = 0;
     countdown = ANIMATION_TIME;
+    
+    return Promise.resolve();
+  },
+  
+  /**
+   * Shutdown the program
+   */
+  shutdown: function() {
+    floorCellList.setColor([0,0,0]);
+    
     return Promise.resolve();
   },
 
@@ -56,14 +66,6 @@ module.exports = {
       startColor = 0;
     }
     countdown = ANIMATION_TIME + countdown;
-  },
-
-  /**
-   * Shutdown the program
-   */
-  shutdown: function() {
-    floorCellList.setColor([0,0,0], 500);
-    return Promise.resolve();
   }
 };
 

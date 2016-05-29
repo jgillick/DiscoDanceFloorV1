@@ -1,26 +1,44 @@
+<section 
+  class="program-controller"
+  [class.changing-state]="isStoppingOrStarting()">
 
-<div class="controls">
-  <button class="prev"><i class="fa fa-step-backward"></i></button>
-  <button class="play">
-    <i class="fa fa-play" 
-      *ngIf="!isProgramRunning()"
-      (click)="playSelected()"></i>
-    <i class="fa fa-stop" 
-      *ngIf="isProgramRunning()"
-      (click)="stopProgram()"></i>
-  </button>
-  <button class="next"><i class="fa fa-step-forward"></i></button>
-</div>
+  <div class="controls">
+    <button class="prev"><i class="fa fa-step-backward"></i></button>
+    
+    <!--Play -->
+    <button 
+      class="play" 
+      (click)="playSelected()"
+      *ngIf="!isProgramRunning() && !isStoppingOrStarting()">
+      <i class="fa fa-play"></i>
+    </button>
+    <!-- Stop -->
+    <button 
+      class="stop" 
+      (click)="stopProgram()"
+      *ngIf="isProgramRunning() && !isStoppingOrStarting()">
+      <i class="fa fa-stop"></i>
+    </button>
+    <!-- In process of stoping or starting -->
+    <button 
+      class="starting-stoping" 
+      *ngIf="isStoppingOrStarting()">
+      <i class="fa fa-circle-o-notch fa-spin"></i>
+    </button>
+      
+    <button class="next"><i class="fa fa-step-forward"></i></button>
+  </div>
 
-<ul class="programs">
-  <li 
-    *ngFor="let program of programList"
-    (click)="playProgram(program)"
-    [class.selected]="isSelected(program)">
-    {{program.info.name}}</li>
-</ul>
+  <ul class="programs">
+    <li 
+      *ngFor="let program of programList"
+      (click)="playProgram(program)"
+      [class.selected]="isSelected(program)">
+      {{program.info.name}}</li>
+  </ul>
 
-<div class="controls">
-  <button class="shuffle"><i class="fa fa-random"></i></button>
-  <button class="repeat"><i class="fa fa-repeat"></i></button>
-</div>
+  <div class="controls">
+    <button class="shuffle"><i class="fa fa-random"></i></button>
+    <button class="repeat"><i class="fa fa-repeat"></i></button>
+  </div>
+</section>

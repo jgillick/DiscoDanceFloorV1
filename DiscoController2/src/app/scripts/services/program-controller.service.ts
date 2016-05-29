@@ -1,6 +1,6 @@
 /**
  * Controls loading and playing all the visualization programs
- * from the /programs folder.
+ * from the programs folder.
  */
 
 import * as fs from 'fs';
@@ -23,6 +23,8 @@ export class ProgramControllerService {
 
   programs:IProgram[] = [];
   runningProgram: IProgram;
+  isStopping: boolean = false;
+  isStarting: boolean = false;
 
   private _runLoopTimer:NodeJS.Timer;
 
@@ -103,27 +105,27 @@ export class ProgramControllerService {
     if (program) {
       return new Promise<void>( (resolve, reject) => {
 
-        // Stop program and then try to start it.
-        this.stopProgram()
-        .then(start.bind(this), start.bind(this));
-
-        // Startup timeout
-        let timeout = setTimeout(function(){
-          reject({ error: 'timed out' });
-        }, PROGRAM_TIMEOUT);
-
+        // Stop running program before starting the new one 
+        try {
+          this.stopProgram()
+          .then(start.bind(this), start.bind(this));
+        } catch(e) {
+          reject(e);
+        }
+        
+        // Start program
         function start() {
+          this.isStarting = true;
           try {
             this._promiseTimeout(PROGRAM_TIMEOUT, program.start(this._floorBuilder.cellList))
             .then(() => {
+              this.isStarting = false;
               this.runningProgram = program;
-              clearTimeout(timeout);
-              resolve();
-
               this.startRunLoop();
+              resolve();
             })
             .catch((err) => {
-              clearTimeout(timeout);
+              this.isStarting = false;
               reject(err);
             });
           } catch(e) {
@@ -148,13 +150,20 @@ export class ProgramControllerService {
       }
 
       // Shutdown
+      this.isStopping = true;
       try {
+        this.stopRunLoop();
         this._promiseTimeout(PROGRAM_TIMEOUT, this.runningProgram.shutdown())
-        .then(resolve, reject);
+        .then(resolve, reject)
+        .then(finish.bind(this), finish.bind(this));
       } catch(e) {
         reject({ error: e.toString() })
       }
-      this.runningProgram = null;
+      
+      function finish() {
+        this.isStopping = false;
+        this.runningProgram = null;
+      }
     })
   }
 

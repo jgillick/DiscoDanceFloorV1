@@ -1,4 +1,4 @@
-program-controller {
+.program-controller {
   width: 200px;
   flex-grow: 0;
   flex-shrink: 0;
@@ -7,6 +7,10 @@ program-controller {
   display: flex;
   flex-direction: column;
   align-content: stretch;
+  
+  &.changing-state {
+    cursor: wait;
+  }
    
    
   // Play controls  
