@@ -3,11 +3,12 @@
   [class.changing-state]="isStoppingOrStarting()">
 
   <div class="controls">
-    <button class="prev"><i class="fa fa-step-backward"></i></button>
+    <button class="prev" title="Previous"><i class="fa fa-step-backward"></i></button>
     
     <!--Play -->
     <button 
       class="play" 
+      title="Play"
       (click)="playSelected()"
       *ngIf="!isProgramRunning() && !isStoppingOrStarting()">
       <i class="fa fa-play"></i>
@@ -15,6 +16,7 @@
     <!-- Stop -->
     <button 
       class="stop" 
+      title="Stop"
       (click)="stopProgram()"
       *ngIf="isProgramRunning() && !isStoppingOrStarting()">
       <i class="fa fa-stop"></i>
@@ -26,7 +28,7 @@
       <i class="fa fa-circle-o-notch fa-spin"></i>
     </button>
       
-    <button class="next"><i class="fa fa-step-forward"></i></button>
+    <button class="next" title="Next"><i class="fa fa-step-forward"></i></button>
   </div>
 
   <ul class="programs">
@@ -38,7 +40,7 @@
   </ul>
 
   <div class="controls">
-    <button class="shuffle"><i class="fa fa-random"></i></button>
-    <button class="repeat"><i class="fa fa-repeat"></i></button>
+    <button class="shuffle" title="Random order"><i class="fa fa-random"></i></button>
+    <button class="repeat" title="Play all"><i class="fa fa-retweet"></i></button>
   </div>
 </section>

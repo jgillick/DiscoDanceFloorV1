@@ -2,7 +2,13 @@
  * Builds a visual representation of the dance floor which scales with the page.
  */
 
-import { Component, ElementRef, OnInit } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { 
+  Component, 
+  ElementRef, 
+  OnInit 
+} from '@angular/core';
+import { AsyncPipe } from '@angular/common';
 
 import { FloorCell } from '../../../shared/floor-cell';
 import { StorageService } from '../services/storage.service';
@@ -12,9 +18,8 @@ import { ProgramControllerComponent } from './program-controller';
 @Component({
   selector: 'disco-floor',
   templateUrl: './html/disco-floor.html',
-  directives: [
-    ProgramControllerComponent
-   ],
+  pipes: [ AsyncPipe ],
+  directives: [ ProgramControllerComponent ],
 })
 export class DiscoFloorComponent implements OnInit  {
 
@@ -38,18 +43,22 @@ export class DiscoFloorComponent implements OnInit  {
    * A nested array of x and then y.
    */
   tableCells:FloorCell[][] = [];
+  
+  private _backgroundColor: BehaviorSubject<string>;
 
   constructor(
-    private element:ElementRef,
-    private store:StorageService,
-    private builder:FloorBuilderService) {
+    private _element:ElementRef,
+    private _store:StorageService,
+    private _builder:FloorBuilderService) {
+      
+    this._backgroundColor = new BehaviorSubject("");
   }
 
   /**
    * Load floor
    */
   ngOnInit() {
-    var settings = this.store.getItem('settings');
+    let settings = this._store.getItem('settings');
 
     if (settings && settings.dimensions) {
       this.x = settings.dimensions.x;
@@ -58,7 +67,7 @@ export class DiscoFloorComponent implements OnInit  {
 
       // Build Y/X axis for table
       this.tableCells = [];
-      let cells = this.builder.cellList;
+      let cells = this._builder.cellList;
       for (var i = 0; i < cells.length; i++) {
         let cell = cells.atIndex(i),
             y = cell.y,
@@ -82,7 +91,7 @@ export class DiscoFloorComponent implements OnInit  {
    * so all cells are square
    */
   sizeFloor() {
-    var component = $(this.element.nativeElement),
+    let component = $(this._element.nativeElement),
         container = component.find('.floor-area'),
         width = container.width(),
         height = container.height(),
@@ -110,7 +119,12 @@ export class DiscoFloorComponent implements OnInit  {
   /**
    * Get the color CSS for a floor cell
    */
-  cellColorCSS(floorCell: FloorCell) {
-    return `rgb(${floorCell.getColor()})`;
+  cellColorCSS(floorCell: FloorCell): BehaviorSubject<string> {
+    // Round colors and make a CSS string
+    let colorValues = floorCell.color.map((c) => { return Math.round(c) }),
+        colorCss = `rgb(${colorValues.join(',')})`;
+    
+    this._backgroundColor.next(colorCss);
+    return this._backgroundColor;
   }
 }

@@ -4,7 +4,7 @@ var floorCellList,
     countdown,
     startColor;
 
-const ANIMATION_TIME = 500;
+const ANIMATION_TIME = 1000;
 
 module.exports = {
   info: {
@@ -54,7 +54,7 @@ module.exports = {
             cell = floorCellList.at(x, y);
 
         color[colorIndex] = 255;
-        cell.setColor(color);
+        cell.fadeToColor(color, ANIMATION_TIME);
 
         if (++colorIndex > 2) {
           colorIndex = 0;

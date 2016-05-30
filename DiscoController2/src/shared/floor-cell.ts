@@ -1,4 +1,7 @@
 
+
+import { FadeController } from './fade-controller';
+
 /**
  * Represents a single square on the floor.
  */
@@ -7,26 +10,24 @@ export class FloorCell {
   x: number;
   y: number;
 
-  private color: [number, number, number] = [0,0,0];
-
-  // Fade values
-  private isFading: boolean = false;
-  private fadeDuration: number = 0;
-  private targetColor: [number, number, number] = [0,0,0];
-  private fadingColor: [number, number, number] = [0,0,0];
-  private fadeIncrement: [number, number, number] = [0,0,0];
+  private _color: [number, number, number] = [0,0,0];
+  private _fadeCtrl: FadeController;
 
   constructor(index: number = undefined, x: number = undefined, y: number = undefined) {
     this.index = index;
     this.x = x;
     this.y = y;
+    this._fadeCtrl = new FadeController(this);
   }
 
   /**
    * Get the cell color
    */
-  getColor(): [number, number, number] {
-    return this.color;
+  get color(): [number, number, number] {
+    if (this._fadeCtrl.isFading) {
+      this._color = this._fadeCtrl.currentColor;
+    }
+    return this._color;
   }
 
   /**
@@ -40,44 +41,33 @@ export class FloorCell {
   setColor(color: [number, number, number], stopFade: boolean = true) {
 
     // Currently fading
-    if (this.isFading) {
-      this.targetColor = color;
+    if (this._fadeCtrl.isFading) {
+      this._fadeCtrl.targetColor = color;
+      
       if (stopFade) {
-        this.stopFade();
+        this._fadeCtrl.stopFade();
       }
       else {
-        this._determineFadeIncrement();
+        this._fadeCtrl.targetColor = color;
       }
     }
 
-    this.color = color;
+    this._color = color;
   }
 
   /**
    * Start fading to a specific target color.
-   * @param {byte[]} color The color to fade to.
+   * 
+   * @param {byte[]} toColor The color to fade to.
    * @param {number} duration The time, in milliseconds, it should take to fade to this color.
+   * 
+   * @return {Promise} Promise that resolves when the fade is complete
    */
-  fadeToColor(color: [number, number, number], duration: number) {
-    this.isFading = false;
-    this.targetColor = color;
-    this.fadeDuration = duration;
+  fadeToColor(toColor: [number, number, number], duration: number): Promise<FloorCell> {
+    let promise = this._fadeCtrl.startFade(this._color, toColor, duration);
+    promise.then((cell:FloorCell) => {
+      this._color = this._fadeCtrl.targetColor;
+    });
+    return promise;
   }
-
-  /**
-   * Stop the current fade and set the color to the target fade color.
-   */
-  stopFade() {
-    this.color = this.targetColor;
-    this.isFading = false;
-  }
-
-  /**
-   * Given the current color, the target color and fade time,
-   * figure out how much the color needs to change per millisecond.
-   */
-  private _determineFadeIncrement() {
-
-  }
-
 }
