@@ -8,14 +8,17 @@ import { FloorCell } from './floor-cell';
 
 export class FloorCellList {
 
-  constructor(private cells: FloorCell[], private map: FloorCell[][], private x: number, private y: number) {
+  constructor(private _cells: FloorCell[], 
+              private _map: FloorCell[][], 
+              private _x: number, 
+              private _y: number) {
   }
 
   /**
    * The number of cells in the list
    */
   get length(): number {
-    return this.cells.length;
+    return this._cells.length;
   }
   /**
    * Get the floor dimensions as an x/y object.
@@ -23,8 +26,8 @@ export class FloorCellList {
    */
   get dimensions(): {x:number, y:number} {
     return {
-      x: this.x,
-      y: this.y
+      x: this._x,
+      y: this._y
     }
   }
 
@@ -32,37 +35,52 @@ export class FloorCellList {
    * Get a single cell by it's x/y position.
    */
   at(x:number, y:number): FloorCell {
-    if (!this.map[x]) {
+    if (!this._map[x]) {
       return undefined;
     }
-    return this.map[x][y];
+    return this._map[x][y];
   }
 
   /**
    * Get a cell from it's index position.
    */
   atIndex(index: number): FloorCell {
-    return this.cells[index];
+    return this._cells[index];
   }
 
   /**
    * Set a solid, unfading, color for all cells.
+   * 
    * @param {byte[]} color An array of colors.
    */
   setColor(color:[number, number, number]) {
-    for (let cell of this.cells) {
+    for (let cell of this._cells) {
       cell.setColor(color);
     };
   }
 
   /**
    * Fade all cells to a color.
+   * 
    * @param {byte[]} color The color to fade to.
    * @param {number} duration The time, in milliseconds, it should take to fade to this color.
+   * 
+   * @return {Promise} The fade promise of the last cell in the list
    */
   fadeToColor(color: [number, number, number], duration: number) {
-    for (let cell of this.cells) {
-      cell.fadeToColor(color, duration);
-    };
+    let fadePromise;
+    for (let cell of this._cells) {
+      fadePromise = cell.fadeToColor(color, duration);
+    }
+    return fadePromise;
+  }
+  
+  /**
+   * If the fading color for all cells.
+   */
+  updateColor(): void {
+    for (let cell of this._cells) {
+      cell.updateColor();
+    }
   }
 }

@@ -24,9 +24,6 @@ export class FloorCell {
    * Get the cell color
    */
   get color(): [number, number, number] {
-    if (this._fadeCtrl.isFading) {
-      this._color = this._fadeCtrl.currentColor;
-    }
     return this._color;
   }
 
@@ -65,9 +62,15 @@ export class FloorCell {
    */
   fadeToColor(toColor: [number, number, number], duration: number): Promise<FloorCell> {
     let promise = this._fadeCtrl.startFade(this._color, toColor, duration);
-    promise.then((cell:FloorCell) => {
-      this._color = this._fadeCtrl.targetColor;
-    });
     return promise;
+  }
+  
+  /**
+   * If the cell is fading, update the color for the current time.
+   */
+  updateColor(): void {
+    if (this._fadeCtrl.isFading) {
+      this._color = this._fadeCtrl.currentColor;
+    }
   }
 }

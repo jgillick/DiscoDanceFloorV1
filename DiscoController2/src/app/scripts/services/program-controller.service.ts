@@ -102,6 +102,7 @@ export class ProgramControllerService {
    * @return {Promise} resolves when the program is started and running.
    */
   runProgram(program: IProgram): Promise<void> {
+    let floorUpdateLoop;
     if (program) {
       return new Promise<void>( (resolve, reject) => {
 
@@ -117,19 +118,34 @@ export class ProgramControllerService {
         function start() {
           this.isStarting = true;
           try {
+            
             this._promiseTimeout(PROGRAM_TIMEOUT, program.start(this._floorBuilder.cellList))
             .then(() => {
               this.isStarting = false;
               this.runningProgram = program;
               this.startRunLoop();
+              finish();
               resolve();
             })
             .catch((err) => {
               this.isStarting = false;
+              finish();
               reject(err);
             });
+            
+            // Run floor update loop to update the cells during startup
+            floorUpdateLoop = setInterval(() => {
+              this._floorBuilder.cellList.updateColor();
+            }, 1);
           } catch(e) {
+            finish();
             reject({ error: e.toString() })
+          }
+        }
+        
+        function finish() {
+          if (floorUpdateLoop) {
+            clearInterval(floorUpdateLoop);
           }
         }
       });
@@ -143,6 +159,8 @@ export class ProgramControllerService {
    * @return {Promise} resolves when the program has been shutdown
    */
   stopProgram(): Promise<void> {
+    let floorUpdateLoop;
+    
     return new Promise<void>((resolve, reject) => {
       if (!this.runningProgram) {
         resolve();
@@ -156,11 +174,18 @@ export class ProgramControllerService {
         this._promiseTimeout(PROGRAM_TIMEOUT, this.runningProgram.shutdown())
         .then(resolve, reject)
         .then(finish.bind(this), finish.bind(this));
+        
+        // Run floor update loop to update the cells during shutdown
+        floorUpdateLoop = setInterval(() => {
+          this._floorBuilder.cellList.updateColor();
+        }, 1);
       } catch(e) {
+        finish();
         reject({ error: e.toString() })
       }
       
       function finish() {
+        clearInterval(floorUpdateLoop);
         this.isStopping = false;
         this.runningProgram = null;
       }
@@ -178,13 +203,17 @@ export class ProgramControllerService {
         let now = (new Date()).getTime(),
             timeDiff = now - lastLoopTime;
 
+        // No running program, stop loop
         if (!this.runningProgram) {
           this.stopRunLoop();
           return;
         }
-
+        
+        // Run the program loop method and update the floor cell colors
         this.runningProgram.loop(timeDiff);
+        this._floorBuilder.cellList.updateColor();
         lastLoopTime = now;
+        
       } catch(e) {
         console.error(e);
       }

@@ -7,7 +7,7 @@
           *ngFor="let cell of yItem"
           [style.height.px]="cellSize"
           [style.width.px]="cellSize"
-          [style.backgroundColor]="cellColorCSS(cell) | async"
+          [style.backgroundColor]="cellColorCSS(cell)"
           [class.empty]="!cell"></td>
       </tr>
     </table>

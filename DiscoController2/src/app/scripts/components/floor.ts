@@ -2,13 +2,11 @@
  * Builds a visual representation of the dance floor which scales with the page.
  */
 
-import { BehaviorSubject } from 'rxjs';
 import { 
   Component, 
   ElementRef, 
   OnInit 
 } from '@angular/core';
-import { AsyncPipe } from '@angular/common';
 
 import { FloorCell } from '../../../shared/floor-cell';
 import { StorageService } from '../services/storage.service';
@@ -18,7 +16,6 @@ import { ProgramControllerComponent } from './program-controller';
 @Component({
   selector: 'disco-floor',
   templateUrl: './html/disco-floor.html',
-  pipes: [ AsyncPipe ],
   directives: [ ProgramControllerComponent ],
 })
 export class DiscoFloorComponent implements OnInit  {
@@ -43,15 +40,11 @@ export class DiscoFloorComponent implements OnInit  {
    * A nested array of x and then y.
    */
   tableCells:FloorCell[][] = [];
-  
-  private _backgroundColor: BehaviorSubject<string>;
 
   constructor(
     private _element:ElementRef,
     private _store:StorageService,
     private _builder:FloorBuilderService) {
-      
-    this._backgroundColor = new BehaviorSubject("");
   }
 
   /**
@@ -119,12 +112,11 @@ export class DiscoFloorComponent implements OnInit  {
   /**
    * Get the color CSS for a floor cell
    */
-  cellColorCSS(floorCell: FloorCell): BehaviorSubject<string> {
+  cellColorCSS(floorCell: FloorCell): string {
     // Round colors and make a CSS string
-    let colorValues = floorCell.color.map((c) => { return Math.round(c) }),
+    let colorValues = floorCell.color.map( c => Math.round(c) ),
         colorCss = `rgb(${colorValues.join(',')})`;
     
-    this._backgroundColor.next(colorCss);
-    return this._backgroundColor;
+    return colorCss;
   }
 }

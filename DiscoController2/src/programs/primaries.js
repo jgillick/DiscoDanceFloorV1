@@ -23,15 +23,13 @@ module.exports = {
     startColor = 0;
     countdown = ANIMATION_TIME;
     
-    return Promise.resolve();
+    return floorCellList.fadeToColor([0,0,0], ANIMATION_TIME);
   },
   
   /**
    * Shutdown the program
    */
   shutdown: function() {
-    floorCellList.setColor([0,0,0]);
-    
     return Promise.resolve();
   },
 
@@ -52,9 +50,11 @@ module.exports = {
       for (let x = 0; x < dimensions.x; x++) {
         let color = [0, 0, 0],
             cell = floorCellList.at(x, y);
+        
+        if (!cell) continue;
 
         color[colorIndex] = 255;
-        cell.fadeToColor(color, ANIMATION_TIME);
+        cell.fadeToColor(color, 500);
 
         if (++colorIndex > 2) {
           colorIndex = 0;

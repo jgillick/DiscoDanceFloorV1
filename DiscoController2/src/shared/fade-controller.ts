@@ -24,7 +24,7 @@ export class FadeController {
   
   /**
    * Get the color that is being faded to. 
-   * If we are not currently fading, an array filled with -1 will be returned.
+   * If we are not currently fading, the cell color will be returned
    * 
    * @return {number[]} An array of the RGB colors. 
    */
@@ -32,7 +32,7 @@ export class FadeController {
     if (this.isFading) {
       return this._targetColor;
     }
-    return [-1, -1, -1];
+    return this._floorCell.color;
   }
   
   /**
@@ -43,7 +43,6 @@ export class FadeController {
    * @param {number[]} color An array of the RGB colors to fade to.
    */
   set targetColor(color: [number, number, number]) {
-    // if (this._floorCell.x == 0 && this._floorCell.y == 0) console.log('Set target color', color);
     if (this.isFading) {
       this._targetColor = color;
       this.determineFadeIncrements();
@@ -57,18 +56,17 @@ export class FadeController {
    */
   get currentColor(): [number, number, number] {
     let now = (new Date()).getTime(),
-        diff = now - this._lastFade;
-        
-    // if (this._floorCell.x == 0 && this._floorCell.y == 0) console.log('get color');
+        diff = now - this._lastFade,
+        allIncrements = 0;
     
     // Update the fade if it's been at least 1 millisecond
     if (diff > 1) {
-      // if (this._floorCell.x == 0 && this._floorCell.y == 0) console.log('update color');
       this._duration -= diff;
+      this._lastFade = now;
       
       // Increment all 3 colors
       for (let i = 0; i < 3; i++) {
-        this._currentColor[i] += this._increments[i];
+        this._currentColor[i] += (this._increments[i] * diff);
         
         // Done fading this color
         if ((this._increments[i] > 0 && this._currentColor[i] >= this._targetColor[i])
@@ -77,14 +75,14 @@ export class FadeController {
           this._currentColor[i] = this._targetColor[i];
           this._increments[i] = 0;
         }
+        
+        allIncrements += Math.abs(this._increments[i]);
       }
       
       // Done 
-      if (this._duration <= 0) {
+      if (this._duration <= 0 || allIncrements === 0) {
         this.stopFade();
       }
-      
-      this._lastFade = now;
     }
     
     return this._currentColor;
@@ -103,15 +101,18 @@ export class FadeController {
     this.isFading = true;
     this._duration = duration;
     this._currentColor = from;
-    this.targetColor = to;
+    this._targetColor = to;
     this._lastFade = (new Date()).getTime();
     
-    // Create promise and assign a function to resolve it
+    // Create a promise proxy
     this.fadePromise = new Promise((resolve, reject) => {
       this._promiseResolver = function(){
         resolve(this._floorCell);
       }
     });
+    
+    this.determineFadeIncrements();
+    
     return this.fadePromise;
   }
   
@@ -121,6 +122,7 @@ export class FadeController {
   stopFade(): void {
     this.isFading = false;
     this._currentColor = this._targetColor;
+    this._floorCell.setColor(this._targetColor);
     this._promiseResolver();
   }
   
@@ -129,6 +131,7 @@ export class FadeController {
    * every millisecond for the rest of the duration.
    */
   determineFadeIncrements(): void {
+    let allIncrements = 0;
     this._increments = [0, 0, 0];
     
     if (this._duration > 0) {
@@ -138,8 +141,13 @@ export class FadeController {
         if (diff != 0) {
           this._increments[i] = diff / this._duration;
         }
+        allIncrements += Math.abs(this._increments[i]);
+      }
+      
+      // If all incrments are zero, we should stop the fade
+      if (allIncrements === 0) {
+        this.stopFade();
       }
     }
-    // if (this._floorCell.x == 0 && this._floorCell.y == 0) console.log('Fade increment', this._increments);
   }
 }

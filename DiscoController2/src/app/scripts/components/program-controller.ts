@@ -67,8 +67,8 @@ export class ProgramControllerComponent {
     }
     
     this._programService.runProgram(program)
-    .catch(err => {
-      let msg = err.error || '';
+    .catch((err) => {
+      let msg = err.error || err;
       console.error(`Could not start the program: ${msg}`);
     });
   }
