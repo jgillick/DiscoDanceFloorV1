@@ -83,4 +83,14 @@ export class FloorCellList {
       cell.updateColor();
     }
   }
+  
+  /**
+   * This stops the fade without firing the fade promise.
+   * This is used to force stop a program, where the promise might lead to another action.
+   */
+  clearFadePromises(): void {
+    for (let cell of this._cells) {
+      cell.clearFadePromise();
+    }
+  }
 }

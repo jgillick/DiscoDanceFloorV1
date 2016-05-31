@@ -10,7 +10,7 @@ export class FloorCell {
   x: number;
   y: number;
 
-  private _color: [number, number, number] = [0,0,0];
+  private _color: number[] = [0,0,0];
   private _fadeCtrl: FadeController;
 
   constructor(index: number = undefined, x: number = undefined, y: number = undefined) {
@@ -23,8 +23,8 @@ export class FloorCell {
   /**
    * Get the cell color
    */
-  get color(): [number, number, number] {
-    return this._color;
+  get color(): number[] {
+    return this._color.slice(0, 3); // return a copy
   }
 
   /**
@@ -35,7 +35,8 @@ export class FloorCell {
    *                           Otherwise, the fade will the fade from this new color to the
    *                           existing target fade color.
   */
-  setColor(color: [number, number, number], stopFade: boolean = true) {
+  setColor(color: number[], stopFade: boolean = true) {
+    color = color.slice(0, 3);
 
     // Currently fading
     if (this._fadeCtrl.isFading) {
@@ -60,8 +61,8 @@ export class FloorCell {
    * 
    * @return {Promise} Promise that resolves when the fade is complete
    */
-  fadeToColor(toColor: [number, number, number], duration: number): Promise<FloorCell> {
-    let promise = this._fadeCtrl.startFade(this._color, toColor, duration);
+  fadeToColor(toColor: number[], duration: number): Promise<FloorCell> {
+    let promise = this._fadeCtrl.startFade(this._color.slice(0,3), toColor, duration);
     return promise;
   }
   
@@ -71,6 +72,16 @@ export class FloorCell {
   updateColor(): void {
     if (this._fadeCtrl.isFading) {
       this._color = this._fadeCtrl.currentColor;
+    }
+  }
+  
+  /**
+   * This stops the fade without firing the fade promise.
+   * This is used to force stop a program, where the promise might lead to another action.
+   */
+  clearFadePromise(): void {
+    if (this._fadeCtrl.isFading) {
+      this._fadeCtrl.clearFadePromise();
     }
   }
 }

@@ -102,7 +102,8 @@ export class ProgramControllerService {
    * @return {Promise} resolves when the program is started and running.
    */
   runProgram(program: IProgram): Promise<void> {
-    let floorUpdateLoop;
+    let cellList = this._floorBuilder.cellList,
+        floorUpdateLoop;
     if (program) {
       return new Promise<void>( (resolve, reject) => {
 
@@ -119,34 +120,36 @@ export class ProgramControllerService {
           this.isStarting = true;
           try {
             
-            this._promiseTimeout(PROGRAM_TIMEOUT, program.start(this._floorBuilder.cellList))
+            this._promiseTimeout(PROGRAM_TIMEOUT, program.start(cellList))
             .then(() => {
-              this.isStarting = false;
+              finishStartup.bind(this)();
               this.runningProgram = program;
               this.startRunLoop();
-              finish();
               resolve();
             })
             .catch((err) => {
-              this.isStarting = false;
-              finish();
+              finishStartup.bind(this)();
               reject(err);
             });
             
             // Run floor update loop to update the cells during startup
             floorUpdateLoop = setInterval(() => {
-              this._floorBuilder.cellList.updateColor();
+              cellList.updateColor();
             }, 1);
           } catch(e) {
-            finish();
             reject({ error: e.toString() })
+            finishStartup.bind(this)();
           }
         }
         
-        function finish() {
+        // Finish the program startup tasks
+        function finishStartup() {
+          this.isStarting = false;
           if (floorUpdateLoop) {
             clearInterval(floorUpdateLoop);
           }
+          cellList.clearFadePromises();
+          cellList.updateColor();
         }
       });
     }
@@ -159,7 +162,8 @@ export class ProgramControllerService {
    * @return {Promise} resolves when the program has been shutdown
    */
   stopProgram(): Promise<void> {
-    let floorUpdateLoop;
+    let cellList = this._floorBuilder.cellList, 
+        floorUpdateLoop;
     
     return new Promise<void>((resolve, reject) => {
       if (!this.runningProgram) {
@@ -177,7 +181,7 @@ export class ProgramControllerService {
         
         // Run floor update loop to update the cells during shutdown
         floorUpdateLoop = setInterval(() => {
-          this._floorBuilder.cellList.updateColor();
+          cellList.updateColor();
         }, 1);
       } catch(e) {
         finish();
@@ -188,6 +192,8 @@ export class ProgramControllerService {
         clearInterval(floorUpdateLoop);
         this.isStopping = false;
         this.runningProgram = null;
+        cellList.clearFadePromises();
+        cellList.updateColor();
       }
     })
   }

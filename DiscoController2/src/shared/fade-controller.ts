@@ -9,8 +9,8 @@ export class FadeController {
   fadePromise: Promise<FloorCell>;
   
   private _duration: number = 0;
-  private _targetColor: [number, number, number] = [0, 0, 0];
-  private _currentColor: [number, number, number] = [0, 0, 0];
+  private _targetColor: number[] = [0, 0, 0];
+  private _currentColor: number[] = [0, 0, 0];
   private _increments: [number, number, number] = [0, 0, 0];
   private _lastFade:number = 0;
   
@@ -28,7 +28,7 @@ export class FadeController {
    * 
    * @return {number[]} An array of the RGB colors. 
    */
-  get targetColor(): [number, number, number] {
+  get targetColor(): number[] {
     if (this.isFading) {
       return this._targetColor;
     }
@@ -42,7 +42,7 @@ export class FadeController {
    * 
    * @param {number[]} color An array of the RGB colors to fade to.
    */
-  set targetColor(color: [number, number, number]) {
+  set targetColor(color: number[]) {
     if (this.isFading) {
       this._targetColor = color;
       this.determineFadeIncrements();
@@ -54,7 +54,7 @@ export class FadeController {
    * 
    * @return {number[]} An array of the current RGB color
    */
-  get currentColor(): [number, number, number] {
+  get currentColor(): number[] {
     let now = (new Date()).getTime(),
         diff = now - this._lastFade,
         allIncrements = 0;
@@ -66,6 +66,8 @@ export class FadeController {
       
       // Increment all 3 colors
       for (let i = 0; i < 3; i++) {
+        if (this._increments[i] == 0) continue;
+        
         this._currentColor[i] += (this._increments[i] * diff);
         
         // Done fading this color
@@ -79,13 +81,15 @@ export class FadeController {
         allIncrements += Math.abs(this._increments[i]);
       }
       
+      
       // Done 
       if (this._duration <= 0 || allIncrements === 0) {
         this.stopFade();
       }
     }
     
-    return this._currentColor;
+    // return a copy of the color array
+    return this._currentColor.slice(0, 3); 
   }
   
   /**
@@ -97,11 +101,11 @@ export class FadeController {
    * 
    * @return {Promise} Promise that resolves when the fade is complete
    */
-  startFade(from: [number, number, number], to: [number, number, number], duration: number): Promise<FloorCell> {
+  startFade(from: number[], to: number[], duration: number): Promise<FloorCell> {
     this.isFading = true;
     this._duration = duration;
-    this._currentColor = from;
-    this._targetColor = to;
+    this._currentColor = from.slice(0,3);
+    this._targetColor = to.slice(0,3);
     this._lastFade = (new Date()).getTime();
     
     // Create a promise proxy
@@ -123,7 +127,10 @@ export class FadeController {
     this.isFading = false;
     this._currentColor = this._targetColor;
     this._floorCell.setColor(this._targetColor);
-    this._promiseResolver();
+    
+    if (this._promiseResolver) {
+      this._promiseResolver();
+    }
   }
   
   /**
@@ -149,5 +156,14 @@ export class FadeController {
         this.stopFade();
       }
     }
+  }
+  
+  /**
+   * Clears the fade promise and stops the current fade.
+   * This is used to force stop a program, where the promise might lead to another action.
+   */
+  clearFadePromise(): void {
+    this._promiseResolver = null;
+    this.stopFade();
   }
 }

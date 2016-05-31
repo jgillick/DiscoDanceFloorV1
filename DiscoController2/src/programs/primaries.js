@@ -21,8 +21,7 @@ module.exports = {
   start: function(cellList) {
     floorCellList = cellList;
     startColor = 0;
-    countdown = ANIMATION_TIME;
-    
+    countdown = 0;
     return floorCellList.fadeToColor([0,0,0], ANIMATION_TIME);
   },
   
@@ -54,7 +53,7 @@ module.exports = {
         if (!cell) continue;
 
         color[colorIndex] = 255;
-        cell.fadeToColor(color, 500);
+        cell.fadeToColor(color, ANIMATION_TIME);
 
         if (++colorIndex > 2) {
           colorIndex = 0;
