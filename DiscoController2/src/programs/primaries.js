@@ -4,7 +4,8 @@ var floorCellList,
     countdown,
     startColor;
 
-const ANIMATION_TIME = 1000;
+const CHANGE_TIME = 2000
+const ANIMATION_TIME = 800;
 
 module.exports = {
   info: {
@@ -22,6 +23,7 @@ module.exports = {
     floorCellList = cellList;
     startColor = 0;
     countdown = 0;
+    
     return floorCellList.fadeToColor([0,0,0], ANIMATION_TIME);
   },
   
@@ -64,7 +66,7 @@ module.exports = {
     if (++startColor > 2) {
       startColor = 0;
     }
-    countdown = ANIMATION_TIME + countdown;
+    countdown = CHANGE_TIME + countdown;
   }
 };
 
