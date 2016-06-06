@@ -1,5 +1,8 @@
 'use strict';
 
+import { IProgram, Program } from '../shared/program';
+import { FloorCellList } from '../shared/floor-cell-list';
+
 var floorCellList,
     countdown,
     startColor;
@@ -7,37 +10,37 @@ var floorCellList,
 const CHANGE_TIME = 2000
 const ANIMATION_TIME = 800;
 
-module.exports = {
-  info: {
-    name: 'Primaries',
-    description: 'Fades in primary colors, chasing from one cell to the next',
-    interactive: false,
-    lightShow: true,
-    miniumumTime: 1
-  },
+@Program({
+  name: 'Primaries',
+  description: 'Fades in primary colors, chasing from one cell to the next',
+  interactive: false,
+  lightShow: true,
+  miniumumTime: 1
+})
+class Primaries implements IProgram {
 
   /**
    * Start the program
    */
-  start: function(cellList) {
+  start(cellList: FloorCellList): Promise<void> {
     floorCellList = cellList;
     startColor = 0;
     countdown = 0;
     
     return floorCellList.fadeToColor([0,0,0], ANIMATION_TIME);
-  },
+  }
   
   /**
    * Shutdown the program
    */
-  shutdown: function() {
+  shutdown(): Promise<void> {
     return Promise.resolve();
-  },
+  }
 
   /**
    * Floor run loop
    */
-  loop: function(time) {
+  loop(time:number): void {
     countdown -= time;
 
     if (countdown > 0) {
@@ -68,7 +71,8 @@ module.exports = {
     }
     countdown = CHANGE_TIME + countdown;
   }
-};
+}
+module.exports = new Primaries();
 
 // var Promise = require("bluebird"),
 //     discoUtils = require('../lib/utils.js');

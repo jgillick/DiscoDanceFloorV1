@@ -1,41 +1,43 @@
 'use strict';
 
-import {audio} from '../shared/audio';
+import { IProgram, Program } from '../shared/program';
+import { FloorCellList } from '../shared/floor-cell-list';
+import { audio } from '../shared/audio';
 
 const CHANGE_COLOR_MS = 2000;
 
-let cellList;
-let countdown = CHANGE_COLOR_MS;
-let dataStart = 0;
+let cellList:FloorCellList;
+let countdown:number = CHANGE_COLOR_MS;
+let dataStart:number = 0;
 
-module.exports = {
-  info: {
-    name: 'Audio Color',
-    description: 'Changes the color of the floor with the audio',
-    audio: true,
-    interactive: false,
-    miniumumTime: 0.5
-  },
+@Program({
+  name: "Audio Color",
+  description: 'Changes the color of the floor with the audio',
+  audio: true,
+  interactive: false,
+  miniumumTime: 0.5
+})
+class AudioColor implements IProgram {
     
   /**
    * Start the program
    */
-  start: function(_cellList) {
+  start(_cellList:FloorCellList) {
     cellList = _cellList;
     return cellList.fadeToColor([0,0,0], 1000);
-  },
+  }
   
   /**
    * Shutdown the program
    */
-  shutdown: function() {
+  shutdown() {
     return Promise.resolve();
-  },
+  }
 
   /**
    * Run loop
    */
-  loop: function(time) {
+  loop(time:number) {
     audioColor();
     
     // Every 800ms change the datat section that is defining the color
@@ -50,7 +52,7 @@ module.exports = {
       }
     }
   }
-};
+}
 
 /**
  * Update the color with the current audio data
@@ -58,7 +60,7 @@ module.exports = {
 function audioColor(){
   let data = new Uint8Array(audio.analyser.frequencyBinCount),
       len = data.length,
-      color = [0,0,0],
+      color:[number, number, number] = [0,0,0],
       chunks;
 
   audio.analyser.getByteFrequencyData(data);
@@ -77,3 +79,8 @@ function audioColor(){
 
   cellList.setColor(color);
 }
+
+/**
+ * Export instance of program
+ */
+module.exports = new AudioColor();

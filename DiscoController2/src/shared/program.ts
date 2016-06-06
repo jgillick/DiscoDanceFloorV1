@@ -15,16 +15,11 @@ import { FloorCellList } from './floor-cell-list';
  * effectively be garbage colleged.
  */
 export interface IProgram {
-
+  
   /**
    * Meta data about a program
    */
-  info: IProgramInfo;
-
-  /**
-   * Init the program instance
-   */
-  constructor(cellList: FloorCellList);
+  info?: IProgramInfo;
 
   /**
    * Called to setup your program and prepare it for the run loop.
@@ -41,7 +36,7 @@ export interface IProgram {
    *
    * @param {number} time The number of milliseconds since the last loop.
    */
-  loop(time:number);
+  loop(time:number): void;
 
   /**
    * Called to stop and shutdown your program.
@@ -81,4 +76,13 @@ export interface IProgramInfo {
    * should play before moving to the next program.
    */
   miniumumTime?: number;
+}
+
+/**
+ * Class decorator to apply program information to the class
+ */
+export function Program(info: any) {
+  return function (constructor: Function) {
+    constructor.prototype.info = info;
+  }
 }
