@@ -245,9 +245,9 @@ Text GLabel 4500 1850 2    39   Input ~ 0
 Daisy
 Text GLabel 4500 2150 2    39   Input ~ 0
 Signal
-Text GLabel 7050 2100 0    39   Input ~ 0
+Text GLabel 6850 2100 0    39   Input ~ 0
 Daisy
-Text GLabel 7050 2000 0    39   Input ~ 0
+Text GLabel 6850 2000 0    39   Input ~ 0
 Signal
 $Comp
 L R R3
@@ -335,10 +335,10 @@ NoConn ~ 3000 2200
 NoConn ~ 8050 1400
 NoConn ~ 5100 3100
 $Comp
-L R R6
+L R R7
 U 1 1 5747F3E8
 P 7100 1750
-F 0 "R6" V 7180 1750 50  0000 C CNN
+F 0 "R7" V 7200 1750 50  0000 C CNN
 F 1 "20k" V 7100 1750 50  0000 C CNN
 F 2 "Resistors_SMD:R_0805" V 7030 1750 50  0001 C CNN
 F 3 "" H 7100 1750 50  0000 C CNN
@@ -356,29 +356,18 @@ F 1 "LED" H 4500 4250 50  0000 C CNN
 F 2 "LEDs:LED_0805" H 4500 4350 50  0001 C CNN
 F 3 "" H 4500 4350 50  0000 C CNN
 	1    4500 4350
-	-1   0    0    1   
+	1    0    0    -1  
 $EndComp
 $Comp
-L R R7
+L R R8
 U 1 1 5748F6BB
 P 4900 4350
-F 0 "R7" V 4980 4350 50  0000 C CNN
+F 0 "R8" V 4980 4350 50  0000 C CNN
 F 1 "200" V 4900 4350 50  0000 C CNN
 F 2 "Resistors_SMD:R_0805" V 4830 4350 50  0001 C CNN
 F 3 "" H 4900 4350 50  0000 C CNN
 	1    4900 4350
 	0    1    1    0   
-$EndComp
-$Comp
-L GND #PWR08
-U 1 1 5748FB0F
-P 5100 4450
-F 0 "#PWR08" H 5100 4200 50  0001 C CNN
-F 1 "GND" H 5100 4300 50  0000 C CNN
-F 2 "" H 5100 4450 50  0000 C CNN
-F 3 "" H 5100 4450 50  0000 C CNN
-	1    5100 4450
-	1    0    0    -1  
 $EndComp
 $Comp
 L GND #PWR09
@@ -504,10 +493,10 @@ F 3 "" H 6000 4350 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R8
+L R R9
 U 1 1 57490EAE
 P 6400 4350
-F 0 "R8" V 6480 4350 50  0000 C CNN
+F 0 "R9" V 6480 4350 50  0000 C CNN
 F 1 "200" V 6400 4350 50  0000 C CNN
 F 2 "Resistors_SMD:R_0805" V 6330 4350 50  0001 C CNN
 F 3 "" H 6400 4350 50  0000 C CNN
@@ -526,6 +515,17 @@ F 3 "" H 6600 4250 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 NoConn ~ 4350 2050
+$Comp
+L R R6
+U 1 1 5765F021
+P 6950 1750
+F 0 "R6" V 6850 1750 50  0000 C CNN
+F 1 "20k" V 6950 1750 50  0000 C CNN
+F 2 "Resistors_SMD:R_0805" V 6880 1750 50  0001 C CNN
+F 3 "" H 6950 1750 50  0000 C CNN
+	1    6950 1750
+	1    0    0    -1  
+$EndComp
 Wire Wire Line
 	1800 2250 1800 2350
 Wire Wire Line
@@ -623,9 +623,6 @@ Wire Wire Line
 Wire Wire Line
 	2550 4350 2700 4350
 Wire Wire Line
-	4350 1850 4500 1850
-Connection ~ 4400 1850
-Wire Wire Line
 	4350 2250 4400 2250
 Wire Wire Line
 	4400 2250 4400 2150
@@ -633,7 +630,7 @@ Wire Wire Line
 	4350 2150 4500 2150
 Connection ~ 4400 2150
 Wire Wire Line
-	7050 2000 7250 2000
+	6850 2000 7250 2000
 Wire Wire Line
 	5750 1900 5750 2200
 Connection ~ 5750 2200
@@ -661,7 +658,7 @@ Wire Wire Line
 	1400 4500 1400 4350
 Connection ~ 1400 4350
 Wire Wire Line
-	7050 2100 7250 2100
+	6850 2100 7250 2100
 Wire Wire Line
 	5750 3200 5750 3100
 Wire Wire Line
@@ -674,10 +671,6 @@ Wire Wire Line
 Wire Wire Line
 	4700 4350 4750 4350
 Wire Wire Line
-	5050 4350 5100 4350
-Wire Wire Line
-	5100 4350 5100 4450
-Wire Wire Line
 	6550 4350 6600 4350
 Wire Wire Line
 	6600 4350 6600 4250
@@ -687,10 +680,6 @@ Wire Wire Line
 	5750 4350 5800 4350
 Wire Wire Line
 	6200 2750 6200 2850
-Wire Wire Line
-	4350 1950 4400 1950
-Wire Wire Line
-	4400 1950 4400 1850
 Wire Wire Line
 	3350 3250 3350 3350
 Wire Wire Line
@@ -711,4 +700,31 @@ Wire Wire Line
 Wire Wire Line
 	2250 2050 2250 2200
 Connection ~ 2250 2050
+Wire Wire Line
+	6950 1900 6950 2100
+Connection ~ 6950 2100
+Wire Wire Line
+	6950 1600 7200 1600
+Connection ~ 4400 1850
+Wire Wire Line
+	4350 1850 4500 1850
+Wire Wire Line
+	4400 1950 4400 1850
+Wire Wire Line
+	4350 1950 4400 1950
+$Comp
+L +5V #PWR?
+U 1 1 576751A3
+P 5100 4250
+F 0 "#PWR?" H 5100 4100 50  0001 C CNN
+F 1 "+5V" H 5100 4390 50  0000 C CNN
+F 2 "" H 5100 4250 50  0000 C CNN
+F 3 "" H 5100 4250 50  0000 C CNN
+	1    5100 4250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5100 4250 5100 4350
+Wire Wire Line
+	5100 4350 5050 4350
 $EndSCHEMATC
