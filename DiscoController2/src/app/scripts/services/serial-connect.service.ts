@@ -1,13 +1,15 @@
 /**
- * Connects to the physical dance floor and facilitates
- * all communication between the floor and the interface.
+ * Used to connect and communicate to the dance floor.
  */
 
 var serialPort = require("serialport");
 
-export class Communication {
+const BAUD_RATE = 500000;
+const RESPONSE_TIMEOUT = 10;
 
-  private _port: any;
+export class SerialConnect {
+
+  port: any;
 
   constructor() {
 
@@ -45,7 +47,11 @@ export class Communication {
    */
   connect(device:string): Promise<void> {
     return new Promise<void> ( (resolve, reject) => {
-      this._port = new serialPort.SerialPort(device, {}, (err) => { 
+      
+      this.port = new serialPort.SerialPort(device, {
+        baudRate: BAUD_RATE,
+        parser: serialPort.parsers.raw
+      }, (err) => { 
         if (err){ 
           console.error(err);
           reject(err);
@@ -63,11 +69,11 @@ export class Communication {
    */
   disconnect(): Promise<void> {
     return new Promise<void> ( (resolve, reject) => {
-      if (!this._port) {
+      if (!this.port || !this.port.isOpen()) {
         reject('There is no open connection');
       }
 
-      this._port.close( err => {
+      this.port.close( err => {
         if (err) {
           console.error(err);
           reject(err);
@@ -86,11 +92,11 @@ export class Communication {
    */
   setDaisy(enabled): Promise<void> {
     return new Promise<void> ( (resolve, reject) => {
-      if (!this._port) {
+      if (!this.port) {
         reject('There is no open connection');
       }
 
-      this._port.set({rts:enabled, dtr:enabled}, err => {
+      this.port.set({rts:enabled, dtr:enabled}, err => {
         if (err) {
           console.error(err);
           reject(err);
