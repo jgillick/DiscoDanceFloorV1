@@ -4,8 +4,7 @@
 
 var serialPort = require("serialport");
 
-const BAUD_RATE = 500000;
-const RESPONSE_TIMEOUT = 10;
+const BAUD_RATE = 250000;
 
 export class SerialConnect {
 
