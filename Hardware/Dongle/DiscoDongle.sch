@@ -250,28 +250,6 @@ Daisy
 Text GLabel 6850 2000 0    39   Input ~ 0
 Signal
 $Comp
-L R R3
-U 1 1 5746C653
-P 5750 1750
-F 0 "R3" V 5830 1750 50  0000 C CNN
-F 1 "20k" V 5750 1750 50  0000 C CNN
-F 2 "Resistors_SMD:R_0805" V 5680 1750 50  0001 C CNN
-F 3 "" H 5750 1750 50  0000 C CNN
-	1    5750 1750
-	1    0    0    -1  
-$EndComp
-$Comp
-L +5V #PWR06
-U 1 1 5746C6F5
-P 5750 1500
-F 0 "#PWR06" H 5750 1350 50  0001 C CNN
-F 1 "+5V" H 5750 1640 50  0000 C CNN
-F 2 "" H 5750 1500 50  0000 C CNN
-F 3 "" H 5750 1500 50  0000 C CNN
-	1    5750 1500
-	1    0    0    -1  
-$EndComp
-$Comp
 L C C5
 U 1 1 5746C982
 P 6400 1350
@@ -547,15 +525,9 @@ Wire Wire Line
 Wire Wire Line
 	2800 2900 2800 3000
 Wire Wire Line
-	4350 2750 5250 2750
-Wire Wire Line
-	5250 2750 5250 2200
-Wire Wire Line
-	5250 2200 5800 2200
-Wire Wire Line
 	4350 2650 5750 2650
 Wire Wire Line
-	5750 2300 5750 2800
+	5750 2200 5750 2800
 Wire Wire Line
 	5750 2300 5800 2300
 Connection ~ 5750 2650
@@ -631,11 +603,6 @@ Wire Wire Line
 Connection ~ 4400 2150
 Wire Wire Line
 	6850 2000 7250 2000
-Wire Wire Line
-	5750 1900 5750 2200
-Connection ~ 5750 2200
-Wire Wire Line
-	5750 1500 5750 1600
 Wire Wire Line
 	6400 1200 6200 1200
 Connection ~ 6200 1200
@@ -727,4 +694,8 @@ Wire Wire Line
 	5100 4250 5100 4350
 Wire Wire Line
 	5100 4350 5050 4350
+Wire Wire Line
+	5800 2200 5750 2200
+Connection ~ 5750 2300
+NoConn ~ 4350 2750
 $EndSCHEMATC
