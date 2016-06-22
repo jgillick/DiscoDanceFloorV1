@@ -1,7 +1,7 @@
 (export (version D)
   (design
     (source /Users/Jeremy/Projects/DiscoDanceFloor/Hardware/Dongle/DiscoDongle.sch)
-    (date "Wednesday, June 22, 2016 'AMt' 12:02:54 AM")
+    (date "Wednesday, June 22, 2016 'AMt' 11:41:59 AM")
     (tool "Eeschema 4.0.2-stable")
     (sheet (number 1) (name /) (tstamps /)
       (title_block
@@ -279,12 +279,12 @@
         (pin (num 4) (name GND) (type power_in))
         (pin (num 5) (name shield) (type passive)))))
   (libraries
-    (library (logical device)
-      (uri "/Library/Application Support/kicad/library/device.lib"))
+    (library (logical DongleParts)
+      (uri /Users/Jeremy/Projects/DiscoDanceFloor/Hardware/Dongle/DongleParts.lib))
     (library (logical conn)
       (uri "/Library/Application Support/kicad/library/conn.lib"))
-    (library (logical DongleParts)
-      (uri /Users/Jeremy/Projects/DiscoDanceFloor/Hardware/Dongle/DongleParts.lib)))
+    (library (logical device)
+      (uri "/Library/Application Support/kicad/library/device.lib")))
   (nets
     (net (code 1) (name "Net-(R4-Pad1)")
       (node (ref U2) (pin 3))
