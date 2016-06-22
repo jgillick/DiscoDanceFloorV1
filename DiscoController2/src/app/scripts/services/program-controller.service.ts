@@ -39,7 +39,7 @@ export class ProgramControllerService {
     return new Promise<void>((resolve, reject) => {
       
       // Setup timeout
-      var timeout = setTimeout(() => {
+      let timeout = setTimeout(() => {
         reject({ error: 'timeout' });
       }, milliseconds);
       function cancelTimeout() {
