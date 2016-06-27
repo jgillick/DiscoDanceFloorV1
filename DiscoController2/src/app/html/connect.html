@@ -9,7 +9,10 @@
       <ol>
         <li>
           <select>
-            <option value="">Loading...</option>
+            <option value="" *ngIf="!deviceList.length">Loading...</option>
+            <option *ngFor="let device of deviceList">
+              {{ device }}
+            </option>
           </select>
         </li>
         <li>

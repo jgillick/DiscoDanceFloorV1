@@ -1,17 +1,39 @@
 /**
- * Used to connect and communicate to the dance floor.
+ * Used to connect to the DiscoDongle serial
+ * interface used to communicate with the dance floor.
+ * 
+ * Example usage:
+ * -------------
+ * ```
+ * import { SerialConnectService } from './serial-connect.service';
+ * 
+ * serial = new SerialConnectService();
+ * 
+ * // Get device list
+ * serial.getDevices().then( ... );
+ * 
+ * // Connect
+ * serial.connect('/dev/cu.usbserial-AL028X9K').then( ... );
+ * 
+ * // Write data
+ * serial.port.write(['h', 'i']);
+ * 
+ * ```
  */
 
-var serialPort = require("serialport");
+// import { Injectable } from '@angular/core';
 
-const BAUD_RATE = 250000;
+const BAUD_RATE = 9600; //250000;
 
-export class SerialConnect {
+// @Injectable()
+export class SerialConnectService {
 
   port: any;
+  serialPortLib:any;
 
   constructor() {
-
+    // Must be done here, otherwise the UI breaks.
+    this.serialPortLib = require('serialport');
   }
 
   /**
@@ -23,16 +45,16 @@ export class SerialConnect {
   getDevices(): Promise<string[]> {
     return new Promise<string[]> ( (resolve, reject) => {
 
-      serialPort.list( (err, ports) => {
+      this.serialPortLib.list( (err, ports) => {
         if (err) {
           reject(err);
           return;
         }
 
-        ports.map( p => {
+        let paths = ports.map( p => {
           return p.comName;
         });
-        resolve(ports);
+        resolve(paths);
       })
     });
   }
@@ -46,11 +68,13 @@ export class SerialConnect {
    */
   connect(device:string): Promise<void> {
     return new Promise<void> ( (resolve, reject) => {
-      
-      this.port = new serialPort.SerialPort(device, {
+
+      this.port = new this.serialPortLib.SerialPort(device, {
         baudRate: BAUD_RATE,
-        parser: serialPort.parsers.raw
-      }, (err) => { 
+        rtscts: false
+      });
+
+      this.port.on('open', (err) => {
         if (err){ 
           console.error(err);
           reject(err);
@@ -58,6 +82,8 @@ export class SerialConnect {
           resolve();
         } 
       });
+      this.port.on('data', console.log);
+      
     });
   }
 

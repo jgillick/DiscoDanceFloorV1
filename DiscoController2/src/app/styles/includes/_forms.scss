@@ -41,6 +41,10 @@ form {
     padding: 10px 20px;
     cursor: pointer;
     font-size: 14px;
+    outline: none;
+  }
+  button:active {
+    background: #000;
   }
 
   .note {

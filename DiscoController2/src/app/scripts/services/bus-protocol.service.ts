@@ -7,10 +7,10 @@
  * addressing. 
  */
 
-import { SerialConnect } from './serial-connect.service';
+import { SerialConnectService } from './serial-connect.service';
 
 const BROADCAST_ADDRESS = 0;
-const RESPONSE_TIMEOUT = 10;
+const RESPONSE_TIMEOUT = 20;
 const MAX_ADDRESS_CORRECTIONS = 5;
 
 // Commands
@@ -25,6 +25,9 @@ const CMD_GET_SENSOR = 0x02;
 const BATCH_MODE   = 0b00000001;
 const RESPONSE_MSG = 0b00000010;
 
+/**
+ * The message return statuses
+ */
 export enum BusMasterStatus {
   // OK statuses
   SUCCESS,
@@ -35,7 +38,10 @@ export enum BusMasterStatus {
   MAX_TRIES
 }
 
-export class BusMaster {
+/**
+ * Bus protocol service class
+ */
+export class BusProtocolService {
 
   private _crc:number;
   private _responseTimer:any = null;
@@ -46,14 +52,15 @@ export class BusMaster {
 
   nodeNum:number = 0;
 
-  constructor(private _serial:SerialConnect) {
-    // Disable daisy line
-    this._serial.setDaisy(false);
+  constructor(private _serial:SerialConnectService) {
 
     // Handle new data received on the bus
     this._serial.port.on('data', d => {
       this._handleData(d);
     });
+    
+    // Disable daisy line
+    this._serial.setDaisy(false);
   }
 
   /**
@@ -90,6 +97,7 @@ export class BusMaster {
       0xFF,
       0xFF,
       flags,
+      options.destination,
       command
     ];
 
@@ -124,6 +132,8 @@ export class BusMaster {
     this._addressing = true;
     this._addressCorrections = 0;
     this._promiseResolvers = [];
+
+    this._serial.setDaisy(false);
     
     // Start address message
     this.startMessage(CMD_ADDRESS, 2, { batchMode: true, responseMsg: true });
@@ -151,19 +161,26 @@ export class BusMaster {
 
     if (this._addressing) {
       this._addressing = false;
+      console.log('Found', this.nodeNum, 'nodes');
 
       // Send 0xFF twice, if not already
       if (this.nodeNum < 255) { 
         this._sendBytes([0xFF, 0xFF]);
       }
+
       // Send null message to wrap things up
-      this.startMessage(CMD_NULL, 0);
-      this.endMessage();
+      this._crc = 0xFFFF;
+      this._sendBytes([
+        0x00,     // flags
+        0x00,     // broadcast address
+        CMD_NULL, // NULL command
+        0,        // length
+      ]);
     } 
-    else {
-      let crcBytes = this._convert16bitTo8(this._crc);
-      this._sendBytes(crcBytes, false);
-    }
+
+    // Send CRC
+    let crcBytes = this._convert16bitTo8(this._crc);
+    this._sendBytes(crcBytes, false);
 
     // Resolve message promise
     if (this._promiseResolvers.length) {
@@ -184,13 +201,17 @@ export class BusMaster {
    * @param {Buffer} data A buffer of new data from the serial connection
    */
   private _handleData(data:Buffer): void {
-    
+    console.log('Response says', data);
+
     // Address responses
     if (this._addressing) {
-      let addr = data[data.length-1]; // We only care about the final byte
+      let addr = data.readUInt8(data.length-1); // We only care about the final byte
+
+      console.log(addr);
 
       // Verify it's 1 larger than the last address
       if (addr == this.nodeNum + 1) {
+        console.log('Found one!');
         this.nodeNum++;
         this._sendByte(this.nodeNum); // confirm address
       }

@@ -7,6 +7,7 @@ import {DiscoFloorComponent} from './floor';
 import {SettingsComponent} from './settings';
 import {ConnectComponent} from './connect';
 import {StorageService} from '../services/storage.service';
+import {SerialConnectService} from '../services/serial-connect.service';
 import {FloorBuilderService} from '../services/floor-builder.service';
 import {ProgramControllerService} from '../services/program-controller.service';
 
@@ -20,7 +21,8 @@ import {ProgramControllerService} from '../services/program-controller.service';
   providers: [
     StorageService,
     FloorBuilderService,
-    ProgramControllerService
+    ProgramControllerService,
+    SerialConnectService
   ]
 })
 @RouteConfig([

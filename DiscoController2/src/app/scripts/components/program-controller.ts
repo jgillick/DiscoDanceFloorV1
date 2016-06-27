@@ -1,15 +1,15 @@
 /**
  * Builds the program list and handles loading and playing them.
  */
-import {Component} from '@angular/core';
-import {ProgramControllerService} from '../services/program-controller.service';
+import { Component, OnInit } from '@angular/core';
+import { ProgramControllerService } from '../services/program-controller.service';
 import { IProgram } from '../../../shared/program';
 
 @Component ({
   selector: 'program-controller',
   templateUrl: './html/program_controller.html'
 })
-export class ProgramControllerComponent {
+export class ProgramControllerComponent implements OnInit {
   programList:any[];
   
   private _selectedProgram: IProgram;
