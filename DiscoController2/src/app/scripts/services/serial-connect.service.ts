@@ -55,7 +55,7 @@ export class SerialConnectService {
           return p.comName;
         });
         resolve(paths);
-      })
+      });
     });
   }
 
@@ -70,11 +70,9 @@ export class SerialConnectService {
     return new Promise<void> ( (resolve, reject) => {
 
       this.port = new this.serialPortLib.SerialPort(device, {
-        baudRate: BAUD_RATE,
-        rtscts: false
-      });
-
-      this.port.on('open', (err) => {
+        baudRate: BAUD_RATE
+      }, 
+      (err) => { // Connect callback
         if (err){ 
           console.error(err);
           reject(err);

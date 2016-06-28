@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 
 import { SerialConnectService } from '../services/serial-connect.service';
+import { BusProtocolService } from '../services/bus-protocol.service';
 
 @Component({
   templateUrl: './html/connect.html',
@@ -8,12 +9,41 @@ import { SerialConnectService } from '../services/serial-connect.service';
 export class ConnectComponent implements OnInit {
 
   deviceList:string[] = [];
+  
+  form:any;
+  selectedDevice:string = null;
 
-  constructor( private _serial:SerialConnectService ) {
+  // Skip readdressing nodes when connecting
+  keepAddresses:boolean = false;
+
+  constructor(
+    private _serial:SerialConnectService, 
+    private _bus:BusProtocolService) {
   }
 
   ngOnInit() {
     this._updateDeviceList();
+  }
+
+  /**
+   * Connect to the selected device.
+   */
+  connect() {
+    if (!this.selectedDevice) {
+      return;
+    }
+
+    this._serial.connect(this.selectedDevice)
+    .then(() => {
+      this._bus.connect();
+      this._bus.startAddressing()
+      .subscribe(
+        (n) => console.log('Added', n),
+        (err) => console.error('Error', err),
+        () => console.log('Done!')
+      );
+    },
+    console.log);
   }
 
   /**

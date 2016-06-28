@@ -7,11 +7,14 @@
  * addressing. 
  */
 
+import { Inject } from '@angular/core';
+
+import { Observable, Observer } from 'rxjs';
 import { SerialConnectService } from './serial-connect.service';
 
 const BROADCAST_ADDRESS = 0;
-const RESPONSE_TIMEOUT = 20;
-const MAX_ADDRESS_CORRECTIONS = 5;
+const RESPONSE_TIMEOUT = 50;
+const MAX_ADDRESS_CORRECTIONS = 10;
 
 // Commands
 const CMD_RESET   = 0xFA;
@@ -26,19 +29,6 @@ const BATCH_MODE   = 0b00000001;
 const RESPONSE_MSG = 0b00000010;
 
 /**
- * The message return statuses
- */
-export enum BusMasterStatus {
-  // OK statuses
-  SUCCESS,
-  TIMEOUT,
-
-  // Error statuses
-  ERROR,
-  MAX_TRIES
-}
-
-/**
  * Bus protocol service class
  */
 export class BusProtocolService {
@@ -47,21 +37,30 @@ export class BusProtocolService {
   private _responseTimer:any = null;
   private _promiseResolvers:Function[];
 
+  private _messageObserver:Observer<number>;
   private _addressCorrections:number = 0;
   private _addressing:boolean = false;
 
   nodeNum:number = 0;
 
-  constructor(private _serial:SerialConnectService) {
+  constructor(@Inject(SerialConnectService) private _serial:SerialConnectService) {
+  }
 
+  /**
+   * Connect the serial connection to the bus protocol
+   */
+  connect() {
     // Handle new data received on the bus
     this._serial.port.on('data', d => {
       this._handleData(d);
     });
     
     // Disable daisy line
-    this._serial.setDaisy(false);
+    this._serial.port.on('open', d => {
+      this._serial.setDaisy(false);
+    });
   }
+  
 
   /**
    * Start a new message
@@ -73,7 +72,7 @@ export class BusProtocolService {
       batchMode?:boolean,
       responseMsg?:boolean,
       destination?:number
-    }={}): Promise<BusMasterStatus> {
+    }={}): Observable<number> {
 
     let data = [];
 
@@ -110,14 +109,8 @@ export class BusProtocolService {
     // Send
     this._sendBytes(data);
 
-    // Deferred response promise
-    if (options.responseMsg) {
-      return new Promise<any>((resolve, reject) => {
-        this._promiseResolvers = [resolve, reject];
-      });
-    }
-    
-    return Promise.resolve(BusMasterStatus.SUCCESS);
+    // Message observer
+    return this._createMessageObserver();
   }
 
   /**
@@ -127,7 +120,7 @@ export class BusProtocolService {
    * 
    * @return {Promise}
    */
-  startAddressing(startFrom:number=0): Promise<BusMasterStatus> {
+  startAddressing(startFrom:number=0): Observable<number> {
     this.nodeNum = startFrom;
     this._addressing = true;
     this._addressCorrections = 0;
@@ -146,10 +139,7 @@ export class BusProtocolService {
       this._startResponseTimer(); // timeout counter
     });
 
-    // Deferred promise
-    return new Promise<any>((resolve, reject) => {
-      this._promiseResolvers = [resolve, reject];
-    });
+    return this._createMessageObserver();
   }
 
   /**
@@ -157,8 +147,9 @@ export class BusProtocolService {
    * 
    * @param {BusMasterStatus} status (optional) The status to resolve the message promise with.
    */
-  endMessage(status:BusMasterStatus=BusMasterStatus.SUCCESS): void {
+  endMessage(error:string=null): void {
 
+    // End addressing message
     if (this._addressing) {
       this._addressing = false;
       console.log('Found', this.nodeNum, 'nodes');
@@ -183,16 +174,27 @@ export class BusProtocolService {
     this._sendBytes(crcBytes, false);
 
     // Resolve message promise
-    if (this._promiseResolvers.length) {
-
-      if (status >= BusMasterStatus.ERROR) {
-        this._promiseResolvers[1](status); // reject
+    if (this._messageObserver) {
+      if (!error) {
+        this._messageObserver.complete();
       } 
       else {
-        this._promiseResolvers[0](status); // resolve
+        this._messageObserver.error(error);
       }
-      
-    }
+    } 
+  }
+
+  /**
+   * Create a hot observer for a message 
+   */
+  private _createMessageObserver():Observable<number> {
+    let source = Observable.create( (observer:Observer<number>) => {
+      this._messageObserver = observer;
+    });
+
+    let hot = source.publish();
+    hot.connect();
+    return hot;
   }
 
   /**
@@ -201,19 +203,17 @@ export class BusProtocolService {
    * @param {Buffer} data A buffer of new data from the serial connection
    */
   private _handleData(data:Buffer): void {
-    console.log('Response says', data);
 
     // Address responses
     if (this._addressing) {
       let addr = data.readUInt8(data.length-1); // We only care about the final byte
 
-      console.log(addr);
-
       // Verify it's 1 larger than the last address
       if (addr == this.nodeNum + 1) {
-        console.log('Found one!');
         this.nodeNum++;
+        this._addressCorrections = 0;
         this._sendByte(this.nodeNum); // confirm address
+        this._messageObserver.next(this.nodeNum);
       }
       // Invalid address
       else {
@@ -221,7 +221,7 @@ export class BusProtocolService {
 
         // Max tries, end in error
         if (this._addressCorrections > MAX_ADDRESS_CORRECTIONS) {
-          this.endMessage(BusMasterStatus.MAX_TRIES);
+          this.endMessage('maximum address corrections');
         }
         // Address correction: send 0x00 followed by last valid address
         else {
@@ -236,12 +236,10 @@ export class BusProtocolService {
    * Handle a timeout waiting for a response value
    */
   private _handleResponseTimeout(): void {
-    console.log('Timeout');
     
     // Addressing timeout 
     if (this._addressing) {
-      console.log('Addressing timeout');
-      this.endMessage(BusMasterStatus.TIMEOUT);
+      this.endMessage();
     }
   }
 
