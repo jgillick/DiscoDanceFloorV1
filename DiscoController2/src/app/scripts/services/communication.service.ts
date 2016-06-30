@@ -29,8 +29,8 @@ import { BusProtocolService, CMD } from './bus-protocol.service';
 import { FloorBuilderService } from './floor-builder.service';
 
 const BAUD_RATE    = 9600; //250000;
-const RUN_DELAY    = 1000; // Time between run iterations
-const SENSOR_DELAY = 2000; // How long to let the sensor check
+const RUN_DELAY    = 10; // Time between run iterations
+const SENSOR_DELAY = 50; // How long to let the sensor check
 
 @Injectable()
 export class CommunicationService {
@@ -257,8 +257,6 @@ export class CommunicationService {
   private _runIterator(): void {
     if (!this._running) return;
 
-    console.log('Run iterator');
-
     let subject:Observable<any>;
     let nextDelay = RUN_DELAY;
 
@@ -278,18 +276,15 @@ export class CommunicationService {
       default:
         this._runIteration = 0;
         this._runIterator();
+        return;
     };
 
     let runNext = function() {
       this._runIteration++;
-      console.log('Run again in', nextDelay);
       setTimeout(this._runIterator.bind(this), nextDelay);
     }.bind(this);
 
-    if (!subject) {
-      runNext();
-    }
-    else {
+    if (subject) {
       subject.subscribe(
         null,
         (err) => {

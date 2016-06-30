@@ -110,6 +110,7 @@ export class BusProtocolService {
     // Length
     if (options.batchMode) {
       data.push(this.nodeNum);
+      this._dataLen = length * this.nodeNum;
     }
     data.push(length);
 
@@ -165,7 +166,7 @@ export class BusProtocolService {
     this._sentLen += data.length;
     
     if (this._sentLen > this._dataLen) {
-      this._messageObserver.error('Cannot send more data than you defined as length');
+      this._messageObserver.error('Cannot send more data than you defined as length ('+ this._dataLen +')');
       return;
     }
     
