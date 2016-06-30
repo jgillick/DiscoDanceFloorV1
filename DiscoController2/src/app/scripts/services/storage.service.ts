@@ -41,8 +41,8 @@ export class StorageService {
    * @param {String} name  The name to save the value under
    * @param {Object} value The value to assign to this name (can be any valid JavaScript type)
    */
-  setItem(key, value):void {
-    var oldVal = this.storage.getItemSync(key);
+  setItem(key:string, value:any):void {
+    var oldVal = this.getItem(key);
     value = _.cloneDeep(value);
 
     // No change
@@ -50,7 +50,33 @@ export class StorageService {
       return;
     }
 
-    this.storage.setItemSync(key, value);
+    if (key.indexOf('.') < 0) {
+      this.storage.setItemSync(key, value);
+    } else {
+      let keyParts = key.split('.');
+      key = keyParts.shift();
+      
+      let baseObj = this.getItem(key) || {};
+      let obj = baseObj;
+      
+      // Walk down the object dot notation
+      while(keyParts.length) {
+        let part = keyParts.shift();
+
+        if (typeof obj[part] === 'undefined') {
+          obj[part] = {};
+        }
+
+        if (keyParts.length) {
+          obj = obj[part];
+        } else {
+          obj[part] = value;
+        }
+      }
+      
+      this.storage.setItemSync(key, baseObj);
+    }
+
     this.storageChangeSource.next({
       key: key,
       value: value
@@ -62,8 +88,19 @@ export class StorageService {
    * @param  {String} key The name of the setting to retrieve
    * @return {Object} The setting value
    */
-  getItem(key): any {
-    return _.cloneDeep(this.storage.getItem(key));
+  getItem(key:string): any {
+    if (key.indexOf('.') < 0) {
+      return _.cloneDeep(this.storage.getItemSync(key));
+    } 
+    else {
+      // Process object notation
+      let keyParts = key.split('.');
+      let obj = this.getItem(keyParts.shift()) || {};
+
+      return keyParts.reduce( (obj, key) => {
+        return obj[key];
+      }, obj);
+    }
   }
 
   /**
@@ -71,7 +108,7 @@ export class StorageService {
    * @param {String} key The name of the item to remove
    * @return {Promise}
    */
-  removeItem(key): Promise<any> {
+  removeItem(key:string): Promise<any> {
     return this.storage.removeItem(key);
   }
 }
