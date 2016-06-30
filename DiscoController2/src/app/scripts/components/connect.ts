@@ -1,28 +1,36 @@
 import { Component, OnInit } from '@angular/core';
 
-import { SerialConnectService } from '../services/serial-connect.service';
-import { BusProtocolService } from '../services/bus-protocol.service';
+import { StorageService } from '../services/storage.service';
+import { CommunicationService } from '../services/communication.service';
+import { FloorBuilderService } from '../services/floor-builder.service';
 
 @Component({
   templateUrl: './html/connect.html',
+  styleUrls: ['./styles/connect.css']
 })
 export class ConnectComponent implements OnInit {
 
   deviceList:string[] = [];
   
-  form:any;
+  nodes:number = 0;
+  connecting:boolean = false;
+  disconnecting:boolean = false;
   selectedDevice:string = null;
 
   // Skip readdressing nodes when connecting
   keepAddresses:boolean = false;
 
   constructor(
-    private _serial:SerialConnectService, 
-    private _bus:BusProtocolService) {
+    private _comm:CommunicationService,
+    private _storage:StorageService,
+    private _floorBuilder:FloorBuilderService) {
   }
 
   ngOnInit() {
     this._updateDeviceList();
+
+    this.selectedDevice = this._storage.getItem("connection.device");
+    this.keepAddresses = this._storage.getItem("connection.keepAddresses");
   }
 
   /**
@@ -30,27 +38,97 @@ export class ConnectComponent implements OnInit {
    */
   connect() {
     if (!this.selectedDevice) {
+      alert("You haven't selected a device");
       return;
     }
 
-    this._serial.connect(this.selectedDevice)
+    this._storage.setItem("connection.device", this.selectedDevice);
+    this._storage.setItem("connection.keepAddresses", this.keepAddresses);
+
+    // Connect to the device
+    this.connecting = true;
+    this._comm.connect(this.selectedDevice)
     .then(() => {
-      this._bus.connect();
-      this._bus.startAddressing()
-      .subscribe(
-        (n) => console.log('Added', n),
-        (err) => console.error('Error', err),
-        () => console.log('Done!')
-      );
+      
+      if (this.keepAddresses) {
+        this.connecting = false;
+        this._comm.run();
+      }
+      else {
+        this._addressNodes();
+      }
+
     },
-    console.log);
+    (err) => alert('Error connecting: '+ err));
+  }
+
+  /**
+   * Disconnect from the current device
+   */
+  disconnect():void {
+    if (!this.isConnected()) {
+      return;
+    }
+
+    this.disconnecting = true;
+    this._comm.disconnect()
+    .then(() => this.disconnecting = false)
+    .catch(() => this.disconnecting = false);
+  }
+
+  /**
+   * True if we're currently connected to the floor.
+   */
+  isConnected() {
+    return this._comm.isConnected();
+  }
+
+  /**
+   * The number of nodes we are connected to.
+   */
+  nodeNum(): number {
+    return this._comm.bus.nodeNum;
+  }
+
+  /**
+   * Address all the nodes
+   */
+  private _addressNodes() {
+    this._comm.assignAddresses()
+    .subscribe(
+      // Next value
+      (n) => {
+        this.nodes = n
+      }, 
+      // Error
+      (err) => {
+        alert('Error addressing nodes '+ err);
+        this.connecting = false;
+      },
+      // Done
+      () => {
+        this.connecting = false;
+        this._storage.setItem("connection.numNodes", this._comm.bus.nodeNum);
+
+        // Rebuild floor
+        let dimensions = this._storage.getItem('settings.dimensions');
+        this._floorBuilder.build(
+          this._comm.bus.nodeNum,
+          dimensions.x,
+          dimensions.y
+        );
+
+        // Run communications loop
+        this._comm.run();
+      }
+    );
   }
 
   /**
    * Update the list of connected USB devices.
    */
   private _updateDeviceList() {
-    this._serial.getDevices().then( (devices:string[]) => {
+    this._comm.getDevices().then( (devices:string[]) => {
       this.deviceList = devices;
 
       // Update list every 2000ms

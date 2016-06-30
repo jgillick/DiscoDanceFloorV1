@@ -7,22 +7,22 @@
  * addressing. 
  */
 
-import { Inject } from '@angular/core';
-
-import { Observable, Observer } from 'rxjs';
-import { SerialConnectService } from './serial-connect.service';
+import { Observable, Observer, ConnectableObservable } from 'rxjs';
+import { CommunicationService } from './communication.service';
 
 const BROADCAST_ADDRESS = 0;
 const RESPONSE_TIMEOUT = 50;
 const MAX_ADDRESS_CORRECTIONS = 10;
 
 // Commands
-const CMD_RESET   = 0xFA;
-const CMD_ADDRESS = 0xFB;
-const CMD_NULL    = 0xFF;
-
-const CMD_SET_COLOR  = 0x01;
-const CMD_GET_SENSOR = 0x02;
+export const CMD = {
+  RESET:            0xFA,
+  ADDRESS:          0xFB,
+  NULL:             0xFF,
+  SET_COLOR:        0x01,
+  RUN_SENSOR:       0x02,
+  GET_SENSOR_VALUE: 0x03
+};
 
 // Message flags
 const BATCH_MODE   = 0b00000001;
@@ -42,8 +42,9 @@ export class BusProtocolService {
   private _addressing:boolean = false;
 
   nodeNum:number = 0;
+  msgSubscription:ConnectableObservable<number>;
 
-  constructor(@Inject(SerialConnectService) private _serial:SerialConnectService) {
+  constructor(private _serial:CommunicationService) {
   }
 
   /**
@@ -55,7 +56,7 @@ export class BusProtocolService {
       this._handleData(d);
     });
     
-    // Disable daisy line
+    // Disable daisy line when the port opens
     this._serial.port.on('open', d => {
       this._serial.setDaisy(false);
     });
@@ -129,7 +130,7 @@ export class BusProtocolService {
     this._serial.setDaisy(false);
     
     // Start address message
-    this.startMessage(CMD_ADDRESS, 2, { batchMode: true, responseMsg: true });
+    this.startMessage(CMD.ADDRESS, 2, { batchMode: true, responseMsg: true });
 
     // Set daisy and send first address, after message header has sent
     this._serial.port.drain(() => {
@@ -147,12 +148,11 @@ export class BusProtocolService {
    * 
    * @param {BusMasterStatus} status (optional) The status to resolve the message promise with.
    */
-  endMessage(error:string=null): void {
+  endMessage(error:string=null): Observable<number> {
 
     // End addressing message
     if (this._addressing) {
       this._addressing = false;
-      console.log('Found', this.nodeNum, 'nodes');
 
       // Send 0xFF twice, if not already
       if (this.nodeNum < 255) { 
@@ -164,7 +164,7 @@ export class BusProtocolService {
       this._sendBytes([
         0x00,     // flags
         0x00,     // broadcast address
-        CMD_NULL, // NULL command
+        CMD.NULL, // NULL command
         0,        // length
       ]);
     } 
@@ -173,15 +173,22 @@ export class BusProtocolService {
     let crcBytes = this._convert16bitTo8(this._crc);
     this._sendBytes(crcBytes, false);
 
-    // Resolve message promise
+    // Resolve message observer
     if (this._messageObserver) {
-      if (!error) {
-        this._messageObserver.complete();
-      } 
-      else {
+
+      if (error) {
         this._messageObserver.error(error);
+        return;
       }
+
+      this._serial.port.drain( (err) => {
+        if (err) {
+          this._messageObserver.error(err);
+        }
+        this._messageObserver.complete();
+      });
     } 
+    return this.msgSubscription;
   }
 
   /**
@@ -192,9 +199,9 @@ export class BusProtocolService {
       this._messageObserver = observer;
     });
 
-    let hot = source.publish();
-    hot.connect();
-    return hot;
+    this.msgSubscription = source.publish();
+    this.msgSubscription.connect();
+    return this.msgSubscription;
   }
 
   /**

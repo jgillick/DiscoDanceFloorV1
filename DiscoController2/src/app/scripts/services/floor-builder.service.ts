@@ -2,6 +2,7 @@
 import { Inject } from '@angular/core';
 
 import { StorageService } from './storage.service';
+import { CommunicationService } from './communication.service';
 import { FloorCell } from '../../../shared/floor-cell';
 import { FloorCellList } from '../../../shared/floor-cell-list';
 
@@ -39,8 +40,11 @@ export class FloorBuilderService {
   private x: number = 0;
   private y: number = 0;
 
-  constructor(@Inject(StorageService) private storage:StorageService) {
-    storage.storageChanged$.subscribe(
+  constructor(
+    @Inject(StorageService) private _storage:StorageService,
+    @Inject(CommunicationService) private _comm:CommunicationService) {
+
+    _storage.storageChanged$.subscribe(
       changed => {
         // Dimentions might have changed, rebuild floor
         this._buildFromSettings();
@@ -53,10 +57,10 @@ export class FloorBuilderService {
    * Build the floor with the dimensions defined in the local storage settings
    */
   private _buildFromSettings() {
-    let settings = this.storage.getItem('settings'),
-        cellNum = settings.floorCellNum;
+    let settings = this._storage.getItem('settings'),
+        cellNum = this._storage.getItem('connection-cellNum') || 0;
 
-    if (cellNum === undefined) {
+    if (cellNum === 0 || !this._comm.isConnected()) {
       cellNum = settings.dimensions.x * settings.dimensions.y;
     }
 
@@ -70,7 +74,7 @@ export class FloorBuilderService {
    * @param {int} floorX The max length of the floor's x axis
    * @param {int} floorY The max length of the floor's y axis
    */
-  build(num, floorX, floorY): FloorCellList {
+  build(num:number, floorX:number, floorY:number): FloorCellList {
     var x = 0,
         y = 0,
         xDir = 1,
@@ -82,6 +86,8 @@ export class FloorBuilderService {
 
     floorX = floorX || 0;
     floorY = floorY || 0;
+
+    console.log('Build floor with', num, 'nodes, in', floorX, 'x', floorY);
 
     // Update dimensions, if they don't fit 4x4 sections
     if ((floorX % 4 !== 0 || floorY % 4 !== 0)) {
