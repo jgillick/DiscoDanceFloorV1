@@ -21,12 +21,16 @@
  * ```
  */
 
-import { Injectable } from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import { Observable, Observer } from 'rxjs';
 
+import { FloorCell } from '../../../shared/floor-cell';
 import { BusProtocolService, CMD } from './bus-protocol.service';
+import { FloorBuilderService } from './floor-builder.service';
 
-const BAUD_RATE = 9600; //250000;
+const BAUD_RATE    = 9600; //250000;
+const RUN_DELAY    = 1000; // Time between run iterations
+const SENSOR_DELAY = 2000; // How long to let the sensor check
 
 @Injectable()
 export class CommunicationService {
@@ -34,11 +38,17 @@ export class CommunicationService {
   port: any;
 
   private _serialPortLib:any;
+  private _running:boolean = false;
+  private _runIteration:number = 0;
+  private _sensorSelect:number = 1;
   
   bus:BusProtocolService;
 
-  constructor() {
+  constructor(
+    @Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService) {
     this.bus = new BusProtocolService(this);
+
+    this._floorBuilder.setComm(this);
 
     // Must be done here, otherwise the UI breaks.
     this._serialPortLib = require('serialport');
@@ -82,6 +92,7 @@ export class CommunicationService {
    * @return {Promise}
    */
   connect(device:string): Promise<void> {
+    this._running = false;
 
     return new Promise<void> ( (resolve, reject) => {
       
@@ -123,6 +134,7 @@ export class CommunicationService {
         return;
       }
 
+      this._running = false;
       this.port.close( err => {
         if (err) {
           console.error(err);
@@ -160,15 +172,18 @@ export class CommunicationService {
   /**
    * Run looping communications with the floor.
    *  1. Send floor colors to all nodes.
-   *  3. Request nodes check their touch sensors.
-   *  4. (short delay)
-   *  5. Request sensor data.
-   *  6. continue from step 1
+   *  2. Request nodes check their touch sensors.
+   *  3. (short delay)
+   *  4. Request sensor data.
+   *  5. continue from step 1
    * 
    * @param {boolean} addressing Start the communications by dynamically addressing all floor nodes.
    */
   run(): void {
-
+    if (this._running) return;
+    this._running = true;
+    this._runIteration = 0;
+    this._runIterator();
   }
 
   /**
@@ -233,5 +248,105 @@ export class CommunicationService {
     let observable = source.publish();
     observable.connect();
     return observable;
+  }
+
+  /**
+   * The run loop iterator, that is called continously to communicate with the dance floor.
+   * See `run()` for more information.
+   */
+  private _runIterator(): void {
+    if (!this._running) return;
+
+    console.log('Run iterator');
+
+    let subject:Observable<any>;
+    let nextDelay = RUN_DELAY;
+
+    switch (this._runIteration) {
+      case 0: // Colors
+        subject = this._sendColors();
+        break;
+      case 1: // Run sensors
+        subject = this._runSensors();
+        nextDelay = SENSOR_DELAY;
+        break;
+      // case 2: // Get sensor data
+      //   subject = this._readSensorData();
+      //   break;
+      
+      // Loop back to the start
+      default:
+        this._runIteration = 0;
+        this._runIterator();
+    };
+
+    let runNext = function() {
+      this._runIteration++;
+      console.log('Run again in', nextDelay);
+      setTimeout(this._runIterator.bind(this), nextDelay);
+    }.bind(this);
+
+    if (!subject) {
+      runNext();
+    }
+    else {
+      subject.subscribe(
+        null,
+        (err) => {
+          console.error(err);
+          runNext();
+        },
+        () => {
+          runNext();  
+        }
+      );
+    }
+  }
+
+  /**
+   * Send RGB colors to all cells
+   */
+  private _sendColors(): Observable<any> {
+    this.bus.startMessage(CMD.SET_COLOR, 3, { batchMode: true });
+
+    for (let i = 0; i < this.bus.nodeNum; i++) {
+      let node:FloorCell = this._floorBuilder.cellList.atIndex(i);
+      let color = [0, 0, 0];
+      if (node) {
+        color = node.color;
+      }
+      this.bus.sendData(color);
+    }
+
+    return this.bus.endMessage();
+  }
+
+  /**
+   * Ask all nodes to check their touch sensors.
+   */
+  private _runSensors(): Observable<any> {
+    this.bus.startMessage(CMD.RUN_SENSOR, 1, { batchMode: true });
+
+    // Only have half the cells checking their sensors at a time
+    let even = (this._sensorSelect > 0);
+    for (let i = 0; i < this.bus.nodeNum; i++) {
+      let val = (i % 2 == 0 && even) ? 1 : 0;
+      this.bus.sendData(val);
+    }
+    this._sensorSelect *= -1;
+
+    return this.bus.endMessage();
+  }
+
+  /**
+   * Get the sensor data from all nodes
+   */
+  private _readSensorData(): Observable<any> {
+    var subject = this.bus.startMessage(CMD.GET_SENSOR_VALUE, 1, { 
+      batchMode: true, 
+      responseMsg: true,
+      responseDefault: [-1] 
+    });
+    return subject;
   }
 }

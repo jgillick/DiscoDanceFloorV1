@@ -39,10 +39,10 @@ export class FloorBuilderService {
   private cellMap:FloorCell[][] = [];
   private x: number = 0;
   private y: number = 0;
+  private _comm:CommunicationService;
 
   constructor(
-    @Inject(StorageService) private _storage:StorageService,
-    @Inject(CommunicationService) private _comm:CommunicationService) {
+    @Inject(StorageService) private _storage:StorageService) {
 
     _storage.storageChanged$.subscribe(
       changed => {
@@ -54,13 +54,21 @@ export class FloorBuilderService {
   }
 
   /**
+   * Add a reference to the communication service
+   */
+  setComm(comm:CommunicationService) {
+    this._comm = comm;
+  }
+
+
+  /**
    * Build the floor with the dimensions defined in the local storage settings
    */
   private _buildFromSettings() {
     let settings = this._storage.getItem('settings'),
         cellNum = this._storage.getItem('connection-cellNum') || 0;
 
-    if (cellNum === 0 || !this._comm.isConnected()) {
+    if (cellNum === 0 || !this._comm || !this._comm.isConnected()) {
       cellNum = settings.dimensions.x * settings.dimensions.y;
     }
 

@@ -34,6 +34,9 @@ const RESPONSE_MSG = 0b00000010;
 export class BusProtocolService {
 
   private _crc:number;
+  private _dataLen:number;
+  private _sentLen:number;
+  private _responseDefault:number[];
   private _responseTimer:any = null;
   private _promiseResolvers:Function[];
 
@@ -72,11 +75,14 @@ export class BusProtocolService {
     options:{
       batchMode?:boolean,
       responseMsg?:boolean,
-      destination?:number
+      destination?:number,
+      responseDefault?:number[]
     }={}): Observable<number> {
 
     let data = [];
 
+    this._dataLen = length;
+    this._sentLen = 0;
     this._crc = 0xFFFF;
     this._promiseResolvers = [];
 
@@ -123,6 +129,9 @@ export class BusProtocolService {
    */
   startAddressing(startFrom:number=0): Observable<number> {
     this.nodeNum = startFrom;
+
+    this._sentLen = 0;
+    this._dataLen = 0;
     this._addressing = true;
     this._addressCorrections = 0;
     this._promiseResolvers = [];
@@ -132,15 +141,35 @@ export class BusProtocolService {
     // Start address message
     this.startMessage(CMD.ADDRESS, 2, { batchMode: true, responseMsg: true });
 
-    // Set daisy and send first address, after message header has sent
+    // Set daisy and send first address
     this._serial.port.drain(() => {
       this._serial.setDaisy(true);
-      this._sendByte(0x00);
+      this._sendByte(startFrom);
 
       this._startResponseTimer(); // timeout counter
     });
 
     return this._createMessageObserver();
+  }
+
+  /**
+   * Write data to the body of the message
+   * 
+   * @param {number[]} data An array of bytes.
+   */
+  sendData(data:any): void {
+    if (typeof data.length === 'undefined') {
+      data = [data];
+    }
+
+    this._sentLen += data.length;
+    
+    if (this._sentLen > this._dataLen) {
+      this._messageObserver.error('Cannot send more data than you defined as length');
+      return;
+    }
+    
+    this._sendBytes(data);
   }
 
   /**
