@@ -16,4 +16,7 @@
   <program-controller></program-controller>
 </div>
 <div class="floor-status">
+  <span *ngIf="comm && comm.isConnected()">
+    {{comm.framesPerSecond()}} Frames per second
+  </span>
 </div>

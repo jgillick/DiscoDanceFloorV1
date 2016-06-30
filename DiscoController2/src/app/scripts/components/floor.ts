@@ -11,6 +11,7 @@ import {
 import { FloorCell } from '../../../shared/floor-cell';
 import { StorageService } from '../services/storage.service';
 import { FloorBuilderService } from '../services/floor-builder.service';
+import { CommunicationService } from '../services/communication.service';
 import { ProgramControllerComponent } from './program-controller';
 
 @Component({
@@ -42,6 +43,7 @@ export class DiscoFloorComponent implements OnInit  {
   tableCells:FloorCell[][] = [];
 
   constructor(
+    public comm:CommunicationService,
     private _element:ElementRef,
     private _store:StorageService,
     private _builder:FloorBuilderService) {

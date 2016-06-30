@@ -28,15 +28,17 @@ import { FloorCell } from '../../../shared/floor-cell';
 import { BusProtocolService, CMD } from './bus-protocol.service';
 import { FloorBuilderService } from './floor-builder.service';
 
-const BAUD_RATE    = 9600; //250000;
-const RUN_DELAY    = 10; // Time between run iterations
-const SENSOR_DELAY = 50; // How long to let the sensor check
+const BAUD_RATE       = 9600; //250000;
+const CMD_LOOP_DELAY  = 10; // Time between commands
+const SENSOR_DELAY    = 50; // Delay after the sensor check command
 
 @Injectable()
 export class CommunicationService {
 
   port: any;
 
+  private _fps:number[] = [0, 0, 0, 0];
+  private _frames:number = 0;
   private _serialPortLib:any;
   private _running:boolean = false;
   private _runIteration:number = 0;
@@ -184,6 +186,29 @@ export class CommunicationService {
     this._running = true;
     this._runIteration = 0;
     this._runIterator();
+
+    // Frame per second counter
+    let fpsCounter = setInterval( () => {
+      if (!this._running) {
+        clearInterval(fpsCounter);
+        return;
+      }
+
+      // Shift new FPS onto the stack to get an average
+      this._fps.push(this._frames);
+      this._fps.shift();
+
+      this._frames = 0;
+    }, 1000);
+  }
+
+  /**
+   * Return the number of frames per second we're running at.
+   * This is the rate at which we are updating the floor clolors for all cells.
+   */
+  framesPerSecond():number {
+    let sum = this._fps.reduce( (prev, curr) => prev + curr );
+    return Math.round(sum / this._fps.length);
   }
 
   /**
@@ -258,7 +283,7 @@ export class CommunicationService {
     if (!this._running) return;
 
     let subject:Observable<any>;
-    let nextDelay = RUN_DELAY;
+    let nextDelay = CMD_LOOP_DELAY;
 
     switch (this._runIteration) {
       case 0: // Colors
@@ -274,6 +299,7 @@ export class CommunicationService {
       
       // Loop back to the start
       default:
+        this._frames++;
         this._runIteration = 0;
         this._runIterator();
         return;
