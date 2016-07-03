@@ -1,15 +1,17 @@
 # Disco Dance Floor
 
-A computer controlled interactive disco dance floor built for the 2015 Burning Man Roller Disco camp.
+![Saturday night fever](http://media.giphy.com/media/MGcPtfsD8L5Kw/giphy.gif)
 
-The floor will be made up of individually controlled squares (nodes) attached to a computer
-via an RS485 bus. Each node has an Atmega168 (running Arduino bootloader) with RGB LEDs and a capacitive sensor
-used to detect if someone is standing over that cell.
+This project is for a full-size interactive dance floor that can respond to touch and sound.
 
-The computer controller uses Node.js and provides a simple API that can be used to
+The floor is made up of individually controlled squares (nodes) attached to a computer via an
+RS485 bus. Each node has an Atmega328 with RGB LEDs and a capacitive sensor to detect someone
+standing over that cell.
+
+The master controller uses Node.js and provides a simple API that can be used to
 write custom floor control programs.
 
 ## More information
-There is more information in the README files under the Arduino and Disco Controller folders.
+More information about the build can be found on my page at [hackaday.io](https://hackaday.io/project/4209-interactive-disco-dance-floor).
 
-![Saturday night fever](http://media.giphy.com/media/MGcPtfsD8L5Kw/giphy.gif)
+![Touch sensors](https://cdn.hackaday.io/images/6596951466191934292.gif)
