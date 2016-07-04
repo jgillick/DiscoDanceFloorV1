@@ -85,10 +85,11 @@ private:
     DATA_POS,
     EOM1_POS,
     EOM2_POS,
-    ADDR_WAITING,   // Addressing: command started, but no initial address seen
-    ADDR_UNSET,     // Addressing: addressed not received for this node
-    ADDR_SENT,      // Addressing: sent address to master
-    ADDR_CONFIRMED  // Addressing: master confirmed address
+    ADDR_WAITING,    // Addressing: command started, but no initial address seen
+    ADDR_UNSET,      // Addressing: addressed not received for this node
+    ADDR_SENT,       // Addressing: sent address to master
+    ADDR_CONFIRMED,  // Addressing: master confirmed address
+    ADDR_ERROR,      // Addressing: ended in error
   };
 
   enum msg_state_t  parseState;
@@ -101,7 +102,8 @@ private:
           numNodes,
           myAddress,
           dataIndex,
-          lastAddr;
+          lastAddr,
+          errCount;
 
   // Batch mode values
   uint16_t fullDataLength,  // Length of the entire data section for all nodes

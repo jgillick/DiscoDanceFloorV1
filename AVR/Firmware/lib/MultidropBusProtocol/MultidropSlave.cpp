@@ -1,6 +1,9 @@
 
 #include "MultidropSlave.h"
 #include <util/crc16.h>
+#include <util/delay.h>
+
+#define MAX_ADDR_ERRORS 5
 
 #define SOM 0xFF
 
@@ -62,6 +65,7 @@ void MultidropSlave::startMessage() {
   fullDataLength = 0;
   fullDataIndex = 0;
   dataStartOffset = 0;
+  errCount = 0;
 
   messageCRC = ~0;
   messageCRC = _crc16_update(messageCRC, SOM);
@@ -76,7 +80,7 @@ uint8_t MultidropSlave::read() {
     parseState = NO_MESSAGE;
   }
 
-  // No new data, but our prev daisy line just went high
+  // No new data, but our prev daisy line became enabled
   if (command == CMD_ADDRESS && parsePos == ADDR_UNSET && isPrevDaisyEnabled() && !serial->available()){
     processAddressing(lastAddr);
   }
@@ -185,8 +189,15 @@ void MultidropSlave::parseHeader(uint8_t b) {
   // Length, 2nd byte (if in batch mode)
   else if (parsePos == HEADER_LEN1_POS) {
     length = b;
-    fullDataLength = length * numNodes;
-    dataStartOffset = myAddress-1 * length; // Where our data starts in the message
+
+    if (myAddress != 0) {
+      fullDataLength = length * numNodes;
+      dataStartOffset = (myAddress - 1) * length; // Where our data starts in the message
+    }
+    else {
+      // We don't have an address, so cannot read message
+      length = 0;
+    }
 
     parsePos = HEADER_LEN2_POS;
     parseState = DATA_SECTION;
@@ -221,7 +232,7 @@ void MultidropSlave::processData(uint8_t b) {
     sendResponse();
     return;
   }
-
+  
   // If we're in our data section, fill data buffer
   else if (fullDataIndex >= dataStartOffset && dataIndex < length){
     dataBuffer[dataIndex++] = b;
@@ -257,8 +268,23 @@ void MultidropSlave::processAddressing(uint8_t b) {
       }
       // Not confirmed, try again
       else {
-        parsePos = ADDR_UNSET;
-        lastAddr = b;
+        errCount++;
+
+        // After too many errors, give up and enable the next node
+        if (errCount >= MAX_ADDR_ERRORS) {
+          myAddress = 0;
+          parsePos = ADDR_ERROR;
+          setNextDaisyValue(1);
+        }
+        // Master ending message
+        else if (b == 0xFF) {
+          myAddress = 0;
+          parsePos = ADDR_ERROR;
+        }
+        else {
+          parsePos = ADDR_UNSET;
+          lastAddr = b;
+        }
         return;
       }
     }
@@ -266,6 +292,7 @@ void MultidropSlave::processAddressing(uint8_t b) {
     else if(b >= lastAddr) {
       b++;
       parsePos = ADDR_SENT;
+      _delay_ms(1);
       serial->enable_write();
       serial->write(b);
       serial->enable_read();

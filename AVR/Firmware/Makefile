@@ -21,7 +21,7 @@ F_CPU = 20000000UL
 LIBDIR = ./lib/QTouch/ ./lib/MultidropBusProtocol
 
 ## Other source files
-SOURCES =
+SOURCES = ./lib/QTouch/*.cpp ./lib/MultidropBusProtocol*.cpp
 
 ## Assembler source files
 ASRC = ./lib/QTouch/qt_asm_tiny_mega.S

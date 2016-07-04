@@ -28,9 +28,9 @@ void read_sensor();
                                 message commands
 ----------------------------------------------------------------------------*/
 
-#define CMD_SET_COLOR     0xA1
-#define RUN_SENSOR        0xA2
-#define SEND_SENSOR_VALUE 0xA3
+#define CMD_SET_COLOR         0xA1
+#define CMD_RUN_SENSOR        0xA2
+#define CMD_SEND_SENSOR_VALUE 0xA3
 
 /*----------------------------------------------------------------------------
                                 global variables
@@ -48,6 +48,8 @@ MultidropSlave comm(&serial);
 ----------------------------------------------------------------------------*/
 
 int main() {
+  DDRB |= (1 << PB2); // debug LED
+
   start_clock();
   init_comm();
   init_pwm();
@@ -64,16 +66,27 @@ int main() {
  * Initialize the serial communication bus.
  */
 void init_comm() {
+  // enable pull-up on RX pin
+  PORTD |= (1 << PD0);
+
   serial.begin(9600);
+  
+  // Define daisy chain lines and let polarity (next/previous) be determined at runtime
   comm.addDaisyChain(PC3, &DDRC, &PORTC, &PINC,
-                    PC4, &DDRC, &PORTC, &PINC);
+                     PC4, &DDRC, &PORTC, &PINC);
 }
 
 /**
  * Handle a new message received from the bus.
  */
 void handle_message() {
-
+  switch (comm.getCommand()) {
+    case CMD_SET_COLOR:
+      if (comm.getDataLen() == 3) {
+        set_color(comm.getData());
+      }
+    break;
+  }
 }
 
 /**
