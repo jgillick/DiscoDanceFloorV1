@@ -19,9 +19,10 @@ export const CMD = {
   RESET:            0xFA,
   ADDRESS:          0xFB,
   NULL:             0xFF,
-  SET_COLOR:        0x01,
-  RUN_SENSOR:       0x02,
-  GET_SENSOR_VALUE: 0x03
+
+  SET_COLOR:        0xA1,
+  RUN_SENSOR:       0xA2,
+  GET_SENSOR_VALUE: 0xA3
 };
 
 // Message flags
@@ -35,10 +36,13 @@ export class BusProtocolService {
 
   private _crc:number;
   private _dataLen:number;
+  private _fullDataLen:number;
   private _sentLen:number;
   private _responseDefault:number[];
   private _responseTimer:any = null;
+  private _responseCount:number;
   private _promiseResolvers:Function[];
+  private _msgOptions:any;
 
   private _messageObserver:Observer<number>;
   private _addressCorrections:number = 0;
@@ -46,6 +50,7 @@ export class BusProtocolService {
 
   nodeNum:number = 0;
   msgSubscription:ConnectableObservable<number>;
+  msgResponse:any;
 
   constructor(private _serial:CommunicationService) {
   }
@@ -78,13 +83,33 @@ export class BusProtocolService {
       destination?:number,
       responseDefault?:number[]
     }={}): Observable<number> {
+    this.msgResponse = [];
 
     let data = [];
 
+    this._msgOptions = options;
     this._dataLen = length;
+    this._fullDataLen = this._dataLen;
+    this._responseCount = 0;
     this._sentLen = 0;
     this._crc = 0xFFFF;
     this._promiseResolvers = [];
+
+    // Fill in default response
+    if (options.responseMsg) {
+      if (!options.responseDefault) {
+        options.responseDefault = [];
+      }
+      options.responseDefault.splice(this._dataLen); // cut down to size
+
+      // Fill rest of array with zeros
+      if (options.responseDefault.length < this._dataLen) {
+        let start = options.responseDefault.length;
+        let end = this._dataLen - 1;
+        options.responseDefault[end] = 0;
+        options.responseDefault.fill(start, end, 0);
+      }
+    }
 
     let flags = 0;
     if (options.batchMode) {
@@ -110,7 +135,7 @@ export class BusProtocolService {
     // Length
     if (options.batchMode) {
       data.push(this.nodeNum);
-      this._dataLen = length * this.nodeNum;
+      this._fullDataLen = length * this.nodeNum;
     }
     data.push(length);
 
@@ -130,9 +155,12 @@ export class BusProtocolService {
    */
   startAddressing(startFrom:number=0): Observable<number> {
     this.nodeNum = startFrom;
+    this.msgResponse = [];
 
+    this._msgOptions = {};
     this._sentLen = 0;
     this._dataLen = 0;
+    this._fullDataLen = 0;
     this._addressing = true;
     this._addressCorrections = 0;
     this._promiseResolvers = [];
@@ -165,8 +193,8 @@ export class BusProtocolService {
 
     this._sentLen += data.length;
     
-    if (this._sentLen > this._dataLen) {
-      this._messageObserver.error('Cannot send more data than you defined as length ('+ this._dataLen +')');
+    if (this._sentLen > this._fullDataLen) {
+      this._messageObserver.error('Cannot send more data than you defined as length ('+ this._fullDataLen +')');
       return;
     }
     
@@ -240,6 +268,7 @@ export class BusProtocolService {
    * @param {Buffer} data A buffer of new data from the serial connection
    */
   private _handleData(data:Buffer): void {
+    this._restartResponseTimer();
 
     // Address responses
     if (this._addressing) {
@@ -267,6 +296,15 @@ export class BusProtocolService {
         }
       }
     }
+    // Response data
+    else if (this._msgOptions.responseMsg) {
+      this._pushDataToResponse(data);
+
+      // End message if we've received everything
+      if (this._responseCount >= this._fullDataLen) {
+        this.endMessage();
+      }
+    }
   }
 
   /**
@@ -278,6 +316,68 @@ export class BusProtocolService {
     if (this._addressing) {
       this.endMessage();
     }
+    // Response message 
+    else if (this._msgOptions.responseMsg) {
+      let index = this._getResponseNodeIndex();
+      let nodeMsg = this.msgResponse[index];
+      let fill = this._msgOptions.responseDefault.slice(nodeMsg.length);
+
+      // Fill in missing node message data
+      if (fill.length > 0) {
+        this._pushDataToResponse(Buffer.from(fill));
+      }
+    }
+  }
+
+  /**
+   * Push received data to the proper sections in the reponse object
+   */
+  private _pushDataToResponse(data:Buffer): void {
+    // Break it up across node arrays
+    for (let i = 0; i < data.length; i++) {
+      let n = this._getResponseNodeIndex();
+      if (n === -1) return; // Response buffer full
+      this.msgResponse[n].push(data.readUInt8(i));
+      this._responseCount++;
+    }
+  }
+
+  /**
+   * Return the message response node index we're currently processing.
+   * For messages that are not batch mode (single message responses) this will always be 0.
+   * This returns -1 when all data has been received.
+   * 
+   * @return {number}
+   */
+  private _getResponseNodeIndex(): number {
+    if (this._msgOptions.batchMode && this._msgOptions.responseMsg) {
+      let i = this.msgResponse.length - 1;
+
+      if (i < 0) {
+        i = 0;
+      }
+      // This node's response is full, move to the next node
+      else if (this.msgResponse[i] && this.msgResponse[i].length == this._dataLen) {
+        i++;
+      }
+
+      // All nodes have returned, return -1
+      if (i > this.nodeNum) {
+        return -1;
+      }
+
+      // Init the next response group
+      if (typeof this.msgResponse[i] === 'undefined') {
+        this.msgResponse[0] = [];
+      }
+    }
+    else {
+      // If all data has been received, return -1
+      if (this.msgResponse[0] && this.msgResponse[0].length >= this._dataLen) {
+        return -1;
+      }
+    }
+    return 0;
   }
 
   /**
@@ -292,6 +392,9 @@ export class BusProtocolService {
         this._handleResponseTimeout();
       }, RESPONSE_TIMEOUT); 
     });
+  }
+  private _restartResponseTimer() {
+    this._startResponseTimer();
   }
 
   /**
@@ -323,7 +426,7 @@ export class BusProtocolService {
   private _sendBytes(values:number[], updateCRC:boolean=true): void {
     let buff = Buffer.from(values);
     this._serial.port.write(buff);
-
+    
     if (updateCRC) {
       for (let i = 0; i < buff.length; i++) {
         this._crc = this._generateCRC(this._crc, buff.readUInt8(i));

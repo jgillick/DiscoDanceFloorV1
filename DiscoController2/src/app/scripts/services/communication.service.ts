@@ -182,7 +182,8 @@ export class CommunicationService {
    * @param {boolean} addressing Start the communications by dynamically addressing all floor nodes.
    */
   run(): void {
-    if (this._running) return;
+    if (this._running || this.bus.nodeNum === 0) return;
+
     this._running = true;
     this._runIteration = 0;
     this._runIterator();

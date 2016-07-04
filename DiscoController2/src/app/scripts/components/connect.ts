@@ -46,6 +46,7 @@ export class ConnectComponent implements OnInit {
     this._storage.setItem("connection.keepAddresses", this.keepAddresses);
 
     // Connect to the device
+    this.nodes = 0;
     this.connecting = true;
     this._comm.connect(this.selectedDevice)
     .then(() => {
