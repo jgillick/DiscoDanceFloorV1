@@ -29,6 +29,13 @@ export class FloorCell {
   }
 
   /**
+   * Is this cell currently fading.
+   */
+  get isFading(): boolean {
+    return this._fadeCtrl.isFading;
+  }
+
+  /**
    * Set this cell to a specific RGB color.
    * @param {byte[]} color An array of colors.
    * @param {boolean} stopFade Optional, default = true
