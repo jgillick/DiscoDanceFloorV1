@@ -1,12 +1,44 @@
 /**
- * Represents a list of floor cells that you can interact
- * with all at once. The cells are listed in their physical
- * order on the floor.
+ * Represents a list of floor cells, with helper methods that let you 
+ * act on all cells at once.
+ * 
+ * Changing all cells
+ * ------------------
+ * ```
+ *  // Fade all cells on the floor to red in 1 second.
+ *  floorCellList.fadeToColor([255, 0, 0], 1000);
+ * ```
+ * 
+ * Looping through all the cells with the iterator
+ * -----------------------------------------------
+ * ```
+ * for (let cell of floorCellList) {
+ *    console.log(cell.sensorValue);
+ * }
+ * ```
+ * 
+ * Accessing cells by index
+ * ------------------------
+ * ```
+ *  for (var i = 0; i < floorCellList.length; i++) {
+ *    let cell = floorCellList.atIndex(i);
+ *    console.log(cell.sensorValue);
+ *  }
+ * ```
+ * 
+ * Get a cell by X/Y coordinate
+ * ----------------------------
+ * ```
+ *  let x = 5,
+ *      y = 10;
+ *  let cell = floorCellList.at(x, y);
+ * ```
+ * 
  */
 
 import { FloorCell } from './floor-cell';
 
-export class FloorCellList {
+export class FloorCellList implements Iterable<FloorCell> {
 
   constructor(private _cells: FloorCell[], 
               private _map: FloorCell[][], 
@@ -28,6 +60,34 @@ export class FloorCellList {
     return {
       x: this._x,
       y: this._y
+    }
+  }
+
+  /**
+   * Iterator handler that let's us get all the cells in a `for of` statement:
+   * 
+   * for (let cell of floorCellList) {
+   *    console.log(cell);
+   * }
+   * 
+   */
+  [Symbol.iterator]() {
+    let pointer = 0;
+    let cells = this._cells;
+
+    return {
+      next(): IteratorResult<FloorCell> {
+        if (pointer < cells.length) {
+          return {
+            done: false,
+            value: cells[pointer++]
+          }
+        } else {
+          return {
+            done: true
+          }
+        }
+      }
     }
   }
 
