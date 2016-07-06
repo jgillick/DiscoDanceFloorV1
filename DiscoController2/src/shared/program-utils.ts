@@ -5,7 +5,11 @@
 
 
 /**
- * Generate a random non-white RGB color
+ * Generate a random non-white RGB color.
+ * This method will also ensure that at least one 
+ * color has a value that is greater than 124.
+ * 
+ * @return {number[]} The RGB color.
  */
 export function randomColor(): [number, number, number] {
   let color:[number, number, number] = [0, 0, 0],
@@ -27,4 +31,16 @@ export function randomColor(): [number, number, number] {
   }
 
   return color;
+}
+
+/**
+ * Generate a random number between min (inclusive) and max (inclusive).
+ * 
+ * @param {number} min The minimum value the number can be
+ * @param {number} max The maxiumum value the number can be
+ * 
+ * @return {number} the random number.
+ */
+export function randomNumber(min:number, max:number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
