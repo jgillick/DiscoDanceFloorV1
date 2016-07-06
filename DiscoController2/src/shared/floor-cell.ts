@@ -6,6 +6,7 @@ import { FadeController } from './fade-controller';
  * Represents a single square on the floor.
  */
 export class FloorCell {
+  sensorValue: boolean = false;
   index: number;
   x: number;
   y: number;

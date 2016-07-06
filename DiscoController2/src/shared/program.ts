@@ -70,10 +70,9 @@ export interface IProgramInfo {
    */
   audio?: boolean;
 
-  /**
-   * When the player is on auto-play mode, this is the
-   * minimum recommended number of seconds this program
-   * should play before moving to the next program.
+  /** 
+   * The minimum recommended seconds this program
+   * should play when the player is on auto-play mode.
    */
   miniumumTime?: number;
 }
@@ -81,7 +80,7 @@ export interface IProgramInfo {
 /**
  * Class decorator to apply program information to the class
  */
-export function Program(info: any) {
+export function Program(info: IProgramInfo) {
   return function (constructor: Function) {
     constructor.prototype.info = info;
   }

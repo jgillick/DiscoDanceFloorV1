@@ -17,6 +17,7 @@ import { ProgramControllerComponent } from './program-controller';
 @Component({
   selector: 'disco-floor',
   templateUrl: './html/disco-floor.html',
+  styleUrls: ['./styles/floor.css'],
   directives: [ ProgramControllerComponent ],
 })
 export class DiscoFloorComponent implements OnInit  {
@@ -120,5 +121,12 @@ export class DiscoFloorComponent implements OnInit  {
         colorCss = `rgb(${colorValues.join(',')})`;
     
     return colorCss;
+  }
+
+  /**
+   * Toggle the touch sensor value for a cell
+   */
+  toggleSensorValue(floorCell: FloorCell): void {
+    floorCell.sensorValue = !floorCell.sensorValue; 
   }
 }

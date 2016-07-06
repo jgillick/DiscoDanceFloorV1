@@ -1,5 +1,3 @@
-'use strict';
-
 import { IProgram, Program } from '../shared/program';
 import { FloorCellList } from '../shared/floor-cell-list';
 
@@ -14,7 +12,6 @@ const ANIMATION_TIME = 800;
   name: 'Primaries',
   description: 'Fades in primary colors, chasing from one cell to the next',
   interactive: false,
-  lightShow: true,
   miniumumTime: 1
 })
 class Primaries implements IProgram {

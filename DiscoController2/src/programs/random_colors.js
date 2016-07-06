@@ -58,22 +58,10 @@ module.exports = {
 //   generateColor: function(){
 //     var color,
 //         maxValue = 255,
-//         random = Math.floor(Math.round() * 4);
-
-//     // If the sum of all three colors is less than 200, it will be too
-//     // light to see
-//     // do {
-//     //  color = [ Math.floor(Math.random() * 128) + 127,
-//     //        Math.floor(Math.random() * 128) + 127,
-//     //        Math.floor(Math.random() * 128) + 127 ];
-
-//     //  total = color.reduce(function(a, b) { return a + b});
-//     // } while(total < 200)
-
-
+//         random = Math.floor(Math.random() * 4);
 //     // Fade off or on, 1 in 3 times
-//     if (Math.floor(Math.round() * 3) === 1) {
-//       if (Math.floor(Math.round() * 1) === 0) {
+//     if (Math.floor(Math.random() * 3) === 1) {
+//       if (Math.floor(Math.random() * 1) === 0) {
 //         color = [0,0,0];
 //       } else {
 //         color = [255,255,255];
@@ -87,9 +75,9 @@ module.exports = {
 //         if (c == 1) maxValue =  125;
 //         color[rgbSelect] = Math.floor(Math.random() * maxValue);
 //       }
-//       // color = [ Math.round(Math.random() * 256),
-//       //    Math.round(Math.random() * 256),
-//       //    Math.round(Math.random() * 256)
+//       // color = [ Math.random(Math.random() * 256),
+//       //    Math.random(Math.random() * 256),
+//       //    Math.random(Math.random() * 256)
 //       //  ];
 //     }
 

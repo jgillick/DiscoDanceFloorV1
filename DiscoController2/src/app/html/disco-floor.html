@@ -5,10 +5,12 @@
       <tr *ngFor="let yItem of tableCells">
         <td
           *ngFor="let cell of yItem"
+          (click)="toggleSensorValue(cell)"
+          [class.empty]="!cell"
+          [class.touched]="cell.sensorValue"
           [style.height.px]="cellSize"
           [style.width.px]="cellSize"
-          [style.backgroundColor]="cellColorCSS(cell)"
-          [class.empty]="!cell"></td>
+          [style.backgroundColor]="cellColorCSS(cell)"></td>
       </tr>
     </table>
   </div>
