@@ -55,10 +55,12 @@ class RandomColors implements IProgram {
         color = [200, 200, 200];
       }
     }
+    // Random color
     else {
       color = randomColor();
     }
 
+    // Start fade
     cell.fadeToColor(color, duration);
   }
 }

@@ -133,7 +133,7 @@ export class ConnectComponent implements OnInit {
       this.deviceList = devices;
 
       // Update list every 2000ms
-      setTimeout(this._updateDeviceList.bind(this), 2000);
+      setTimeout(this._updateDeviceList.bind(this), 1000);
     });
   }
 }
