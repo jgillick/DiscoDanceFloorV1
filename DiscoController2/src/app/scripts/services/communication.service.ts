@@ -186,7 +186,7 @@ export class CommunicationService {
 
     this._running = true;
     this._runIteration = 0;
-    this._runIterator();
+    this._runThread();
 
     // Frame per second counter
     let fpsCounter = setInterval( () => {
@@ -277,10 +277,10 @@ export class CommunicationService {
   }
 
   /**
-   * The run loop iterator, that is called continously to communicate with the dance floor.
+   * The run loop thread, that is called continously to communicate with the dance floor.
    * See `run()` for more information.
    */
-  private _runIterator(): void {
+  private _runThread(): void {
     if (!this._running) return;
 
     let subject:Observable<any>;
@@ -294,34 +294,62 @@ export class CommunicationService {
         subject = this._runSensors();
         nextDelay = SENSOR_DELAY;
         break;
-      // case 2: // Get sensor data
-      //   subject = this._readSensorData();
-      //   break;
+      case 2: // Get sensor data
+        subject = this._readSensorData();
+        break;
       
       // Loop back to the start
       default:
         this._frames++;
         this._runIteration = 0;
-        this._runIterator();
+        this._runThread();
         return;
     };
 
     let runNext = function() {
       this._runIteration++;
-      setTimeout(this._runIterator.bind(this), nextDelay);
+      setTimeout(this._runThread.bind(this), nextDelay);
     }.bind(this);
 
+    // Subscribe to the message
     if (subject) {
       subject.subscribe(
         null,
+        // Errors
         (err) => {
           console.error(err);
           runNext();
         },
+        // Done
         () => {
+          // Handle all responses
+          this.bus.messageResponse.forEach( (data, i) => {
+            this._handleNodeResponse(i, data);
+          })
           runNext();  
         }
       );
+    }
+  }
+
+  /**
+   * Handle a response for a single node
+   */
+  private _handleNodeResponse(nodeIndex:number, data:number[]): void {
+    let node = this._floorBuilder.cellList.atIndex(nodeIndex);
+    if (!node) {
+      console.error("Response for node at index, ", nodeIndex, ", doesn't exists");
+      return;
+    }
+
+    switch (this.bus.messageCommand) {
+      case CMD.GET_SENSOR_VALUE:
+        let val = data[0];
+
+        if (val === 0 || val === 1) { // verify it's a valid value
+          node.sensorValue = !!(val);
+        } 
+      break;
     }
   }
 
@@ -349,7 +377,8 @@ export class CommunicationService {
   private _runSensors(): Observable<any> {
     this.bus.startMessage(CMD.RUN_SENSOR, 1, { batchMode: true });
 
-    // Only have half the cells checking their sensors at a time
+    // Only ask half the cells checking their sensors at a time
+    // this will hopefully prevent as much parasitic capacitance
     let even = (this._sensorSelect > 0);
     for (let i = 0; i < this.bus.nodeNum; i++) {
       let val = (i % 2 == 0 && even) ? 1 : 0;
@@ -364,11 +393,10 @@ export class CommunicationService {
    * Get the sensor data from all nodes
    */
   private _readSensorData(): Observable<any> {
-    var subject = this.bus.startMessage(CMD.GET_SENSOR_VALUE, 1, { 
+    return this.bus.startMessage(CMD.GET_SENSOR_VALUE, 1, { 
       batchMode: true, 
       responseMsg: true,
-      responseDefault: [-1] 
+      responseDefault: [0xFF] 
     });
-    return subject;
   }
 }

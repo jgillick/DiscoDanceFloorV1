@@ -5,6 +5,58 @@
  * 
  * This class sends messages, processes responses and coordinates dynamic
  * addressing. 
+ * 
+ * SENDING A STANDARD MESSAGE 
+ * ===========================
+ * ```
+ *  // Send RGB color values to node 2
+ *  const CMD_SET_COLOR = 0xA1;
+ *  bus.startMessage(CMD_SET_COLOR, 3, { 
+ *    destination: 2 
+ *  });
+ *  bus.sendData([ 0xFF, 0x00, 0x99 ]);
+ *  bus.endMessage();
+ * ```
+ * 
+ * BROADCASTING MESSAGES TO ALL NODES
+ * ==================================
+ * ```
+ *  // Send RGB color values to all node
+ *  const CMD_SET_COLOR = 0xA1;
+ *  bus.startMessage(CMD_SET_COLOR, 3, { 
+ *    batchMode: true 
+ *  });
+ *  bus.sendData([ 0xFF, 0x00, 0x99 ]); // node 1
+ *  bus.sendData([ 0x00, 0x66, 0x20 ]); // node 2
+ *  // ...
+ *  bus.endMessage();
+ * ```
+ * 
+ * ASKING FOR A RESPONSE FROM ALL NODES
+ * ====================================
+ * ```
+ *  // Get the sensor value
+ *  const CMD_GET_VALUE = 0xA2;
+ *  let source = bus.startMessage(CMD_GET_VALUE, 1, {
+ *    batchMode: true,
+ *    responseDefault: [0]
+ *  });
+ * 
+ *  // Subscribe to responses
+ *  source.subscribe(
+ *    (resp) => console.log('Real-time response from a single node', resp);
+ *    (err) => console.error('ERROR: ', err);
+ *    () => console.log('All responses', bus.messageResponse);
+ *  )
+ * ```
+ * 
+ * NOTE ABOUT SUBSCRIBING
+ * ======================
+ * The observable that is returned is "hot", meaning it has started by the time
+ * you have already started subscribing to it. So the first `next` value you 
+ * received might not be the first that has been sent.
+ * 
+ * To get all the response values, look at the `messageResponse` property.
  */
 
 import { Observable, Observer, ConnectableObservable } from 'rxjs';
@@ -43,14 +95,16 @@ export class BusProtocolService {
   private _responseCount:number;
   private _promiseResolvers:Function[];
   private _msgOptions:any;
+  private _msgCommand:number = 0;
+  private _msgDone:boolean = true;
 
-  private _messageObserver:Observer<number>;
+  private _messageObserver:Observer<any>;
   private _addressCorrections:number = 0;
   private _addressing:boolean = false;
 
   nodeNum:number = 0;
-  msgSubscription:ConnectableObservable<number>;
-  msgResponse:any;
+  messageSubscription:ConnectableObservable<any>;
+  messageResponse:any;
 
   constructor(private _serial:CommunicationService) {
   }
@@ -60,7 +114,7 @@ export class BusProtocolService {
    */
   connect() {
     // Handle new data received on the bus
-    this._serial.port.on('data', d => {
+    this._serial.port.on('data', d => { 
       this._handleData(d);
     });
     
@@ -72,22 +126,38 @@ export class BusProtocolService {
   
 
   /**
-   * Start a new message
+   * Start a new message. 
+   * Unless it is a response message, it will need to be closed with `endMessage()`.
+   * 
+   * @param {number} command The message command.
+   * @param {number} length The length of the data (per node, for batchMode) we're planning to send.
+   * @param {Object} options Other message options (see section below.)
+   *
+   * MESSAGE OPTIONS
+   *  + destination {number}       - The node we're sending this message to (default: broadcast to all)
+   *  + batchMode   {boolean}      - True if we're sending data for each node in this one message. 
+   *                                 (only for broadcast messages)
+   *  + responseMsg {boolean}      - True if we are asking nodes for a response.
+   *  + responseDefault {number[]} - If a node doesn't response, this is the default response.
+   * 
+   * @return {Observable} An rxjs observable object to track the message through completion.
    */
   startMessage(
     command:number,
     length:number,
     options:{
+      destination?:number,
       batchMode?:boolean,
       responseMsg?:boolean,
-      destination?:number,
       responseDefault?:number[]
     }={}): Observable<number> {
-    this.msgResponse = [];
+    this.messageResponse = [];
 
     let data = [];
 
+    this._msgDone = false;
     this._msgOptions = options;
+    this._msgCommand = command;
     this._dataLen = length;
     this._fullDataLen = this._dataLen;
     this._responseCount = 0;
@@ -151,13 +221,15 @@ export class BusProtocolService {
    * 
    * @param {number} startFrom (optional) The address to start from.
    * 
-   * @return {Promise}
+   * @return {Observable}
    */
   startAddressing(startFrom:number=0): Observable<number> {
     this.nodeNum = startFrom;
-    this.msgResponse = [];
+    this.messageResponse = [];
 
+    this._msgDone = false;
     this._msgOptions = {};
+    this._msgCommand = CMD.ADDRESS;
     this._sentLen = 0;
     this._dataLen = 0;
     this._fullDataLen = 0;
@@ -181,12 +253,22 @@ export class BusProtocolService {
     return this._createMessageObserver();
   }
 
+
+  /**
+   * Get the current message command.
+   */
+  get messageCommand(): number {
+    return this._msgCommand;
+  }
+
   /**
    * Write data to the body of the message
    * 
    * @param {number[]} data An array of bytes.
    */
   sendData(data:any): void {
+    if (this._msgDone) return;
+
     if (typeof data.length === 'undefined') {
       data = [data];
     }
@@ -231,6 +313,10 @@ export class BusProtocolService {
     let crcBytes = this._convert16bitTo8(this._crc);
     this._sendBytes(crcBytes, false);
 
+    // Reset daisy and end message
+    this._serial.setDaisy(false);
+    this._msgDone = true;
+
     // Resolve message observer
     if (this._messageObserver) {
 
@@ -246,20 +332,20 @@ export class BusProtocolService {
         this._messageObserver.complete();
       });
     } 
-    return this.msgSubscription;
+    return this.messageSubscription;
   }
 
   /**
    * Create a hot observer for a message 
    */
-  private _createMessageObserver():Observable<number> {
-    let source = Observable.create( (observer:Observer<number>) => {
+  private _createMessageObserver():Observable<any> {
+    let source = Observable.create( (observer:Observer<any>) => {
       this._messageObserver = observer;
     });
 
-    this.msgSubscription = source.publish();
-    this.msgSubscription.connect();
-    return this.msgSubscription;
+    this.messageSubscription = source.publish();
+    this.messageSubscription.connect();
+    return this.messageSubscription;
   }
 
   /**
@@ -268,11 +354,13 @@ export class BusProtocolService {
    * @param {Buffer} data A buffer of new data from the serial connection
    */
   private _handleData(data:Buffer): void {
+    if (this._msgDone) return;
+
     this._restartResponseTimer();
 
     // Address responses
     if (this._addressing) {
-      let addr = data.readUInt8(data.length-1); // We only care about the final byte
+      let addr = data.readUInt8(data.length - 1); // We only care about the final byte
 
       // Verify it's 1 larger than the last address
       if (addr == this.nodeNum + 1) {
@@ -311,6 +399,7 @@ export class BusProtocolService {
    * Handle a timeout waiting for a response value
    */
   private _handleResponseTimeout(): void {
+    if (this._msgDone) return;
     
     // Addressing timeout 
     if (this._addressing) {
@@ -319,25 +408,41 @@ export class BusProtocolService {
     // Response message 
     else if (this._msgOptions.responseMsg) {
       let index = this._getResponseNodeIndex();
-      let nodeMsg = this.msgResponse[index];
+      let nodeMsg = this.messageResponse[index] || [];
       let fill = this._msgOptions.responseDefault.slice(nodeMsg.length);
 
       // Fill in missing node message data
       if (fill.length > 0) {
         this._pushDataToResponse(Buffer.from(fill));
+        this._sendBytes(fill);
       }
     }
   }
 
   /**
    * Push received data to the proper sections in the reponse object
+   * 
+   * @param {Buffer} data The data to push to the response arrays
    */
   private _pushDataToResponse(data:Buffer): void {
+    if (this._msgDone) return;
+
     // Break it up across node arrays
     for (let i = 0; i < data.length; i++) {
       let n = this._getResponseNodeIndex();
-      if (n === -1) return; // Response buffer full
-      this.msgResponse[n].push(data.readUInt8(i));
+      let byte = data.readUInt8(i);
+
+      if (n === -1) return; // Response buffer full)
+      this.messageResponse[n].push(byte);
+
+      // Full node message, inform the observable 
+      if (this.messageResponse[n].length === this._dataLen) {
+        this._messageObserver.next({
+          node: n,
+          data: this.messageResponse[n]
+        });
+      }
+
       this._responseCount++;
     }
   }
@@ -351,13 +456,13 @@ export class BusProtocolService {
    */
   private _getResponseNodeIndex(): number {
     if (this._msgOptions.batchMode && this._msgOptions.responseMsg) {
-      let i = this.msgResponse.length - 1;
+      let i = this.messageResponse.length - 1;
 
       if (i < 0) {
         i = 0;
       }
       // This node's response is full, move to the next node
-      else if (this.msgResponse[i] && this.msgResponse[i].length == this._dataLen) {
+      else if (this.messageResponse[i] && this.messageResponse[i].length === this._dataLen) {
         i++;
       }
 
@@ -367,13 +472,14 @@ export class BusProtocolService {
       }
 
       // Init the next response group
-      if (typeof this.msgResponse[i] === 'undefined') {
-        this.msgResponse[0] = [];
+      if (typeof this.messageResponse[i] === 'undefined') {
+        this.messageResponse[i] = [];
       }
+      return i;
     }
     else {
       // If all data has been received, return -1
-      if (this.msgResponse[0] && this.msgResponse[0].length >= this._dataLen) {
+      if (this.messageResponse[0] && this.messageResponse[0].length >= this._dataLen) {
         return -1;
       }
     }
@@ -384,6 +490,8 @@ export class BusProtocolService {
    * Start (or restart) the response value timeout counter.
    */
   private _startResponseTimer() {
+    if (this._msgDone) return;
+
     this._stopResponseTimer();
 
     // Start timer once data has sent
