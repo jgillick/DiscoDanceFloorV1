@@ -6,7 +6,7 @@
 #define PWM_H
 
 // Red LED PWM settings.
-void init_red() {
+void red_pwm_init() {
   DDRD   |= (1 << PD6);
   TCCR0A |= (1 << COM0A1); // Compare output mode: PWM
   TCCR0A |= (1 << WGM00);  // Waveform generator: PWM phase correct
@@ -14,7 +14,7 @@ void init_red() {
 }
 
 // Green LED PWM settings.
-void init_green() {
+void green_pwm_init() {
   DDRD   |= (1 << PD5);
   TCCR0A |= (1 << COM0B1); // Compare output mode: PWM
   TCCR0A |= (1 << WGM00);  // Waveform generator: PWM phase correct
@@ -22,7 +22,7 @@ void init_green() {
 }
 
 // Blue LED PWM settings.
-void init_blue() {
+void blue_pwm_init() {
   DDRB   |= (1 << PB1); 
   TCCR1A |= (1 << COM1A1); // Compare output mode: PWM
   TCCR1A |= (1 << WGM10);  // PWM, Phase Correct, 8-bit
@@ -30,10 +30,10 @@ void init_blue() {
 }
 
 // Setup all three LEDs
-void init_pwm() {
-  init_red();
-  init_green();
-  init_blue();
+void pwm_init() {
+  red_pwm_init();
+  green_pwm_init();
+  blue_pwm_init();
 }
 
 // Set the red PWM value

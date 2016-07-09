@@ -14,8 +14,9 @@ MultidropSlave::MultidropSlave(MultidropData *_serial) : Multidrop(_serial) {
   parseState = NO_MESSAGE;
 }
 
-void MultidropSlave::reset() {
+void MultidropSlave::resetNode() {
   address = 0;
+  myAddress = 0;
   setNextDaisyValue(0);
 }
 
@@ -90,7 +91,7 @@ uint8_t MultidropSlave::read() {
     if(parse(serial->read()) == 1 && !isResponseMessage()) {
 
       if (command == CMD_RESET) {
-        reset();
+        resetNode();
       }
 
       return 1;
@@ -120,7 +121,7 @@ uint8_t MultidropSlave::parse(uint8_t b) {
       parsePos = EOM1_POS;
     }
     else { // Second byte
-      crcByte = messageCRC & 0xff;
+      crcByte = messageCRC & 0xFF;
       parsePos = EOM2_POS;
     }
 
@@ -226,20 +227,20 @@ void MultidropSlave::parseHeader(uint8_t b) {
 void MultidropSlave::processData(uint8_t b) {
   messageCRC = _crc16_update(messageCRC, b);
   parsePos = DATA_POS;
-
-  // Provide a response to fill our data section
-  if (isResponseMessage() && fullDataIndex == dataStartOffset) {
-    sendResponse();
-    return;
-  }
   
   // If we're in our data section, fill data buffer
-  else if (fullDataIndex >= dataStartOffset && dataIndex < length){
+  if (fullDataIndex >= dataStartOffset && dataIndex < length){
     dataBuffer[dataIndex++] = b;
     dataBuffer[dataIndex] = '\0';
   }
 
   fullDataIndex++;
+
+  // It's our turn to respond with some data
+  if (isResponseMessage() && fullDataIndex == dataStartOffset) {
+    sendResponse();
+    return;
+  }
 
   // Done with data
   if (fullDataIndex >= fullDataLength) {
@@ -324,6 +325,9 @@ void MultidropSlave::sendResponse() {
   if (responseHandler) {
     uint8_t i;
     responseHandler(command, dataBuffer, length);
+
+    // Make sure we're not butting up against other data that was just received
+    _delay_us(150);
 
     // Write response buffer to stream
     serial->enable_write();

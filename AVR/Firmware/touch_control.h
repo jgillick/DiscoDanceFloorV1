@@ -7,6 +7,7 @@ void touch_init( void );
 
 /* This will call all the functions for touch related measurement */
 uint8_t touch_measure(uint8_t sensor_num, uint16_t current_time);
+uint8_t touch_measure(uint8_t sensor_num, uint16_t current_time, uint8_t max_measurements);
 
 /*  Assign the parameters values to global configuration parameter structure    */
 static void qt_set_parameters( void );

@@ -20,8 +20,8 @@ class MultidropSlave: public Multidrop {
 public:
   MultidropSlave(MultidropData *_serial);
 
-  // Reset the node
-  void reset();
+  // Reset the node's stat and unset it's address.
+  void resetNode();
 
   // Set our address on the network
   // Without setting this, the only messages we'll receive are broadcasts
