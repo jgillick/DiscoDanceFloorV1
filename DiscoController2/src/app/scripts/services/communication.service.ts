@@ -29,8 +29,8 @@ import { BusProtocolService, CMD } from './bus-protocol.service';
 import { FloorBuilderService } from './floor-builder.service';
 
 const BAUD_RATE       = 9600; //250000;
-const CMD_LOOP_DELAY  = 10; // Time between commands
-const SENSOR_DELAY    = 50; // Delay after the sensor check command
+const CMD_LOOP_DELAY  = 1;    // Milliseconds between commands
+const SENSOR_DELAY    = 30;   // Delay after the sensor check command (milliseconds)
 
 @Injectable()
 export class CommunicationService {

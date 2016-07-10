@@ -63,7 +63,7 @@ import { Observable, Observer, ConnectableObservable } from 'rxjs';
 import { CommunicationService } from './communication.service';
 
 const BROADCAST_ADDRESS = 0;
-const RESPONSE_TIMEOUT = 50;
+const RESPONSE_TIMEOUT = 20;
 const MAX_ADDRESS_CORRECTIONS = 10;
 
 // Commands
