@@ -261,7 +261,7 @@ export class CommunicationService {
 
           // Complete
           () => {
-            // See if there are any straglers
+            // Address one more time, just to catch any slow nodes
             if (addressTimes === 1) {
               nodeNum = this.bus.nodeNum;
               setTimeout(addrNodes.bind(this), 500);

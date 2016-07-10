@@ -53,6 +53,7 @@ export class ConnectComponent implements OnInit {
       
       if (this.keepAddresses) {
         this.connecting = false;
+        this._comm.bus.nodeNum = this._storage.getItem("connection.numNodes") || 0;
         this._comm.run();
       }
       else {
@@ -104,24 +105,28 @@ export class ConnectComponent implements OnInit {
       // Error
       (err) => {
         alert('Error addressing nodes '+ err);
+        console.error(err);
         this.connecting = false;
       },
       // Done
       () => {
         this.connecting = false;
-        this._storage.setItem("connection.numNodes", this._comm.bus.nodeNum);
-
-        // Rebuild floor
-        let dimensions = this._storage.getItem('settings.dimensions');
-        this._floorBuilder.build(
-          this._comm.bus.nodeNum,
-          dimensions.x,
-          dimensions.y
-        );
-
-        // Run communications loop
+        this._rebuildFloor();
         this._comm.run();
       }
+    );
+  }
+
+  /**
+   * After addressing nodes, rebuild the floor
+   */
+  private _rebuildFloor(): void {
+    this._storage.setItem("connection.numNodes", this._comm.bus.nodeNum);
+    let dimensions = this._storage.getItem('settings.dimensions');
+    this._floorBuilder.build(
+      this._comm.bus.nodeNum,
+      dimensions.x,
+      dimensions.y
     );
   }
 
