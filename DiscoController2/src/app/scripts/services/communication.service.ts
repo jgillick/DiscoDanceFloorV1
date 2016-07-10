@@ -224,7 +224,11 @@ export class CommunicationService {
       let addressTimes = 0;
       let nodeNum = 0;
 
-      // Reset nodes
+      // Clear the bus with a null message
+      this.bus.startMessage(CMD.NULL, 0);
+      this.bus.endMessage();
+
+      // Reset node addresses
       this.bus.startMessage(CMD.RESET, 0);
       this.bus.endMessage().subscribe(
         null,

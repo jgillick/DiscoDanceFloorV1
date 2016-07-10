@@ -195,8 +195,6 @@ export class BusProtocolService {
 
     // Header
     data = [
-      0xFF,
-      0xFF,
       flags,
       options.destination,
       command
@@ -210,6 +208,7 @@ export class BusProtocolService {
     data.push(length);
 
     // Send
+    this._sendBytes([0xFF, 0xFF], false)
     this._sendBytes(data);
 
     // Message observer

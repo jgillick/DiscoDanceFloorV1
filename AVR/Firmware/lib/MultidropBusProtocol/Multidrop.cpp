@@ -84,14 +84,15 @@ void Multidrop::setDaisyChainPolarity(uint8_t prev, uint8_t next) {
   }
 }
 
-void Multidrop::setNextDaisyValue(uint8_t val) {
-  if (!daisy_next) return;
+uint8_t Multidrop::setNextDaisyValue(uint8_t val) {
+  if (!daisy_next) return 0;
 
   uint8_t mask = (daisy_next == 2) ? (1 << d2_num) : (1 << d1_num);
+  volatile uint8_t* ddr = (daisy_next == 2) ? d2_ddr : d1_ddr;
   volatile uint8_t* port = (daisy_next == 2) ? d2_port : d1_port;
 
   // Set as output
-  *d2_ddr |= (1 << d2_num);
+  *ddr |= mask;
 
   // Active low
   if (val) {
@@ -99,7 +100,7 @@ void Multidrop::setNextDaisyValue(uint8_t val) {
   } else {
     *port |= mask;
   }
-
+  return 1;
 }
 
 uint8_t Multidrop::isPrevDaisyEnabled() {
