@@ -23,12 +23,6 @@ extern qt_touch_lib_config_data_t qt_config_data;
 /* touch output - measurement data */
 extern qt_touch_lib_measure_data_t qt_measure_data;
 
-/*----------------------------------------------------------------------------
-                                    macros
-----------------------------------------------------------------------------*/
-#define GET_SENSOR_STATE(SENSOR_NUMBER) qt_measure_data.qt_touch_status.sensor_states[(SENSOR_NUMBER/8)] & (1 << (SENSOR_NUMBER % 8))
-
-
 /*============================================================================
  * Initialize the QTouch library
  *============================================================================*/
@@ -84,21 +78,20 @@ uint8_t touch_measure(uint8_t sensor_num, uint16_t current_time) {
  * Set the QTouch detection parameters and threshold values.
  *===========================================================================*/
 static void qt_set_parameters() {
-  qt_config_data.qt_di              = 4;
+  qt_config_data.qt_di              = 4; // how many positive sequential aquisitions to represent a touch.
   qt_config_data.qt_neg_drift_rate  = 20;
   qt_config_data.qt_pos_drift_rate  = 5;
   qt_config_data.qt_max_on_duration = 0;
   qt_config_data.qt_drift_hold_time = 20;
   qt_config_data.qt_recal_threshold = RECAL_50;
-  qt_config_data.qt_pos_recal_delay = 10;
+  qt_config_data.qt_pos_recal_delay = 3;
 }
 
 /*============================================================================
  * Setup all the sensors
  *============================================================================*/
 static void config_sensors() {
-	qt_enable_key( CHANNEL_0, NO_AKS_GROUP, 7u, HYST_25 );
-  // qt_enable_key( CHANNEL_0, NO_AKS_GROUP, 7u, HYST_6_25 );
+  qt_enable_key( CHANNEL_0, NO_AKS_GROUP, 20u, HYST_6_25 );
 }
 
 

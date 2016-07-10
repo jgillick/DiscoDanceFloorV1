@@ -12,6 +12,7 @@
 #include "clock.h"
 #include "touch.h"
 #include "touch_control.h"
+#include "touch_api.h"
 #include "MultidropSlave.h"
 #include "MultidropData485.h"
 #include "version.h"
@@ -21,6 +22,7 @@
 ----------------------------------------------------------------------------*/
 
 void comm_init();
+void comm_run();
 void handle_message();
 void handle_response_msg(uint8_t command, uint8_t *buff,uint8_t len);
 void set_color(uint8_t *rgb);
@@ -41,15 +43,19 @@ void read_sensor();
 
 // The last touch sensor value
 uint8_t sensor_value = 0;
+uint8_t reading_sensor = 0;
 
 // Bus serial
 MultidropData485 serial(PD2, &DDRD, &PORTD);
 MultidropSlave comm(&serial);
 
 /*----------------------------------------------------------------------------
-                                main program
+                                program
 ----------------------------------------------------------------------------*/
 
+/**
+ * Main program
+ */
 int main() {
   DDRB |= (1 << PB2); // debug LED
 
@@ -58,11 +64,9 @@ int main() {
   pwm_init();
   touch_init();
 
+  // Program loop
   while(1) {
-    comm.read();
-    if (comm.hasNewMessage() && comm.isAddressedToMe()) {
-      handle_message();
-    }
+    comm_run();
   }
 }
 
@@ -81,6 +85,16 @@ void comm_init() {
 
   // Response message handler
   comm.setResponseHandler(&handle_response_msg);
+}
+
+/**
+ * Read the next bytes from the communication bus and handle any messages.
+ */
+void comm_run() {
+  comm.read();
+  if (comm.hasNewMessage() && comm.isAddressedToMe()) {
+    handle_message();
+  }
 }
 
 /**
@@ -136,8 +150,32 @@ void set_color(uint8_t *rgb) {
  * Get a new reading from the touch sensor.
  */
 void read_sensor() {
-  sensor_value = (touch_measure(0, millis()) != 0);
+  if (reading_sensor) return;
+  reading_sensor = 1;
 
+  // Default MCU register value
+  uint8_t mcuRegister = MCUCR;
+  uint16_t status_flag = 0u;
+
+  do {
+    // Disable pull-ups
+    MCUCR |= (1 << PUD);
+
+    // Measure sensor
+    status_flag = qt_measure_sensors( millis() );
+    
+    // Reset pull-ups
+    MCUCR = mcuRegister;
+
+    // Check bus before next measurement
+    comm_run();
+  } while (status_flag & QTLIB_BURST_AGAIN); // check again, if burst flag is set
+  
+  // Get sensor value
+  sensor_value = GET_SENSOR_STATE(0);
+  reading_sensor = 0;
+
+  // Debug LED
   if (sensor_value) {
     PORTB |= (1 << PB2);
   } else {
