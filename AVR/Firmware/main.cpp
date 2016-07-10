@@ -42,14 +42,16 @@ void read_sensor();
 #define CMD_SEND_SENSOR_VALUE 0xA3
 
 /*----------------------------------------------------------------------------
-                                EEPROM addresses
+                          EEPROM byte addresses
 ----------------------------------------------------------------------------*/
 
+// Since node addresses can go up to 0xFF and EEPROM default values are 0xFF, 
+// we need to have an extra byte to tell us if the address has been set.
 #define EEPROM_HAS_ADDR  (uint8_t*)0
 #define EEPROM_ADDR      (uint8_t*)1
 
 /*----------------------------------------------------------------------------
-                                global variables
+                          global variables
 ----------------------------------------------------------------------------*/
 
 // The last touch sensor value
@@ -61,7 +63,7 @@ MultidropData485 serial(PD2, &DDRD, &PORTD);
 MultidropSlave comm(&serial);
 
 /*----------------------------------------------------------------------------
-                                program
+                              program
 ----------------------------------------------------------------------------*/
 
 /**
