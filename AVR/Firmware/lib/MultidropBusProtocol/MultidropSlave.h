@@ -27,6 +27,9 @@ public:
   // Without setting this, the only messages we'll receive are broadcasts
   void setAddress(uint8_t);
 
+  // Get our address on the network
+  uint8_t getAddress();
+
   // Reads the latest data on the serial line
   // returns 1 if a new message is ready
   uint8_t read();
@@ -40,9 +43,6 @@ public:
 
   // The message command
   uint8_t getCommand();
-
-  // Get the message address
-  uint8_t getAddress();
 
   // Return the data of the message
   uint8_t* getData();

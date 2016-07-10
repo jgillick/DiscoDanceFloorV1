@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include <avr/io.h>
+#include <avr/eeprom.h> 
 
 #include "pwm.h"
 #include "clock.h"
@@ -32,10 +33,20 @@ void read_sensor();
                                 message commands
 ----------------------------------------------------------------------------*/
 
+#define CMD_RESET_NODE       0xFA
+#define CMD_SET_ADDRESS      0xFB
+
 #define CMD_GET_VERSION       0xA0
 #define CMD_SET_COLOR         0xA1
 #define CMD_CHECK_SENSOR      0xA2
 #define CMD_SEND_SENSOR_VALUE 0xA3
+
+/*----------------------------------------------------------------------------
+                                EEPROM addresses
+----------------------------------------------------------------------------*/
+
+#define EEPROM_HAS_ADDR  (uint8_t*)0
+#define EEPROM_ADDR      (uint8_t*)1
 
 /*----------------------------------------------------------------------------
                                 global variables
@@ -85,6 +96,12 @@ void comm_init() {
 
   // Response message handler
   comm.setResponseHandler(&handle_response_msg);
+
+  // Check if we have an address in the EEPROM
+  uint8_t addr = eeprom_read_byte(EEPROM_ADDR);
+  if (addr > 0 && eeprom_read_byte(EEPROM_HAS_ADDR) == 1) {
+    comm.setAddress(addr);
+  }
 }
 
 /**
@@ -102,6 +119,20 @@ void comm_run() {
  */
 void handle_message() {
   switch (comm.getCommand()) {
+    // We've been assigned an address
+    case CMD_SET_ADDRESS:
+      if (comm.getAddress() > 0) {
+        eeprom_write_byte(EEPROM_HAS_ADDR, 1);
+        eeprom_write_byte(EEPROM_ADDR, comm.getAddress());
+      }
+    break;
+
+    // The node and it's address reset
+    case CMD_RESET_NODE:
+      eeprom_write_byte(EEPROM_HAS_ADDR, 0);
+      eeprom_write_byte(EEPROM_ADDR, 0);
+    break;
+
     // Set the LED color
     case CMD_SET_COLOR:
       if (comm.getDataLen() == 3) {

@@ -54,6 +54,7 @@ export class ConnectComponent implements OnInit {
       if (this.keepAddresses) {
         this.connecting = false;
         this._comm.bus.nodeNum = this._storage.getItem("connection.numNodes") || 0;
+        this._rebuildFloor();
         this._comm.run();
       }
       else {

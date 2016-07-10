@@ -53,6 +53,10 @@ void MultidropSlave::setAddress(uint8_t addr) {
   myAddress = addr;
 }
 
+uint8_t MultidropSlave::getAddress() {
+  return myAddress;
+}
+
 void MultidropSlave::setResponseHandler(multidropResponseFunction handler) {
   responseHandler = handler;
 }
