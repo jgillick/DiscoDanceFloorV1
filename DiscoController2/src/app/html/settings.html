@@ -4,16 +4,28 @@
   <form>
     <fieldset class="dimensions">
       <legend>Floor Dimensions</legend>
-      <input type="number" [(ngModel)]="settings.dimensions.x" (ngModelChange)="saveForm($event)" />
+      <input
+        type="number"
+        name="dimensions-x"
+        [(ngModel)]="settings.dimensions.x"
+        (ngModelChange)="saveForm($event)" />
       x
-      <input type="number" [(ngModel)]="settings.dimensions.y" (ngModelChange)="saveForm($event)" />
+      <input
+        type="number"
+        name="dimensions-y"
+        [(ngModel)]="settings.dimensions.y"
+        (ngModelChange)="saveForm($event)" />
     </fieldset>
     <fieldset>
       <legend>Startup</legend>
       <ol>
         <li>
           <label>
-            <input type="checkbox" [(ngModel)]="settings.autoConnect" (ngModelChange)="saveForm($event)" />
+            <input
+              type="checkbox"
+              name="auto-connect"
+              [(ngModel)]="settings.autoConnect"
+              (ngModelChange)="saveForm($event)" />
             Automatically reconnect to the floor
           </label>
           <p class="note">
@@ -22,7 +34,11 @@
         </li>
         <li>
           <label>
-            <input type="checkbox" [(ngModel)]="settings.autoPlay" (ngModelChange)="saveForm($event)" />
+            <input
+              type="checkbox"
+              name="auto-play"
+              [(ngModel)]="settings.autoPlay"
+              (ngModelChange)="saveForm($event)" />
             Start playing programs automatically.
           </label>
         </li>

@@ -3,6 +3,7 @@
  */
 
 import { Component } from '@angular/core';
+
 import { StorageService } from '../services/storage.service';
 
 @Component({
@@ -14,12 +15,6 @@ export class SettingsComponent{
 
   constructor(private _storage:StorageService) {
     this.settings = this._storage.getItem("settings");
-  }
-
-  /**
-   * Load the settings
-   */
-  ngOnInit() {
   }
 
   /**

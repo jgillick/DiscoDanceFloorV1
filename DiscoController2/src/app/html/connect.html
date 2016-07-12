@@ -8,7 +8,7 @@
 
       <ol>
         <li>
-          <select [(ngModel)]="selectedDevice">
+          <select name="device" [(ngModel)]="selectedDevice">
             <option value="" *ngIf="!deviceList.length">Loading...</option>
             <option value="" *ngIf="deviceList.length"></option>
             <option *ngFor="let device of deviceList" value="{{ device }}">
@@ -18,7 +18,11 @@
         </li>
         <li>
           <label>
-            <input type="checkbox" [(ngModel)]="keepAddresses" value="1" checked />
+            <input
+              type="checkbox"
+              name="keey-addresse"
+              [(ngModel)]="keepAddresses"
+              value="1" />
             Reuse node addresses from the last connection.
           </label>
         </li>

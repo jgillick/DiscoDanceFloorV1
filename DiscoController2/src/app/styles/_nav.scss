@@ -27,7 +27,7 @@
       &:hover {
         background: #222;
       }
-      &.router-link-active {
+      &.active {
         background: #000;
         height: $header-height + 5px;
         line-height: 1.2em;
