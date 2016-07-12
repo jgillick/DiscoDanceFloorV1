@@ -3,6 +3,7 @@
  */
 import { Component, OnInit } from '@angular/core';
 import { ProgramControllerService } from '../services/program-controller.service';
+import { FloorBuilderService } from '../services/floor-builder.service';
 import { IProgram } from '../../../shared/program';
 
 @Component ({
@@ -14,7 +15,9 @@ export class ProgramControllerComponent implements OnInit {
   
   private _selectedProgram: IProgram;
 
-  constructor(private _programService:ProgramControllerService) {
+  constructor(
+    private _programService:ProgramControllerService,
+    private _floorBuilder:FloorBuilderService) {
   }
 
   ngOnInit() {
@@ -81,9 +84,14 @@ export class ProgramControllerComponent implements OnInit {
   }
   
   /**
-   * Stop the current program
+   * Stop the current program and fade floor to off.
    */
   stopProgram(): void {
-    this._programService.stopProgram();
+    let done = () => {
+      this._floorBuilder.cellList.fadeToColor([0, 0, 0], 1000);
+    }
+
+    this._programService.stopProgram()
+    .then(done, done);
   }
 }
