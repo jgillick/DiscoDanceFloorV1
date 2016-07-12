@@ -2,11 +2,16 @@ import { IProgram, Program } from '../shared/program';
 import { FloorCellList } from '../shared/floor-cell-list';
 
 var floorCellList,
-    countdown,
-    startColor;
+    loopCountdown,
+    modeCountdown,
+    programMode = 0,
+    startColor = 0,
+    solidModeColor = 0,
+    flashingState = 0;
 
-const CHANGE_TIME = 600
-const ANIMATION_TIME = 450;
+const LOOP_TIME = 750
+const ANIMATION_TIME = 500;
+const CHANGE_MODE_TIME = 6000;
 
 @Program({
   name: 'Primaries',
@@ -15,6 +20,7 @@ const ANIMATION_TIME = 450;
   miniumumTime: 1
 })
 class Primaries implements IProgram {
+  private _programModes = [];
 
   /**
    * Start the program
@@ -22,7 +28,17 @@ class Primaries implements IProgram {
   start(cellList: FloorCellList): Promise<void> {
     floorCellList = cellList;
     startColor = 0;
-    countdown = 0;
+    solidModeColor = 0;
+    loopCountdown = 0;
+    programMode = 0;
+    flashingState = 1;
+    modeCountdown = CHANGE_MODE_TIME;
+
+    this._programModes = [
+      this.alternatingColorMode,
+      this.flashingAlternatingCellMode,
+      this.flashingSolidMode
+    ]
     
     return floorCellList.fadeToColor([0,0,0], ANIMATION_TIME);
   }
@@ -38,12 +54,31 @@ class Primaries implements IProgram {
    * Floor run loop
    */
   loop(time:number): void {
-    countdown -= time;
+    loopCountdown -= time;
+    modeCountdown -= time;
 
-    if (countdown > 0) {
+    if (loopCountdown > 0) {
       return;
     }
+    loopCountdown = LOOP_TIME + loopCountdown;
 
+    // Run programs
+    this._programModes[programMode]();
+
+    // Change mode
+    if (modeCountdown <= 0) {
+      programMode++;
+      if (programMode >= this._programModes.length) {
+        programMode = 0;
+      }
+      modeCountdown = CHANGE_MODE_TIME;
+    }
+  }
+
+  /**
+   * Alternate red, green, blue across all floor cells
+   */
+  alternatingColorMode() {
     let colorIndex = startColor,
         dimensions = floorCellList.dimensions;
 
@@ -66,116 +101,49 @@ class Primaries implements IProgram {
     if (++startColor > 2) {
       startColor = 0;
     }
-    countdown = CHANGE_TIME + countdown;
+  }
+
+  /**
+   * Flash all cells (alternating R, G, B)off and on
+   */
+  flashingAlternatingCellMode() {
+    let colorIndex = startColor,
+        dimensions = floorCellList.dimensions;
+
+    for (let y = 0; y < dimensions.y; y++) {
+      for (let x = 0; x < dimensions.x; x++) {
+        let color = [0, 0, 0],
+            cell = floorCellList.at(x, y);
+        
+        if (!cell) continue;
+
+        if (flashingState == 1) {
+          color[colorIndex] = 255;
+        } 
+        cell.fadeToColor(color, ANIMATION_TIME);
+
+        if (++colorIndex > 2) {
+          colorIndex = 0;
+        }
+      }
+    }
+
+    flashingState = (flashingState === 1) ? 0 : 1;
+  }
+
+  /**
+   * Flash solid R, G, B colors
+   */
+  flashingSolidMode() {
+    let color = [0, 0, 0];
+
+    color[solidModeColor] = 255;
+    floorCellList.fadeToColor(color, ANIMATION_TIME);
+
+    solidModeColor++;
+    if (solidModeColor > 2) {
+      solidModeColor = 0;
+    }
   }
 }
 module.exports = new Primaries();
-
-// var Promise = require("bluebird"),
-//     discoUtils = require('../lib/utils.js');
-
-// var floorController = null,
-//     running = true,
-//     colorSelect = [],
-//     globalSelect = 0,
-//     offsState = 0,
-//     fadeDuration = 500,
-//     timeout, modeTimeout,
-//     mode = 'running';
-
-// module.exports = {
-
-//   info: {
-//     name: 'Primaries',
-//     description: 'Fades in primary colors, chasing from one cell to the next',
-//     interactive: false,
-//     lightShow: true,
-//     miniumumTime: 1
-//   },
-
-//   /**
-//     Setup the program
-//   */
-//   init: function(controller){
-//     running = true;
-//     floorController = controller;
-//     return Promise.resolve();
-//   },
-
-//   /**
-//     Shutdown this program and clear memory
-//   */
-//   shutdown: function(){
-//     running = false;
-//     clearTimeout(timeout);
-//     return floorController.changeAllCells([0,0,0], 500);
-//   },
-
-//   /**
-//     Run the program
-//   */
-//   run: function(){
-//     if (!running) return;
-
-//     modeTimeout = setInterval(function(){
-//       switch(mode) {
-//         case 'running':
-//           mode = 'offs';
-//           break;
-//         case 'offs':
-//           mode = 'all';
-//           break;
-//         case 'all':
-//           mode = 'running';
-//           break;
-//       }
-//     }, 6000);
-
-//     program();
-//   }
-
-// };
-
-// function program() {
-//   var dimensions = floorController.getDimensions(),
-//       i = 0, last = 0,
-//       rgb, color, cell;
-
-//   offsState = (offsState) ? 0 : 1;
-//   globalSelect = discoUtils.wrap(globalSelect + 1, 0, 2);
-
-//   for (var y = 0; y < dimensions.y; y++) {
-//     for (var x = 0; x < dimensions.x; x++) {
-//       try {
-//         color = [0,0,0];
-//         rgb = colorSelect[i] || last;
-//         cell = floorController.getCell(x, y);
-
-//         if (!cell) continue;
-//         if (mode == 'running') {
-//           rgb = discoUtils.wrap(rgb + 1, 0, 2);
-//           last = rgb;
-//           colorSelect[i] = rgb;
-
-//           color[rgb] = 255;
-//         }
-//         else if (mode == 'offs' && offsState){
-//           color[rgb] = 255;
-//         }
-//         else if (mode == 'all') {
-//           color[globalSelect] = 255;
-//         }
-
-//         cell.fadeToColor(color, fadeDuration);
-
-//       } catch(e) {
-//         console.error(e);
-//         // console.error(e.stack);
-//       }
-//       i++;
-//     }
-//   }
-
-//   floorController.updateFadeFrame();
-//   timeout = setTimeout(program, fadeDuration * 1.5);
-// }
