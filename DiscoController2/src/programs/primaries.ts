@@ -5,8 +5,8 @@ var floorCellList,
     countdown,
     startColor;
 
-const CHANGE_TIME = 2000
-const ANIMATION_TIME = 800;
+const CHANGE_TIME = 600
+const ANIMATION_TIME = 450;
 
 @Program({
   name: 'Primaries',

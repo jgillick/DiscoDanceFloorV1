@@ -48,7 +48,6 @@ export class ProgramControllerService {
       
       // Run promise
       promise
-      .then( () => {console.log('Done!') })
       .then(cancelTimeout)
       .then(resolve, reject);
       
@@ -124,7 +123,6 @@ export class ProgramControllerService {
             .then(() => {
               finishStartup.bind(this)();
               this.runningProgram = program;
-              this.startRunLoop();
               resolve();
             })
             .catch((err) => {
