@@ -3,7 +3,6 @@
     "es6-shim": "registry:dt/es6-shim#0.31.2+20160317120654",
     "jquery": "registry:dt/jquery#1.10.0+20160417213236",
     "lodash": "registry:dt/lodash#3.10.0+20160330154726",
-    "mediastream": "file:/Users/Jeremy/Downloads/MediaStream.d.ts",
     "node": "registry:dt/node#4.0.0+20160505172921",
     "serialport": "registry:dt/serialport#0.0.0+20160602142228"
   }
