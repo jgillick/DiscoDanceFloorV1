@@ -1,14 +1,38 @@
-'use strict';
+import { IProgram, Program } from '../shared/program';
+import { FloorCellList } from '../shared/floor-cell-list';
 
-module.exports = {
-  info: {
-    name: 'Rain',
-    description: 'Rains color down from above',
-    interactive: false,
-    lightShow: true,
-    miniumumTime: 1
+@Program({
+  name: 'Rain',
+  description: 'Rains color down from above',
+  interactive: false,
+  miniumumTime: 1
+})
+class Rain implements IProgram {
+  floorCellList:FloorCellList;
+
+  /**
+   * Start the program
+   */
+  start(cellList: FloorCellList): Promise<void> {
+    this.floorCellList = cellList;
+    return Promise.resolve();
   }
-};
+
+  /**
+   * Shutdown the program
+   */
+  shutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * Floor run loop
+   */
+  loop(time:number): void {
+  }
+}
+
+module.exports = new Rain();
 
 // var Promise = require("bluebird"),
 //     discoUtils = require('../lib/utils.js');

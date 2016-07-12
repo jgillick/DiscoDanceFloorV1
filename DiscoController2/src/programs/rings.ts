@@ -1,14 +1,38 @@
-'use strict';
+import { IProgram, Program } from '../shared/program';
+import { FloorCellList } from '../shared/floor-cell-list';
 
-module.exports = {
-  info: {
-    name: 'Rings',
-    description: 'Creates rings of color that flash and run',
-    interactive: false,
-    lightShow: true,
-    miniumumTime: 1
+@Program({
+  name: 'Rings',
+  description: 'Creates rings of color that flash and run',
+  interactive: false,
+  miniumumTime: 1
+})
+class Rings implements IProgram {
+  floorCellList:FloorCellList;
+
+  /**
+   * Start the program
+   */
+  start(cellList: FloorCellList): Promise<void> {
+    this.floorCellList = cellList;
+    return Promise.resolve();
+  }
+
+  /**
+   * Shutdown the program
+   */
+  shutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * Floor run loop
+   */
+  loop(time:number): void {
   }
 }
+
+module.exports = new Rings();
 
 // var Promise = require("bluebird"),
 //     discoUtils = require('../lib/utils.js');;
