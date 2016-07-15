@@ -1,14 +1,14 @@
 /**
- * Represents a list of floor cells, with helper methods that let you 
+ * Represents a list of floor cells, with helper methods that let you
  * act on all cells at once.
- * 
+ *
  * Changing all cells
  * ------------------
  * ```
  *  // Fade all cells on the floor to red in 1 second.
  *  floorCellList.fadeToColor([255, 0, 0], 1000);
  * ```
- * 
+ *
  * Looping through all the cells with the iterator
  * -----------------------------------------------
  * ```
@@ -16,7 +16,7 @@
  *    console.log(cell.sensorValue);
  * }
  * ```
- * 
+ *
  * Accessing cells by index
  * ------------------------
  * ```
@@ -25,7 +25,7 @@
  *    console.log(cell.sensorValue);
  *  }
  * ```
- * 
+ *
  * Get a cell by X/Y coordinate
  * ----------------------------
  * ```
@@ -33,16 +33,16 @@
  *      y = 10;
  *  let cell = floorCellList.at(x, y);
  * ```
- * 
+ *
  */
 
 import { FloorCell } from './floor-cell';
 
 export class FloorCellList implements Iterable<FloorCell> {
 
-  constructor(private _cells: FloorCell[], 
-              private _map: FloorCell[][], 
-              private _x: number, 
+  constructor(private _cells: FloorCell[],
+              private _map: FloorCell[][],
+              private _x: number,
               private _y: number) {
   }
 
@@ -65,11 +65,11 @@ export class FloorCellList implements Iterable<FloorCell> {
 
   /**
    * Iterator handler that let's us get all the cells in a `for of` statement:
-   * 
+   *
    * for (let cell of floorCellList) {
    *    console.log(cell);
    * }
-   * 
+   *
    */
   [Symbol.iterator]() {
     let pointer = 0;
@@ -109,8 +109,15 @@ export class FloorCellList implements Iterable<FloorCell> {
   }
 
   /**
+   * Return all the cells that are currently being touched
+   */
+  getTouched(): FloorCell[] {
+    return this._cells.filter( (cell:FloorCell) => cell.sensorValue === true );
+  }
+
+  /**
    * Set a solid, unfading, color for all cells.
-   * 
+   *
    * @param {byte[]} color An array of colors.
    */
   setColor(color:[number, number, number]) {
@@ -121,10 +128,10 @@ export class FloorCellList implements Iterable<FloorCell> {
 
   /**
    * Fade all cells to a color.
-   * 
+   *
    * @param {byte[]} color The color to fade to.
    * @param {number} duration The time, in milliseconds, it should take to fade to this color.
-   * 
+   *
    * @return {Promise} The fade promise of the last cell in the list
    */
   fadeToColor(color: [number, number, number], duration: number) {
@@ -134,7 +141,7 @@ export class FloorCellList implements Iterable<FloorCell> {
     }
     return fadePromise;
   }
-  
+
   /**
    * If the fading color for all cells.
    */
@@ -143,7 +150,7 @@ export class FloorCellList implements Iterable<FloorCell> {
       cell.updateColor();
     }
   }
-  
+
   /**
    * This stops the fade without firing the fade promise.
    * This is used to force stop a program, where the promise might lead to another action.
