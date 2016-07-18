@@ -28,9 +28,9 @@ import { FloorCell } from '../../../shared/floor-cell';
 import { BusProtocolService, CMD } from './bus-protocol.service';
 import { FloorBuilderService } from './floor-builder.service';
 
-const BAUD_RATE       = 9600; //250000;
+const BAUD_RATE       = 250000;
 const CMD_LOOP_DELAY  = 1;    // Milliseconds between commands
-const SENSOR_DELAY    = 30;   // Delay after the sensor check command (milliseconds)
+const SENSOR_DELAY    = 20;   // Delay after the sensor check command (milliseconds)
 
 @Injectable()
 export class CommunicationService {

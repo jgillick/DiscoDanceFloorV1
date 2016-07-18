@@ -64,6 +64,7 @@ import { CommunicationService } from './communication.service';
 
 const BROADCAST_ADDRESS = 0;
 const RESPONSE_TIMEOUT = 20;
+const ADDR_RESPONSE_TIMEOUT = 20;
 const MAX_ADDRESS_CORRECTIONS = 10;
 
 // Commands
@@ -410,6 +411,8 @@ export class BusProtocolService {
       let nodeMsg = this.messageResponse[index] || [];
       let fill = this._msgOptions.responseDefault.slice(nodeMsg.length);
 
+      console.error('Response timeout for node', index + 1);
+
       // Fill in missing node message data
       if (fill.length > 0) {
         this._pushDataToResponse(Buffer.from(fill));
@@ -494,10 +497,11 @@ export class BusProtocolService {
     this._stopResponseTimer();
 
     // Start timer once data has sent
+    let timeout = (this._addressing) ? ADDR_RESPONSE_TIMEOUT : RESPONSE_TIMEOUT;
     this._serial.port.drain(() => {
       this._responseTimer = setTimeout(() => {
         this._handleResponseTimeout();
-      }, RESPONSE_TIMEOUT); 
+      }, timeout); 
     });
   }
   private _restartResponseTimer() {
