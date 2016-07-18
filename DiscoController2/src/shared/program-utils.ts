@@ -22,21 +22,21 @@ export function randomColor(options?: {
   let color:[number, number, number] = [0, 0, 0],
       maxValue = 125,
       minValue = 0,
-      customMaxValues = [];
+      customMaxValues = null;
 
   if (options && options.max) {
     customMaxValues = [
       options.max.r,
       options.max.g,
       options.max.b
-    ]
+    ];
   }
 
   // Set 2 of the primary colors to random values
   for (var c = 0; c < 2; c++) {
     let rgbSelect = Math.floor(Math.random() * 3); // Which RGB color to set
 
-    maxValue = (customMaxValues) ? customMaxValues[rgbSelect] : customMaxValues;
+    maxValue = (customMaxValues) ? customMaxValues[rgbSelect] : maxValue;
     if (minValue >= maxValue) {
       minValue = 0;
     }
