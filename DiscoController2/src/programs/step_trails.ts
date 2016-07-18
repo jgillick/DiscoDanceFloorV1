@@ -8,7 +8,7 @@ const FADE_OFF_DURATION = 2000;
 const COLOR_CHANGE_TIME = 10000;
 
 const WAIT_TIMEOUT   = 8000; // How many seconds before starting wait fade
-const WAIT_FADE_TIME = 4000; // Wait fade speed.
+const WAIT_FADE_TIME = 2000; // Wait fade speed.
 
 @Program({
 	name: 'Step Trails',
@@ -29,7 +29,7 @@ class StepTrails implements IProgram {
 
 	isWaitFading:boolean = false;
 	waitFadingTimeout:number = 0;
-	waitFadeDirection:number = 1; 
+	waitFadeDirection:number = -1; 
 
 	/**
 	 * Start the program
@@ -111,7 +111,7 @@ class StepTrails implements IProgram {
 			if (this.waitFadeDirection > 0) {
 				this.floorCellList.fadeToColor([200, 200, 200], WAIT_FADE_TIME * 0.9);
 			} else {
-				this.floorCellList.fadeToColor(this.offColor, WAIT_FADE_TIME * 0.9);
+				this.floorCellList.fadeToColor([10, 10, 10], WAIT_FADE_TIME * 0.9);
 			}
 		}
 	}
