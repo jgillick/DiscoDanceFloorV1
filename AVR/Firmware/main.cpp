@@ -30,9 +30,13 @@ void set_color(uint8_t *rgb);
 void read_sensor();
 
 /*----------------------------------------------------------------------------
-                                message commands
+                                constants
 ----------------------------------------------------------------------------*/
 
+#define BUS_BAUD 250000
+#define DEFAULT_DETECT_THRES 10u
+
+// Message commands
 #define CMD_RESET_NODE       0xFA
 #define CMD_SET_ADDRESS      0xFB
 
@@ -41,14 +45,15 @@ void read_sensor();
 #define CMD_CHECK_SENSOR      0xA2
 #define CMD_SEND_SENSOR_VALUE 0xA3
 
-/*----------------------------------------------------------------------------
-                          EEPROM byte addresses
-----------------------------------------------------------------------------*/
+#define CMD_SET_DETECT_THRESH 0xB0 // Set the QTouch detection threshold
+
+// EEPROM byte addresses
 
 // Since node addresses can go up to 0xFF and EEPROM default values are 0xFF, 
 // we need to have an extra byte to tell us if the address has been set.
-#define EEPROM_HAS_ADDR  (uint8_t*)0
-#define EEPROM_ADDR      (uint8_t*)1
+#define EEPROM_HAS_ADDR      (uint8_t*)0
+#define EEPROM_ADDR          (uint8_t*)1
+#define EEPROM_DETECT_THRESH (uint8_t*)2
 
 /*----------------------------------------------------------------------------
                           global variables
@@ -71,11 +76,17 @@ MultidropSlave comm(&serial);
  */
 int main() {
   DDRB |= (1 << PB2); // debug LED
-
+  
   start_clock();
   comm_init();
   pwm_init();
-  touch_init();
+
+  // Setup touch sensor
+  uint8_t detect_threshold = eeprom_read_byte(EEPROM_DETECT_THRESH);
+  if (detect_threshold == 0xFF) {
+    detect_threshold = DEFAULT_DETECT_THRES;
+  }
+  touch_init(detect_threshold);
 
   // Program loop
   while(1) {
@@ -90,7 +101,7 @@ void comm_init() {
   // enable pull-up on RX pin
   PORTD |= (1 << PD0);
 
-  serial.begin(9600);
+  serial.begin(BUS_BAUD);
   
   // Define daisy chain lines and let polarity (next/previous) be determined at runtime
   comm.addDaisyChain(PC3, &DDRC, &PORTC, &PINC,
@@ -141,9 +152,19 @@ void handle_message() {
         set_color(comm.getData());
       }
     break;
+
     // Check the touch sensor
     case CMD_CHECK_SENSOR:
       read_sensor();
+    break;
+
+    // Set the touch sensor detect threshold
+    case CMD_SET_DETECT_THRESH:
+      if (comm.getDataLen() == 1) {
+        uint8_t dt = comm.getData()[0]; 
+        eeprom_write_byte(EEPROM_DETECT_THRESH, dt);
+        touch_init(dt);
+      }
     break;
   }
 }

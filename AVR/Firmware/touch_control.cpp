@@ -26,10 +26,10 @@ extern qt_touch_lib_measure_data_t qt_measure_data;
 /*============================================================================
  * Initialize the QTouch library
  *============================================================================*/
-void touch_init( void ) {
+void touch_init( uint8_t detect_threshold ) {
 
   /* Configure the Sensors as keys or Keys With Rotor/Sliders in this function */
-  config_sensors();
+  config_sensors(detect_threshold);
 
   /* initialise touch sensing */
   qt_init_sensing();
@@ -83,15 +83,15 @@ static void qt_set_parameters() {
   qt_config_data.qt_pos_drift_rate  = 5;
   qt_config_data.qt_max_on_duration = 0;
   qt_config_data.qt_drift_hold_time = 20;
-  qt_config_data.qt_recal_threshold = RECAL_50;
+  qt_config_data.qt_recal_threshold = RECAL_25;
   qt_config_data.qt_pos_recal_delay = 3;
 }
 
 /*============================================================================
  * Setup all the sensors
  *============================================================================*/
-static void config_sensors() {
-  qt_enable_key( CHANNEL_0, NO_AKS_GROUP, 20u, HYST_6_25 );
+static void config_sensors(uint8_t detect_threshold) {
+  qt_enable_key( CHANNEL_0, NO_AKS_GROUP, detect_threshold, HYST_6_25 );
 }
 
 

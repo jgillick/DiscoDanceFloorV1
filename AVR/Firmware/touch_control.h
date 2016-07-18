@@ -6,7 +6,7 @@
 #define GET_SENSOR_STATE(SENSOR_NUMBER) qt_measure_data.qt_touch_status.sensor_states[(SENSOR_NUMBER/8)] & (1 << (SENSOR_NUMBER % 8))
 
 // Initialize the touch sensors
-void touch_init( void );
+void touch_init( uint8_t detect_threshold );
 
 // Make a touch measurement 
 uint8_t touch_measure(uint8_t sensor_num, uint16_t current_time);
@@ -16,7 +16,7 @@ uint8_t touch_measure(uint8_t sensor_num, uint16_t current_time, uint8_t max_mea
 static void qt_set_parameters( void );
 
 //  Configure the sensors
-static void config_sensors(void);
+static void config_sensors(uint8_t detect_threshold);
 
 extern "C" uint16_t qt_measure_sensors( uint16_t current_time_ms );
 
