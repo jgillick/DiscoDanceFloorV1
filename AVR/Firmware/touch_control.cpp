@@ -78,12 +78,12 @@ uint8_t touch_measure(uint8_t sensor_num, uint16_t current_time) {
  * Set the QTouch detection parameters and threshold values.
  *===========================================================================*/
 static void qt_set_parameters() {
-  qt_config_data.qt_di              = 4; // how many positive sequential aquisitions to represent a touch.
+  qt_config_data.qt_di              = 3; // how many positive sequential aquisitions to represent a touch.
   qt_config_data.qt_neg_drift_rate  = 20;
   qt_config_data.qt_pos_drift_rate  = 5;
-  qt_config_data.qt_max_on_duration = 0;
+  qt_config_data.qt_max_on_duration = 25; // 5 seconds
   qt_config_data.qt_drift_hold_time = 20;
-  qt_config_data.qt_recal_threshold = RECAL_25;
+  qt_config_data.qt_recal_threshold = RECAL_12_5;
   qt_config_data.qt_pos_recal_delay = 3;
 }
 

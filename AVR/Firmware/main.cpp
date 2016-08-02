@@ -34,7 +34,7 @@ void read_sensor();
 ----------------------------------------------------------------------------*/
 
 #define BUS_BAUD 250000
-#define DEFAULT_DETECT_THRES 10u
+#define DEFAULT_DETECT_THRES 11u
 
 // Message commands
 #define CMD_RESET_NODE       0xFA
@@ -135,15 +135,15 @@ void handle_message() {
     // We've been assigned an address
     case CMD_SET_ADDRESS:
       if (comm.getAddress() > 0) {
-        eeprom_write_byte(EEPROM_HAS_ADDR, 1);
-        eeprom_write_byte(EEPROM_ADDR, comm.getAddress());
+        eeprom_update_byte(EEPROM_HAS_ADDR, 1);
+        eeprom_update_byte(EEPROM_ADDR, comm.getAddress());
       }
     break;
 
     // The node and it's address reset
     case CMD_RESET_NODE:
-      eeprom_write_byte(EEPROM_HAS_ADDR, 0);
-      eeprom_write_byte(EEPROM_ADDR, 0);
+      eeprom_update_byte(EEPROM_HAS_ADDR, 0);
+      eeprom_update_byte(EEPROM_ADDR, 0);
     break;
 
     // Set the LED color
@@ -162,7 +162,7 @@ void handle_message() {
     case CMD_SET_DETECT_THRESH:
       if (comm.getDataLen() == 1) {
         uint8_t dt = comm.getData()[0]; 
-        eeprom_write_byte(EEPROM_DETECT_THRESH, dt);
+        eeprom_update_byte(EEPROM_DETECT_THRESH, dt);
         touch_init(dt);
       }
     break;
