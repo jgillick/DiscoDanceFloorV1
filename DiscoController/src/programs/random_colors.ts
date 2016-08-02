@@ -44,15 +44,15 @@ class RandomColors implements IProgram {
    */
   fadeToNewColor(cell: FloorCell): void {
     let color:number[] = [],
-        duration = randomNumber(500, 2000);
+        duration = randomNumber(800, 2000);
 
-    // Fade off or on, 1 in 3 times
-    if (randomNumber(1, 3) === 1) {
+    // Fade off or white
+    if (randomNumber(1, 4) === 1) {
 
-      if (randomNumber(0, 1) === 0) {
-        color = [0,0,0];
-      } else {
+      if (randomNumber(1, 4) === 1) {
         color = [200, 200, 200];
+      } else {
+        color = [0,0,0];
       }
     }
     // Random color
