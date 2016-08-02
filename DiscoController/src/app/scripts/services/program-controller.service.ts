@@ -6,9 +6,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { Subject } from 'rxjs/Subject';
 import { Inject, Injectable } from '@angular/core';
 import { IProgram } from '../../../shared/program';
 import { FloorBuilderService } from './floor-builder.service';
+import { StorageService } from './storage.service';
 
 const PROGRAM_DIR = 'build/programs';
 
@@ -26,9 +28,22 @@ export class ProgramControllerService {
   isStopping: boolean = false;
   isStarting: boolean = false;
 
-  private _runningLoop:boolean = false;
+  private _runningProgramSubject = new Subject<IProgram>();
+  runningProgram$ = this._runningProgramSubject.asObservable();
 
-  constructor(@Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService) {
+  private _playMode:('all'|'one') = 'one';
+  private _shuffle:boolean = false;
+  private _runningLoop:boolean = false;
+  private _playTime:number = 0;
+  private _minPlayTime:number = 0;
+
+  constructor(
+    @Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService,
+    @Inject(StorageService) private _storage:StorageService) {
+
+    this._shuffle = this._storage.getItem("controller.shuffle") || false;
+    this._playMode = (this._storage.getItem("controller.playAll")) ? 'all' : 'one';
+
     this.startRunLoop();
   }
   
@@ -55,9 +70,26 @@ export class ProgramControllerService {
   }
 
   /**
+   * Get the index of the currently running program in the program list
+   * 
+   * @return {number} The index number or -1
+   */
+  _getRunningProgramIndex():number {
+    let idx = -1;
+    if (this.runningProgram) {
+      idx = this.programs.indexOf(this.runningProgram);
+    }
+    return idx;
+  }
+
+  /**
    * Load the list of programs from the programs folder.
    */
   loadPrograms() {
+    if (this.programs.length) {
+      return this.programs;
+    }
+
     this.programs = [];
 
     let dirPath = path.join(process.env.INIT_CWD, PROGRAM_DIR);
@@ -117,8 +149,18 @@ export class ProgramControllerService {
         // Start program
         function start() {
           this.isStarting = true;
+          this._runningProgramSubject.next(program);
+
           try {
             
+            this._playTime = 0;
+
+            // Minimum play time, when playing all
+            this._minPlayTime = program.info.miniumumTime || 1;
+            if (this._minPlayTime < 1000) {
+              this._minPlayTime *= (1000 * 60); // calculate minutes in milliseconds
+            }
+
             this._promiseTimeout(PROGRAM_TIMEOUT, program.start(cellList))
             .then(() => {
               finishStartup.bind(this)();
@@ -126,11 +168,13 @@ export class ProgramControllerService {
               resolve();
             })
             .catch((err) => {
+              this._runningProgramSubject.error(err);
               finishStartup.bind(this)();
               reject(err);
             });
             
           } catch(e) {
+            this._runningProgramSubject.error(e);
             reject({ error: e.toString() })
             finishStartup.bind(this)();
           }
@@ -175,6 +219,7 @@ export class ProgramControllerService {
       function finish() {
         this.isStopping = false;
         this.runningProgram = null;
+        this._runningProgramSubject.next(this.runningProgram);
         cellList.clearFadePromises();
       }
     })
@@ -197,6 +242,14 @@ export class ProgramControllerService {
             
         // Call running program's loop method
         if (this.runningProgram) {
+          
+          // Play next if the minimum time is up and we're playing all
+          this._playTime += timeDiff;
+          if (this._playMode === 'all' && this._playTime >= this._minPlayTime) {
+            this.playNext();
+            return;
+          }
+
           this.runningProgram.loop(timeDiff);
         }
         
@@ -224,4 +277,113 @@ export class ProgramControllerService {
   stopRunLoop() {
     this._runningLoop = false;
   }
+
+  /**
+   * Set play mode:
+   *    + 'all': Play all programs in the program list
+   *    + 'one': Continue playing the current program
+   * 
+   * @param {String} mode Either 'all' or 'one'
+   */
+  setPlayMode(mode:('all'|'one')): void {
+    this._playMode = mode;
+  }
+
+  /**
+   * Set shuffle mode: true: shuffle, false: in order
+   * 
+   * @param {boolean} shuffle Set to `true` to enable shuffling programs.
+   */
+  setShuffle(shuffle:boolean): void {
+    this._shuffle = shuffle;
+  }
+
+  /**
+   * Play the next program in the list (or a random program if we're on suffle mode)
+   */
+  playNext(): void {
+    if (this.isStarting || this.isStopping) {
+      return;
+    }
+    if (!this.programs.length) {
+      return;
+    }
+
+    // Play a random program
+    if (this._shuffle) {
+      this.playRandom();
+      return;
+    }
+
+    // Get index of next program
+    let idx = this._getRunningProgramIndex();
+    if (idx < 0 || idx >= this.programs.length - 1) {
+      idx = 0;
+    }
+    else {
+      idx++;
+    }
+
+    this.runProgram(this.programs[idx]);
+  }
+
+  /**
+   * Play the previous program in the list.
+   */
+  playPrevious(): void {
+    if (this.isStarting || this.isStopping) {
+      return;
+    }
+    if (!this.programs.length) {
+      return;
+    }
+
+    // Play a random program
+    if (this._shuffle) {
+      this.playRandom();
+      return;
+    }
+
+    // Get index of previous program
+    let idx = this._getRunningProgramIndex() - 1;
+    if (idx < 0) {
+      idx = this.programs.length - 1;
+    }
+
+    this.runProgram(this.programs[idx]);
+  }
+
+  /**
+   * Play a random program.
+   * 
+   * @param {IProgram} not (optional) Exclude this program from the selection
+   */
+  playRandom(not:IProgram = null): void {
+    let selected:IProgram,
+        max:number = this.programs.length - 1;
+
+    if (this.isStarting || this.isStopping) {
+      return;
+    }
+
+    if (this.programs.length === 0) {
+      return;
+    }
+
+    // If only one program, play it
+    if (this.programs.length === 0) {
+      this.runProgram(this.programs[0]);
+      return;
+    }
+
+    // Choose random program
+    do {
+      let idx = Math.floor(Math.random() * (max + 1));
+      selected = this.programs[idx];
+    } while(!selected || (not != null && selected.file == not.file));
+
+    // Play
+    this.runProgram(selected);
+  }
+
 }

@@ -43,6 +43,11 @@ export interface IProgram {
    * @return {Promise} A promise that resloves when your program has finished shutting down.
    */
   shutdown(): Promise<void>;
+
+  /**
+   * Internal use only, do not set this
+   */
+  file?: string;
 }
 
 /**
@@ -71,8 +76,8 @@ export interface IProgramInfo {
   audio?: boolean;
 
   /** 
-   * The minimum recommended seconds this program
-   * should play when the player is on auto-play mode.
+   * The minimum recommended minutes this program
+   * should play when the player is on play-all mode.
    */
   miniumumTime?: number;
 }
