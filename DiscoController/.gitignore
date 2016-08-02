@@ -1,1 +1,6 @@
-*.css.map
+.data
+build/*
+dist/*
+node_modules/*
+typings/*
+.vscode

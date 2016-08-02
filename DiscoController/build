@@ -1,3 +1,0 @@
-#!/bin/bash
-mkdir -v dist
-zip -r dist/${PWD##*/}.nw *
