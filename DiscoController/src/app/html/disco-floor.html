@@ -17,8 +17,11 @@
 
   <program-controller></program-controller>
 </div>
-<div class="floor-status">
-  <span *ngIf="comm && comm.isConnected()">
+<ul class="status">
+  <li *ngIf="comm && comm.isConnected()">
     {{comm.framesPerSecond()}} Frames per second
-  </span>
-</div>
+  </li>
+  <li class="program-playing"> 
+    Playing: <em>{{getRunningProgram()}}</em>
+  </li>
+</ul>

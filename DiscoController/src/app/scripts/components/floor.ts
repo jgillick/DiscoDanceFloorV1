@@ -12,6 +12,7 @@ import { FloorCell } from '../../../shared/floor-cell';
 import { StorageService } from '../services/storage.service';
 import { FloorBuilderService } from '../services/floor-builder.service';
 import { CommunicationService } from '../services/communication.service';
+import { ProgramControllerService } from '../services/program-controller.service';
 import { ProgramControllerComponent } from './program-controller';
 
 @Component({
@@ -47,7 +48,8 @@ export class DiscoFloorComponent implements OnInit  {
     public comm:CommunicationService,
     private _element:ElementRef,
     private _store:StorageService,
-    private _builder:FloorBuilderService) {
+    private _builder:FloorBuilderService,
+    private _program:ProgramControllerService ) {
   }
 
   /**
@@ -128,5 +130,15 @@ export class DiscoFloorComponent implements OnInit  {
    */
   toggleSensorValue(floorCell: FloorCell): void {
     floorCell.sensorValue = !floorCell.sensorValue; 
+  }
+
+  /**
+   * Retrn the name of the currently running program, or 'none'
+   */
+  getRunningProgram(): String {
+    if (this._program.runningProgram) {
+      return this._program.runningProgram.info.name;
+    }
+    return 'none';
   }
 }

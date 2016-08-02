@@ -1,5 +1,13 @@
+program-controller {
+  position: relative;
+  width: 210px;
+}
 .program-controller {
-  width: 200px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   flex-grow: 0;
   flex-shrink: 0;
   padding: 10px;
@@ -17,6 +25,7 @@
   .controls {
     display: flex;
     text-align: center;
+    justify-content: space-between;
     flex-grow: 0;
     flex-shrink: 0;
 
@@ -25,28 +34,55 @@
       font-size: 30px;
       padding: 5px 0;
       cursor: pointer;
-      border-radius: 5px;
+      border-radius: 3px;
       outline: none;
+      margin-right: 3px;
+      border: 1px solid #666;
+      transition: color 250ms;
+
+      &:last-child {
+        margin-right: 0;
+      }
+
+      &.selected {
+        background: #454545;
+        border: 1px solid #333;
+      }
 
       &:hover {
         background: #333;
       }
+
+      &:disabled {
+        color: #555;
+        background: none;
+        cursor: pointer;
+      }
+    }
+
+    .play-all i {
+      background-image: url(images/play-all.png);
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      height: 22px;
+      width: 36px;
+      display: inline-block;
     }
   }
-    
+
   // Program List
   .programs {
     flex-grow: 1;
     min-height: 120px;
     margin: 10px;
-    overflow: auto;
-    font-size: 20px;
+    font-size: 18px;
     color: #333;
     background: #888;
     overflow: auto;
 
     li {
-      padding: 7px 10px;
+      padding: 5px 8px;
       border-bottom: 1px solid #666;
       cursor: pointer;
       transition: all 250ms;
