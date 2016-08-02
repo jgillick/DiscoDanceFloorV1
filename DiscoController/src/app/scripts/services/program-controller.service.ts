@@ -44,6 +44,7 @@ export class ProgramControllerService {
     this._shuffle = this._storage.getItem("controller.shuffle") || false;
     this._playMode = (this._storage.getItem("controller.playAll")) ? 'all' : 'one';
 
+    this.loadPrograms();
     this.startRunLoop();
   }
   
@@ -152,10 +153,9 @@ export class ProgramControllerService {
           this._runningProgramSubject.next(program);
 
           try {
-            
-            this._playTime = 0;
 
             // Minimum play time, when playing all
+            this._playTime = 0;
             this._minPlayTime = program.info.miniumumTime || 1;
             if (this._minPlayTime < 1000) {
               this._minPlayTime *= (1000 * 60); // calculate minutes in milliseconds
@@ -168,15 +168,11 @@ export class ProgramControllerService {
               resolve();
             })
             .catch((err) => {
-              this._runningProgramSubject.error(err);
-              finishStartup.bind(this)();
-              reject(err);
+              startError.bind(this)(err);
             });
             
           } catch(e) {
-            this._runningProgramSubject.error(e);
-            reject({ error: e.toString() })
-            finishStartup.bind(this)();
+            startError.bind(this)({ error: e.toString() });
           }
         }
         
@@ -185,6 +181,18 @@ export class ProgramControllerService {
           this.isStarting = false;
           cellList.clearFadePromises();
           cellList.updateColor();
+        }
+
+        // An error occured trying to start the program
+        function startError(err) {
+          this._runningProgramSubject.error(err);
+          finishStartup.bind(this)();
+          reject(err);
+
+          // Try to start another program
+          if (this._playMode === 'all') {
+            this.playNext();
+          }
         }
       });
     }
@@ -242,15 +250,15 @@ export class ProgramControllerService {
             
         // Call running program's loop method
         if (this.runningProgram) {
-          
+
           // Play next if the minimum time is up and we're playing all
           this._playTime += timeDiff;
           if (this._playMode === 'all' && this._playTime >= this._minPlayTime) {
             this.playNext();
-            return;
           }
-
-          this.runningProgram.loop(timeDiff);
+          else {
+            this.runningProgram.loop(timeDiff);
+          }
         }
         
         // Update cell fading
@@ -311,7 +319,7 @@ export class ProgramControllerService {
 
     // Play a random program
     if (this._shuffle) {
-      this.playRandom();
+      this.playRandom(this.runningProgram);
       return;
     }
 
@@ -340,7 +348,7 @@ export class ProgramControllerService {
 
     // Play a random program
     if (this._shuffle) {
-      this.playRandom();
+      this.playRandom(this.runningProgram);
       return;
     }
 

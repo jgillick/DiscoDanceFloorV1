@@ -31,7 +31,14 @@ import {ProgramControllerService} from '../services/program-controller.service';
 })
 export class AppComponent {
 
-  constructor(private floorBuilder:FloorBuilderService){
+  constructor(
+    private _programService:ProgramControllerService,
+    private _storage:StorageService){
+
+    // Start playing automatically
+    if (this._storage.getItem('settings.autoPlay') === true) {
+      this._programService.playNext();
+    }
 
   }
 }
