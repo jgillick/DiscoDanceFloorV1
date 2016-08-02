@@ -257,7 +257,11 @@ export class ProgramControllerService {
             this.playNext();
           }
           else {
-            this.runningProgram.loop(timeDiff);
+            try {
+              this.runningProgram.loop(timeDiff);
+            } catch(e) {
+              console.error(e);
+            }
           }
         }
         
