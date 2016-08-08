@@ -93,21 +93,26 @@ export class ProgramControllerService {
 
     this.programs = [];
 
-    let dirPath = path.join(process.env.INIT_CWD, PROGRAM_DIR);
-    fs.readdirSync(dirPath).forEach(file => {
+    let dirPath = path.join(process.env.DISCO_APP_ROOT, PROGRAM_DIR);
 
-       // Not a javascript file
-      if (!file.match(/^[^\.].*?\.js$/)) return;
+    try {
+      fs.readdirSync(dirPath).forEach(file => {
 
-      try {
-        let prog = require(path.join(dirPath, file));
-        prog.file = file;
-        this.programs.push(prog);
-      } catch(e) {
-        process.stderr.write(e.message);
-        process.stderr.write(e.stack);
-      }
-    });
+        // Not a javascript file
+        if (!file.match(/^[^\.].*?\.js$/)) return;
+
+        try {
+          let prog = require(path.join(dirPath, file));
+          prog.file = file;
+          this.programs.push(prog);
+        } catch(e) {
+          process.stderr.write(e.message);
+          process.stderr.write(e.stack);
+        }
+      });
+    } catch(e) {
+      console.error('Could not read program list', e);
+    }
 
     return this.programs;
   }
