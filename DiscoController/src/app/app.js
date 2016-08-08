@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * Main Electron app file.
+ * NOT the main Angular app file, confusing, I know.
+ */
+
 const electron = require('electron');
 const Menu = require('menu');
 const path = require('path');
@@ -9,6 +14,9 @@ const app = electron.app;  // Module to control application life.
 const BrowserWindow = electron.BrowserWindow;  // Module to create native browser window.
 
 const BUILD_PATH = path.join(__dirname, '../../build');
+
+// Set app root
+process.env['DISCO_APP_ROOT'] = path.join(__dirname, '../../');
 
 // Local storage
 storage.initSync({ dir: path.join(BUILD_PATH, '.data'), });

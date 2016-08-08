@@ -26,7 +26,7 @@ export class StorageService {
 
   constructor() {
     this.storage = require('node-persist');
-    this.storage.initSync({ dir: path.join(process.env.INIT_CWD, '.data'), });
+    this.storage.initSync({ dir: path.join(process.env.DISCO_APP_ROOT, '.data'), });
 
     // Setup default values
     let settings = this.getItem('settings') || {};
