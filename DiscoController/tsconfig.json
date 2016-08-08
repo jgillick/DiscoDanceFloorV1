@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "outDir": "build/scripts",
+    "rootDir": "src/",
+    "outDir": "build/",
+    "sourceRoot": "build/",
     "target": "es6",
     "module": "commonjs",
     "moduleResolution": "node",
