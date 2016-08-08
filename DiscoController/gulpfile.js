@@ -37,7 +37,7 @@ gulp.task('default', ['build', 'watch'], shell.task([
 /**
  * Build the files
  */
-gulp.task('build', ['clean', 'static', 'sass', 'js', 'typescript']);
+gulp.task('build', ['static', 'sass', 'js', 'typescript']);
 
 /**
  * Update files when then change
@@ -51,13 +51,13 @@ gulp.task('watch', function() {
 });
 
 gulp.task('clean', function (cb) {
-  return del(BUILD +'/**/*.*');
+  return del(BUILD +'/*');
 });
 
 /**
  * Copy static files over
  */
-gulp.task('static', ['clean'], staticTask);
+gulp.task('static', [], staticTask);
 gulp.task('static:watch', staticTask);
 function staticTask(){
   return gulp
@@ -68,7 +68,7 @@ function staticTask(){
 /**
  * Process SCSS files
  */
-gulp.task('sass', ['clean'], sassTask);
+gulp.task('sass', [], sassTask);
 gulp.task('sass:watch', sassTask);
 function sassTask() {
   return gulp
@@ -84,7 +84,7 @@ function sassTask() {
 /**
  * Transpile ES6 files
  */
-gulp.task('js', ['clean'], jsTask);
+gulp.task('js', [], jsTask);
 gulp.task('js:watch', jsTask);
 function jsTask() {
   return gulp
@@ -111,13 +111,11 @@ function tsTask() {
   return gulp
   .src(path.join(SRC, 'app/scripts/main.ts'), {read: false})
   .pipe(shell(
-    [
-      './node_modules/.bin/tsc --sourceRoot <%= src %> --outDir <%= out %> --sourceMap'
-    ],
+    ['./node_modules/.bin/tsc --sourceRoot <%= src %> --outDir <%= out %> --sourceMap'],
     {
       templateData: {
         src: SRC,
-        out: path.join(BUILD)
+        out: BUILD
       }
     }
   ))
