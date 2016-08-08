@@ -11,14 +11,14 @@ import { FloorBuilderService } from '../services/floor-builder.service';
 export class ConnectComponent implements OnInit {
 
   deviceList:string[] = [];
+  knownDevices:string[] = [];
   
   nodes:number = 0;
   connecting:boolean = false;
   disconnecting:boolean = false;
   selectedDevice:string = null;
 
-  // Skip readdressing nodes when connecting
-  keepAddresses:boolean = false;
+  keepAddresses:boolean = false; // Skip readdressing nodes when connecting
 
   constructor(
     private _comm:CommunicationService,
@@ -29,8 +29,9 @@ export class ConnectComponent implements OnInit {
   ngOnInit() {
     this._updateDeviceList();
 
-    this.selectedDevice = this._storage.getItem("connection.device");
+    this.selectedDevice = this._storage.getItem("connection.lastDevice");
     this.keepAddresses = this._storage.getItem("connection.keepAddresses");
+    this.knownDevices = this._storage.getItem('connection.knownDevices') || [];
   }
 
   /**
@@ -42,7 +43,7 @@ export class ConnectComponent implements OnInit {
       return;
     }
 
-    this._storage.setItem("connection.device", this.selectedDevice);
+    this._storage.setItem("connection.lastDevice", this.selectedDevice);
     this._storage.setItem("connection.keepAddresses", this.keepAddresses);
 
     // Connect to the device
@@ -50,7 +51,13 @@ export class ConnectComponent implements OnInit {
     this.connecting = true;
     this._comm.connect(this.selectedDevice)
     .then(() => {
+
+      // Add to known devices list
+      this.knownDevices = this.knownDevices.filter((d) => d != this.selectedDevice);
+      this.knownDevices.unshift(this.selectedDevice);
+      this._storage.setItem('connection.knownDevices', this.knownDevices);
       
+      // Start communicating
       if (this.keepAddresses) {
         this.connecting = false;
         this._comm.bus.nodeNum = this._storage.getItem("connection.numNodes") || 0;
@@ -137,6 +144,13 @@ export class ConnectComponent implements OnInit {
   private _updateDeviceList() {
     this._comm.getDevices().then( (devices:string[]) => {
       this.deviceList = devices;
+
+      // Select the first matching known device
+      if (this.deviceList.indexOf(this.selectedDevice) === -1) {
+        this.selectedDevice = this.knownDevices.find( (device) => {
+          return this.deviceList.indexOf(device) > -1;
+        });
+      }
 
       // Update list every 2000ms
       setTimeout(this._updateDeviceList.bind(this), 1000);
