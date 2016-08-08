@@ -93,9 +93,8 @@ export class ProgramControllerService {
 
     this.programs = [];
 
-    let dirPath = path.join(process.env.DISCO_APP_ROOT, PROGRAM_DIR);
-
     try {
+      let dirPath = path.join(__dirname, '../../../../', PROGRAM_DIR);
       fs.readdirSync(dirPath).forEach(file => {
 
         // Not a javascript file

@@ -16,9 +16,6 @@ const BrowserWindow = electron.BrowserWindow;  // Module to create native browse
 const BUILD_PATH = path.join(__dirname, '../../build');
 const USER_DIR = process.env.HOME || process.env.USERPROFILE;
 
-// Set app root
-process.env['DISCO_APP_ROOT'] = path.join(__dirname, '../../');
-
 // Local storage
 let storageDir = path.join(USER_DIR, '.disco', 'data');
 storage.initSync({ dir: storageDir });
