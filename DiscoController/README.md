@@ -7,11 +7,17 @@ on [Electron](http://electron.atom.io/).
 
 ### Prerequisites
 
- * [node 5.11+](https://nodejs.org/en/)
+ * [node 5.12](https://nodejs.org/en/)
  * [gulp](http://gulpjs.com/)
 
 
 ### Install
+
+Start by installing Node 5.12 via [nvm](https://github.com/creationix/nvm).
+
+```sh
+nvm install 5.12
+```
 
 This will install and run the app in development mode:
 
