@@ -56,11 +56,7 @@ function openMainWindow() {
   }
 
   // Starting URL
-  if (false && process.env.ENVIRONMENT === 'DEV') {
-    mainWindow.loadURL('http://localhost:8080/build/index.html');
-  } else {
-    mainWindow.loadURL('file://' + BUILD_PATH + '/app/index.html');
-  }
+  mainWindow.loadURL('file://' + BUILD_PATH + '/app/index.html');
 
   // Open dev tools
   // mainWindow.webContents.openDevTools();
