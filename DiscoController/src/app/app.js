@@ -14,12 +14,14 @@ const app = electron.app;  // Module to control application life.
 const BrowserWindow = electron.BrowserWindow;  // Module to create native browser window.
 
 const BUILD_PATH = path.join(__dirname, '../../build');
+const USER_DIR = process.env.HOME || process.env.USERPROFILE;
 
 // Set app root
 process.env['DISCO_APP_ROOT'] = path.join(__dirname, '../../');
 
 // Local storage
-storage.initSync({ dir: path.join(BUILD_PATH, '.data'), });
+let storageDir = path.join(USER_DIR, '.disco', 'data');
+storage.initSync({ dir: storageDir });
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
