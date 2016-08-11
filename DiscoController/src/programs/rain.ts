@@ -6,7 +6,7 @@ const RAIN_FREQUENCY = 0.10; // How often new rain starts in a column
 
 const COLOR_CHANGE_MS = 800;
 const FADE_TIME = 50;
-const FADE_MULTIPLIER = 0.1;
+const FADE_MULTIPLIER = 0.08;
 
 const COLOR_LIST = [
   [0,   255, 0],   // Green
