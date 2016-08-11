@@ -40,7 +40,7 @@ class AudioColor implements IProgram {
   loop(time:number) {
     audioColor();
     
-    // Every 800ms change the datat section that is defining the color
+    // Every 800ms change the data section that is defining the color
     countdown -= time;
     if (countdown <= 0) {
       dataStart++;
