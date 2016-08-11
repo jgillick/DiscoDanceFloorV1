@@ -48,6 +48,7 @@ class Rings implements IProgram {
     this.floorCellList = cellList;
 
     this.mode = -1;
+    this.modeState = null;
 
     this.runCountdown = SPEED_MS;
     this.changeModeCountdown = CHANGE_MODE_MS;
@@ -72,7 +73,7 @@ class Rings implements IProgram {
     // Change program mode
     this.changeModeCountdown -= time;
     if (this.changeModeCountdown <= 0) {
-
+      this.nextMode(true);
       this.changeModeCountdown += CHANGE_MODE_MS;
     }
 
@@ -111,12 +112,14 @@ class Rings implements IProgram {
    * @param {boolean} runImmediately Run the new mode immediately
    */
   nextMode(runImmediately:boolean): void {
+    this.changeModeCountdown = CHANGE_MODE_MS;
+
     this.mode++;
     if (this.mode >= MODE_COUNT) {
       this.mode = 0;
     }
-
     this.modeState = null;
+
     if (runImmediately) {
       this.runCountdown = CHANGE_MODE_MS;
       this.runMode();
@@ -162,8 +165,7 @@ class Rings implements IProgram {
    * Light ever-other ring
    */
   alternatingRings(): void {
-    let colorIndex = 0,
-        ring, color, cell;
+    let colorIndex = 0;
 
     // Init new mode state
     if (!this.modeState) {
@@ -175,10 +177,10 @@ class Rings implements IProgram {
 
     // Loop through rings
     for (var i = 0; i < this.floorMap.length; i++) {
-      ring = this.floorMap[i];
+      let ring = this.floorMap[i];
 
       colorIndex = (colorIndex + 1 < COLOR_LIST.length) ? ++colorIndex : 1;
-      color = COLOR_LIST[colorIndex];
+      let color = COLOR_LIST[colorIndex];
 
       // Turn off ever other ring
       if (i % 2 != this.modeState.oddEven) {
@@ -187,7 +189,7 @@ class Rings implements IProgram {
 
       // Apply color to all cells
       for (var c = 0; c < ring.length; c++) {
-        cell = this.floorCellList.at(ring[c][0], ring[c][1]);
+        let cell = this.floorCellList.at(ring[c][0], ring[c][1]);
         if (!cell) continue;
         cell.fadeToColor(color, COLOR_FADE_MS);
       }
