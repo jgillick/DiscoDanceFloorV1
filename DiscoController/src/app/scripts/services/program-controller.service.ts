@@ -113,6 +113,9 @@ export class ProgramControllerService {
       console.error('Could not read program list', e);
     }
 
+    // Filter out disabled programs
+    this.programs = this.programs.filter((p) => p.info.disabled !== true );
+
     return this.programs;
   }
 

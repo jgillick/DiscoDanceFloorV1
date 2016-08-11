@@ -80,6 +80,11 @@ export interface IProgramInfo {
    * should play when the player is on play-all mode.
    */
   miniumumTime?: number;
+
+  /**
+   * This program is currently disabled
+   */
+  disabled?: boolean;
 }
 
 /**
