@@ -1,6 +1,28 @@
 import { IProgram, Program } from '../shared/program';
 import { FloorCellList } from '../shared/floor-cell-list';
 
+const CHANGE_MODE_MS = 3000;
+const SPEED_MS = 600;
+const RUNNING_COLOR_SPEED_MS = 100;
+
+const COLOR_FADE_MS = 300;
+const RUNNING_COLOR_FADE_MS = 100;
+
+const MODE_COUNT = 3;
+
+const COLOR_LIST = [
+  [0,   0,   0],   // Black
+  [0,   0,   255], // Blue
+  [255, 0,   0],   // Red
+  [255, 255, 0],   // Yellow
+  [255, 0,   255], // Purple
+  [130, 215, 190], // Teal
+  [0,   255, 0],   // Green
+  [255, 140, 0],   // Orange
+  [0,   234, 255], // Cyan
+  [255, 255, 255]  // White
+];
+
 @Program({
   name: 'Rings',
   description: 'Creates rings of color that flash and run',
@@ -9,13 +31,30 @@ import { FloorCellList } from '../shared/floor-cell-list';
 })
 class Rings implements IProgram {
   floorCellList:FloorCellList;
+  floorMap:number[][][];
+
+  mode:number;
+
+  runCountdown:number;
+  changeModeCountdown:number;
+
+  modeState:any;
+  runningRingsDir:number = 1;
 
   /**
    * Start the program
    */
   start(cellList: FloorCellList): Promise<void> {
     this.floorCellList = cellList;
-    return Promise.resolve();
+
+    this.mode = -1;
+
+    this.runCountdown = SPEED_MS;
+    this.changeModeCountdown = CHANGE_MODE_MS;
+
+    this.floorMap = [];
+    this.mapFloorRings();
+    return cellList.fadeToColor([0,0,0], SPEED_MS);
   }
 
   /**
@@ -29,316 +68,268 @@ class Rings implements IProgram {
    * Floor run loop
    */
   loop(time:number): void {
+
+    // Change program mode
+    this.changeModeCountdown -= time;
+    if (this.changeModeCountdown <= 0) {
+
+      this.changeModeCountdown += CHANGE_MODE_MS;
+    }
+
+    // Run program
+    this.runCountdown -= time;
+    if (this.runCountdown <= 0) {
+      this.runCountdown += SPEED_MS;
+      this.runMode();
+    }
+  }
+
+  /**
+   * Run the selected mode
+   */
+  runMode(): void {
+    switch (this.mode) {
+      case -1:
+        this.introMode();
+        break;
+      case 0:
+        this.alternatingRings();
+        break;
+      case 1:
+        this.runningRings();
+        this.runCountdown = RUNNING_COLOR_SPEED_MS;
+        break;
+      case 2:
+        this.blinkFloor();
+        break;
+    }
+  }
+
+  /**
+   * Move to the next mode.
+   * 
+   * @param {boolean} runImmediately Run the new mode immediately
+   */
+  nextMode(runImmediately:boolean): void {
+    this.mode++;
+    if (this.mode >= MODE_COUNT) {
+      this.mode = 0;
+    }
+
+    this.modeState = null;
+    if (runImmediately) {
+      this.runCountdown = CHANGE_MODE_MS;
+      this.runMode();
+    }
+  }
+
+  /**
+   * This mode is only run once and lights the rings from the outside in
+   */
+  introMode(): void {
+
+    // Init a new state for this mode
+    if (!this.modeState) {
+      console.log('Intro');
+      this.modeState = {
+        ring: 0,
+        color: 1
+      };
+    }
+
+    // Light the current ring
+    let ring = this.floorMap[this.modeState.ring];
+    let color = COLOR_LIST[this.modeState.color];
+    for (let i = 0; i < ring.length; i++) {
+      let cell = this.floorCellList.at(ring[i][0], ring[i][1]);
+      if (!cell) continue;
+      cell.fadeToColor(color, COLOR_FADE_MS);
+    }
+
+    // Increment ring and color
+    this.modeState.ring++;
+    this.modeState.color++;
+    if (this.modeState.color >= COLOR_LIST.length) {
+      this.modeState.color = 0;
+    }
+
+    // All done when we've gone through once
+    if (this.modeState.ring >= this.floorMap.length) {
+      this.nextMode(false);
+    }
+  }
+
+  /**
+   * Light ever-other ring
+   */
+  alternatingRings(): void {
+    let colorIndex = 0,
+        ring, color, cell;
+
+    // Init new mode state
+    if (!this.modeState) {
+      console.log('Alternating');
+      this.modeState = {
+        oddEven: 0,
+        cycle: 0
+      };
+    }
+
+    // Loop through rings
+    for (var i = 0; i < this.floorMap.length; i++) {
+      ring = this.floorMap[i];
+
+      colorIndex = (colorIndex + 1 < COLOR_LIST.length) ? ++colorIndex : 1;
+      color = COLOR_LIST[colorIndex];
+
+      // Turn off ever other ring
+      if (i % 2 != this.modeState.oddEven) {
+        color = [0, 0, 0];
+      }
+
+      // Apply color to all cells
+      for (var c = 0; c < ring.length; c++) {
+        cell = this.floorCellList.at(ring[c][0], ring[c][1]);
+        if (!cell) continue;
+        cell.fadeToColor(color, COLOR_FADE_MS);
+      }
+    }
+
+    this.modeState.oddEven = (this.modeState.oddEven == 1) ? 0 : 1;
+    this.modeState.cycle++;
+
+    // Done after 4 cycles
+    if (this.modeState.cycle > 4) {
+      this.nextMode(false);
+    } 
+  }
+
+  /**
+   * Run the rings outward
+   */
+  runningRings(): void {
+
+    // Init new mode state
+    if (!this.modeState) {
+      this.runningRingsDir *= -1;
+      this.modeState = {
+        color: 0,
+        ringColors: [],
+        ring: (this.runningRingsDir < 0) ? this.floorMap.length - 1 : 0,
+        cycle: 0
+      };
+    }
+
+    // Set ring color
+    let ring = this.floorMap[this.modeState.ring];
+    if (this.modeState.color == this.modeState.ringColors[this.modeState.ring]) {
+      incrementModeColor.apply(this);
+    }
+    let color = COLOR_LIST[this.modeState.color];
+    this.modeState.ringColors[this.modeState.ring] = this.modeState.color;
+
+    // Fade ring to this color
+    for (let c = 0; c < ring.length; c++) {
+      let cell = this.floorCellList.at(ring[c][0], ring[c][1]);
+      if (!cell) continue;
+      cell.fadeToColor(color, RUNNING_COLOR_FADE_MS);
+    }
+
+    this.modeState.ring += this.runningRingsDir;
+    this.modeState.color = (this.modeState.color + 1 < COLOR_LIST.length) ? ++this.modeState.color : 0;
+
+    // New cycle
+    if (this.modeState.ring < 0 || this.modeState.ring >= this.floorMap.length) {
+      this.modeState.ring = (this.runningRingsDir < 0) ? this.floorMap.length - 1 : 0;
+      this.modeState.cycle++;
+
+      incrementModeColor.apply(this);
+
+      // Done after 4 cycles
+      if (this.modeState.cycle > 4) {
+        this.nextMode(false);
+      }
+    }
+
+    // Increment the mode state color
+    function incrementModeColor() {
+      this.modeState.color += 2;
+      if (this.modeState.color > COLOR_LIST.length) {
+        this.modeState.color = 0;
+      } 
+    }
+  }
+
+  /**
+   * Blink entire floor on and off
+   */
+  blinkFloor(): void {
+
+    // Init new mode
+    if (!this.modeState) {
+      this.modeState = {
+        cycle: 0
+      };
+    }
+
+    let on = (this.modeState.cycle % 2 === 0),
+        colorIndex = 0;
+    for (var i = 0; i < this.floorMap.length; i++) {
+      let ring = this.floorMap[i],
+          color;
+
+      if (on) {
+        colorIndex = (colorIndex + 1 < COLOR_LIST.length) ? ++colorIndex : 0;
+        color = COLOR_LIST[colorIndex];
+      } else {
+        color = [0,0,0];
+      }
+
+      for (var c = 0; c < ring.length; c++) {
+        let cell = this.floorCellList.at(ring[c][0], ring[c][1]);
+        if (!cell) continue;
+        cell.fadeToColor(color, COLOR_FADE_MS);
+      }
+    }
+
+    this.modeState.cycle++;
+
+    // Done after 5 cycles
+    if (this.modeState.cycle > 5) {
+      this.nextMode(false);
+    }
+  }
+
+  /**
+   * Map the floor to various square rings starting from the outside in
+   */
+  mapFloorRings(): void {
+    let dimensions = this.floorCellList.dimensions,
+        xMax = dimensions.x,
+        yMax = dimensions.y,
+        ringNum = 0;
+
+    // Figure out how many rings there are
+    ringNum = (dimensions.x > dimensions.y) ? dimensions.y : dimensions.x;
+    ringNum = Math.ceil(ringNum / 2);
+
+    xMax--;
+    yMax--;
+
+    // Map all rings
+    for (let i = 0; i < ringNum; i++) {
+      this.floorMap[i] = [];
+
+      for(let x = i; x <= xMax - i; x++) {
+        this.floorMap[i].push([x, i]);
+        this.floorMap[i].push([x, yMax - i]);
+      }
+      for(let y = i; y <= yMax - i; y++) {
+        this.floorMap[i].push([i, y]);
+        this.floorMap[i].push([xMax - i, y]);
+      }
+    }
   }
 }
 
 module.exports = new Rings();
-
-// var Promise = require("bluebird"),
-//     discoUtils = require('../lib/utils.js');;
-
-// var controller,
-//     floorMap = [],
-//     colors = [
-//       [0,   0,   0],   // Black
-//       [0,   0,   255], // Blue
-//       [255, 0,   0],   // Red
-//       [255, 255, 0],   // Yellow
-//       [255, 0,   255], // Purple
-//       [130, 215, 190], // Teal
-//       [0,   255, 0],   // Green
-//       [255, 140, 0],   // Orange
-//       [0,   234, 255], // Cyan
-//       [255, 255, 255]  // White
-//     ],
-//     running = false,
-//     runningRingsDir = 1,
-//     phase = -1,
-//     phaseNum = 2,
-//     phaseState, phaseTimer, animateTimer;
-
-// module.exports = {
-
-//   info: {
-//     name: 'Rings',
-//     description: 'Creates rings of color that flash and run',
-//     interactive: false,
-//     lightShow: true,
-//     miniumumTime: 1
-//   },
-
-//   /**
-//     Setup the program
-//   */
-//   init: function(floorController){
-//     controller = floorController;
-//     this.shutdown(); // reset
-//     mapFloor();
-//     return Promise.resolve();
-//   },
-
-//   /**
-//     Shutdown this program and clear memory
-//   */
-//   shutdown: function(){
-//     running = false;
-//     clearTimeout(phaseTimer);
-//     clearTimeout(animateTimer);
-//     return controller.changeAllCells([0,0,0], 500);
-//   },
-
-//   /**
-//     Run the program
-//   */
-//   run: function(){
-//     running = true;
-//     runPhase();
-//   }
-// };
-
-// /**
-//   Run the current phase of the floor
-// */
-// function runPhase() {
-//   if (!running) return;
-
-//   switch (phase) {
-//     case -1:
-//       lightInward();
-//       break;
-//     case 0:
-//       alternatingRings();
-//       break;
-//     case 1:
-//       runningRings();
-//       break;
-//     case 2:
-//       blinkFloor();
-//       break;
-//   }
-// }
-
-// /**
-//   Move to the next phase
-// */
-// function nextPhase() {
-//   if (!running) return;
-
-//   clearTimeout(animateTimer);
-//   clearTimeout(phaseTimer);
-
-//   phase++;
-//   if (phase >= phaseNum) {
-//     phase = 0;
-//   }
-//   phaseState = null;
-//   runPhase();
-// }
-
-// /**
-//   Light the rings from the outside in
-// */
-// function lightInward (){
-//   if (!running) return;
-
-//   var color = 0,
-//       ring, cell;
-
-//   // Determine the state this phase is in
-//   if (!phaseState) {
-//     phaseState = {
-//       ring: 0,
-//       color: 1
-//     };
-//   }
-
-//   // Light the current ring
-//   ring = floorMap[phaseState.ring];
-//   color = colors[phaseState.color];
-//   for (var c = 0; c < ring.length; c++) {
-//     cell = controller.getCell.apply(controller, ring[c]);
-//     if (!cell) continue;
-//     cell.fadeToColor(color, 300);
-//   }
-
-//   // Increment ring and color
-//   phaseState.ring++;
-//   phaseState.color++;
-//   if (phaseState.color >= colors.length) {
-//     phaseState.color = 0;
-//   }
-
-//   // All done
-//   if (phaseState.ring >= floorMap.length) {
-//     phaseTimer = setTimeout(nextPhase, 400);
-//   }
-//   // Again!
-//   else {
-//     animateTimer = setTimeout(lightInward, 400);
-//   }
-// }
-
-// /**
-//   Light ever-other ring
-// */
-// function alternatingRings() {
-//   if (!running) return;
-
-//   var colorIndex = 0,
-//       ring, color, cell;
-
-//   if (!phaseState) {
-//     phaseState = {
-//       oddEven: 0,
-//       cycle: 0
-//     };
-//     phaseTimer = setTimeout(nextPhase, 3000);
-//   }
-
-//   for (var i = 0; i < floorMap.length; i++) {
-//     ring = floorMap[i];
-//     colorIndex = (colorIndex + 1 < colors.length) ? ++colorIndex : 1;
-//     color = colors[colorIndex];
-
-//     // Turn off ever other ring
-//     if (i % 2 != phaseState.oddEven) {
-//       color = [0, 0, 0];
-//     }
-
-//     for (var c = 0; c < ring.length; c++) {
-//       cell = controller.getCell.apply(controller, ring[c]);
-//       if (!cell) continue;
-//       cell.fadeToColor(color, 300);
-//     }
-//   }
-
-//   phaseState.oddEven = (phaseState.oddEven == 1) ? 0 : 1;
-//   phaseState.cycle++;
-
-//   if (phaseState.cycle > 4) {
-//     clearTimeout(phaseTimer);
-//     phaseTimer = setTimeout(nextPhase, 500);
-//   } else {
-//     animateTimer = setTimeout(alternatingRings, 500);
-//   }
-// }
-
-// /**
-//   Have the rings run outward
-// */
-// function runningRings() {
-//   if (!running) return;
-
-//   var cell, ring, color;
-
-//   if (!phaseState) {
-//     runningRingsDir *= -1;
-//     phaseState = {
-//       color: 0,
-//       colors: [],
-//       ring: (runningRingsDir < 0) ? floorMap.length - 1 : 0,
-//       cycle: 0
-//     };
-//   }
-
-//   // Set ring color
-//   ring = floorMap[phaseState.ring];
-//   if (phaseState.color == phaseState.colors[phaseState.ring]) {
-//     phaseState.color = discoUtils.wrap(phaseState.color + 2, colors.length-1);
-//   }
-//   color = colors[phaseState.color];
-//   phaseState.colors[phaseState.ring] = phaseState.color;
-
-//   for (var c = 0; c < ring.length; c++) {
-//     cell = controller.getCell(ring[c][0], ring[c][1]);
-//     if (!cell) continue;
-//     // cell.setColor(color);
-//     cell.fadeToColor(color, 100);
-//   }
-
-//   phaseState.ring += runningRingsDir;
-//   phaseState.color = (phaseState.color + 1 < colors.length) ? ++phaseState.color : 0;
-
-//   // New cycle
-//   if (phaseState.ring < 0 || phaseState.ring >= floorMap.length) {
-//     phaseState.ring = (runningRingsDir < 0) ? floorMap.length - 1 : 0;
-//     phaseState.cycle++;
-//     phaseState.color = discoUtils.wrap(phaseState.color + 2, colors.length-1);
-
-//     if (phaseState.cycle > 4) {
-//       phaseTimer = setTimeout(nextPhase, 500);
-//     }
-//   }
-//   animateTimer = setTimeout(runningRings, 100);
-// }
-
-// /**
-//   Blink entire floor on and off
-// */
-// function blinkFloor() {
-//   if (!running) return;
-
-//   var ring, color, colorIndex, cell, on;
-
-//   if (!phaseState) {
-//     phaseState = {
-//       cycle: 0
-//     };
-//   }
-
-//   on = (phaseState.cycle % 2 === 0);
-//   for (var i = 0; i < floorMap.length; i++) {
-//     ring = floorMap[i];
-
-//     if (on) {
-//       colorIndex = (colorIndex + 1 < colors.length) ? ++colorIndex : 0;
-//       color = colors[colorIndex];
-//     } else {
-//       color = [0,0,0];
-//     }
-
-//     for (var c = 0; c < ring.length; c++) {
-//       cell = controller.getCell.apply(controller, ring[c]);
-//       if (!cell) continue;
-//       cell.setColor(color);
-//     }
-//   }
-
-//   phaseState.cycle++;
-//   if (phaseState.cycle > 5) {
-//     phaseTimer = setTimeout(nextPhase, 1000);
-//   } else {
-//     animateTimer = setTimeout(blinkFloor, 500);
-//   }
-// }
-
-// /**
-//   Map the floor to various square rings starting from the outside in
-// */
-// function mapFloor() {
-//   var dimensions = controller.getDimensions(),
-//       xMax = dimensions.x,
-//       yMax = dimensions.y,
-//       ringNum = 0;
-
-//   // Figure out how many rings there are
-//   ringNum = (dimensions.x > dimensions.y) ? dimensions.y : dimensions.x;
-//   ringNum = Math.ceil(ringNum / 2);
-
-//   xMax--;
-//   yMax--;
-
-//   // Map all rings
-//   for (var i = 0; i < ringNum; i++) {
-//     floorMap[i] = [];
-
-//     for(var x = i; x <= xMax - i; x++) {
-//       floorMap[i].push([x, i]);
-//       floorMap[i].push([x, yMax - i]);
-//     }
-//     for(var y = i; y <= yMax - i; y++) {
-//       floorMap[i].push([i, y]);
-//       floorMap[i].push([xMax - i, y]);
-//     }
-//   }
-// }
