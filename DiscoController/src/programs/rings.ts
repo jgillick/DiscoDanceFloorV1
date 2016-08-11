@@ -130,7 +130,6 @@ class Rings implements IProgram {
 
     // Init a new state for this mode
     if (!this.modeState) {
-      console.log('Intro');
       this.modeState = {
         ring: 0,
         color: 1
@@ -168,7 +167,6 @@ class Rings implements IProgram {
 
     // Init new mode state
     if (!this.modeState) {
-      console.log('Alternating');
       this.modeState = {
         oddEven: 0,
         cycle: 0
