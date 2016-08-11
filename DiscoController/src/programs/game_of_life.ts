@@ -14,7 +14,7 @@ const RESEED_ANIMATION_TIME = 800;
   name: 'Game of Life',
   description: "Interactive Conway's Game of Life. Cells that are touched cannot die.",
   interactive: true,
-  miniumumTime: 2
+  miniumumTime: 1.5
 })
 class LifeGame implements IProgram {
   floorCellList:FloorCellList;
