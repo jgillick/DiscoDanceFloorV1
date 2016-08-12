@@ -10,11 +10,18 @@ const BIRTH_ANIMATION_TIME  = 1000;
 const DEATH_ANIMATION_TIME  = 1500;
 const RESEED_ANIMATION_TIME = 800;
 
+const SPAWN_DENSITY         = 0.07;
+
+// Controlls which cells birth/die. These values are compared to neighbor cells which are alive
+const KILL_UNDER            = 2; // default 2
+const KILL_OVER             = 3; // default 3
+const BIRTH_EQUAL           = 3; // default 3
+
 @Program({
   name: 'Game of Life',
   description: "Interactive Conway's Game of Life. Cells that are touched cannot die.",
   interactive: true,
-  miniumumTime: 1.5
+  miniumumTime: 1
 })
 class LifeGame implements IProgram {
   floorCellList:FloorCellList;
@@ -74,11 +81,11 @@ class LifeGame implements IProgram {
       let isAlive = this.isAlive(cell.x, cell.y),
           neighbors = this.countAliveNeighbors(cell);
 
-      if (isAlive && (neighbors < 2 || neighbors > 3) && !cell.sensorValue) {
+      if (isAlive && (neighbors < KILL_UNDER || neighbors > KILL_OVER) && !cell.sensorValue) {
         this.kill(cell);
         changed++;
       }
-      else if (!isAlive && neighbors === 3) {
+      else if (!isAlive && neighbors === BIRTH_EQUAL) {
         this.birth(cell);
         changed++;
       }
@@ -97,7 +104,7 @@ class LifeGame implements IProgram {
    */
   seed(): void {
     let cellCount = this.floorCellList.length,
-        spawnCount = Math.floor(cellCount * 0.05),
+        spawnCount = Math.floor(cellCount * SPAWN_DENSITY),
         spawnCells = this.floorCellList.getTouched();
 
     if (spawnCount === 0) {
