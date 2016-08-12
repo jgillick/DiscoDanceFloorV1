@@ -29,13 +29,12 @@ export class ProgramControllerService {
   isStarting: boolean = false;
 
   private _runningProgramSubject = new Subject<IProgram>();
-  runningProgram$ = this._runningProgramSubject.asObservable();
+  programObserver$ = this._runningProgramSubject.asObservable();
 
   private _playMode:('all'|'one') = 'one';
   private _shuffle:boolean = false;
   private _runningLoop:boolean = false;
-  private _playTime:number = 0;
-  private _minPlayTime:number = 0;
+  private _playTimer:NodeJS.Timer;
 
   constructor(
     @Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService,
@@ -160,14 +159,6 @@ export class ProgramControllerService {
           this._runningProgramSubject.next(program);
 
           try {
-
-            // Minimum play time, when playing all
-            this._playTime = 0;
-            this._minPlayTime = program.info.miniumumTime || 1;
-            if (this._minPlayTime < 1000) {
-              this._minPlayTime *= (1000 * 60); // calculate minutes in milliseconds
-            }
-
             this._promiseTimeout(PROGRAM_TIMEOUT, program.start(cellList))
             .then(() => {
               finishStartup.bind(this)();
@@ -188,6 +179,7 @@ export class ProgramControllerService {
           this.isStarting = false;
           cellList.clearFadePromises();
           cellList.updateColor();
+          this.startPlayTimer(program);
         }
 
         // An error occured trying to start the program
@@ -219,6 +211,8 @@ export class ProgramControllerService {
         resolve();
         return;
       }
+
+      this.stopPlayTimer();
 
       // Shutdown
       this.isStopping = true;
@@ -257,18 +251,10 @@ export class ProgramControllerService {
             
         // Call running program's loop method
         if (this.runningProgram) {
-
-          // Play next if the minimum time is up and we're playing all
-          this._playTime += timeDiff;
-          if (this._playMode === 'all' && this._playTime >= this._minPlayTime) {
-            this.playNext();
-          }
-          else {
-            try {
-              this.runningProgram.loop(timeDiff);
-            } catch(e) {
-              console.error(e);
-            }
+          try {
+            this.runningProgram.loop(timeDiff);
+          } catch(e) {
+            console.error(e);
           }
         }
         
@@ -293,8 +279,43 @@ export class ProgramControllerService {
   /**
    * Stop the program run loop
    */
-  stopRunLoop() {
+  stopRunLoop(): void {
     this._runningLoop = false;
+  }
+
+  /**
+   * If we're in play "all" mode, start a timer for the current program.
+   * After the timer is done, the next program will play.
+   */
+  startPlayTimer(program:IProgram): void {
+    this.stopPlayTimer();
+
+    // Only for play 'all' mode
+    if (this._playMode !== 'all') {
+      return;
+    }
+    
+    // Determine minimum playtime in milliseconds 
+    // (default units from program info are seconds)
+    let minPlayTime = program.info.miniumumTime || 1;
+    if (minPlayTime < 1000) {
+      minPlayTime *= (1000 * 60); 
+    }
+
+    // Play next, after minimum time has elapsed
+    this._playTimer = setTimeout(() => {
+      if (this._playMode === 'all') {
+        this.playNext();
+      }
+    }, minPlayTime);
+  }
+
+  /**
+   * Stop the current play timer
+   * (@see startPlayTimer)
+   */
+  stopPlayTimer(): void {
+    clearTimeout(this._playTimer);
   }
 
   /**
@@ -305,7 +326,18 @@ export class ProgramControllerService {
    * @param {String} mode Either 'all' or 'one'
    */
   setPlayMode(mode:('all'|'one')): void {
+    let oldMode = this._playMode;
     this._playMode = mode;
+
+    // Mode change
+    if (oldMode !== mode) {
+      if (mode === 'all') {
+        this.startPlayTimer(this.runningProgram);
+      }
+      else {
+        this.stopPlayTimer();
+      }
+    }
   }
 
   /**

@@ -33,7 +33,7 @@ export class ProgramControllerComponent implements OnInit {
     this.playAllOn = this._storage.getItem("controller.playAll") || false;
 
     // Listen for changes to the running program
-    this._programService.runningProgram$.subscribe(
+    this._programService.programObserver$.subscribe(
       program => {
         this._selectedProgram = program;
       },

@@ -28,6 +28,7 @@ program-controller {
     justify-content: space-between;
     flex-grow: 0;
     flex-shrink: 0;
+    margin: 5px 0;
 
     button {
       flex-grow: 1;
@@ -75,7 +76,7 @@ program-controller {
   .programs {
     flex-grow: 1;
     min-height: 120px;
-    margin: 10px;
+    margin: 0;
     font-size: 18px;
     color: #333;
     background: #888;
