@@ -36,6 +36,7 @@ const SENSOR_DELAY    = 20;   // Delay after the sensor check command (milliseco
 export class CommunicationService {
 
   port: any;
+  sensorsEnabled:boolean = true;
 
   private _fps:number[] = [0, 0, 0, 0];
   private _frames:number = 0;
@@ -295,10 +296,12 @@ export class CommunicationService {
         subject = this._sendColors();
         break;
       case 1: // Run sensors
+        if (!this.sensorsEnabled) skipStep();
         subject = this._runSensors();
         nextDelay = SENSOR_DELAY;
         break;
       case 2: // Get sensor data
+        if (!this.sensorsEnabled) skipStep();
         subject = this._readSensorData();
         break;
       
@@ -333,6 +336,12 @@ export class CommunicationService {
           runNext();  
         }
       );
+    }
+
+    // Used to quickly skip a communication step
+    function skipStep() {
+      this._runIteration++;
+      this._runThread();
     }
   }
 

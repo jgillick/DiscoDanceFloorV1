@@ -11,6 +11,7 @@ import { Inject, Injectable } from '@angular/core';
 import { IProgram } from '../../../shared/program';
 import { FloorBuilderService } from './floor-builder.service';
 import { StorageService } from './storage.service';
+import { CommunicationService } from '../services/communication.service';
 
 const PROGRAM_DIR = 'build/programs';
 
@@ -38,7 +39,8 @@ export class ProgramControllerService {
 
   constructor(
     @Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService,
-    @Inject(StorageService) private _storage:StorageService) {
+    @Inject(StorageService) private _storage:StorageService,
+    @Inject(CommunicationService) private _comm:CommunicationService) {
 
     this._shuffle = this._storage.getItem("controller.shuffle") || false;
     this._playMode = (this._storage.getItem("controller.playAll")) ? 'all' : 'one';
@@ -157,6 +159,10 @@ export class ProgramControllerService {
         function start() {
           this.isStarting = true;
           this._runningProgramSubject.next(program);
+
+          // Tell communication service that this is an interactive program
+          // i.e. enable the sensors
+          this._comm.sensorsEnabled = (program.info.interactive === true);
 
           try {
             this._promiseTimeout(PROGRAM_TIMEOUT, program.start(cellList))
