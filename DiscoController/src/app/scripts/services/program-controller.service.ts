@@ -194,7 +194,7 @@ export class ProgramControllerService {
           finishStartup.bind(this)();
           reject(err);
 
-          // Try to start another program
+          // Try to start the next program
           if (this._playMode === 'all') {
             this.playNext();
           }

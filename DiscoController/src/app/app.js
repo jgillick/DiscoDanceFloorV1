@@ -47,6 +47,7 @@ function openMainWindow() {
 
   // Open window and reset state
   mainWindow = new BrowserWindow(winState);
+  mainWindow.setMenu(null);
   if (winState.isMaximized) {
     mainWindow.maximize();
   }
