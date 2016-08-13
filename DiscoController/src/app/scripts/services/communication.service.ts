@@ -291,12 +291,6 @@ export class CommunicationService {
     let subject:Observable<any>;
     let nextDelay = CMD_LOOP_DELAY;
 
-    // Used to quickly skip a communication step
-    let skipStep = function() {
-      this._runIteration++;
-      this._runThread();
-    }.bind(this);
-
     // Run the next interation
     let runNext = function() {
       this._runIteration++;
@@ -308,12 +302,12 @@ export class CommunicationService {
         subject = this._sendColors();
         break;
       case 1: // Run sensors
-        if (!this.sensorsEnabled) return skipStep();
+        if (!this.sensorsEnabled) return runNext();
         subject = this._runSensors();
         nextDelay = SENSOR_DELAY;
         break;
       case 2: // Get sensor data
-        if (!this.sensorsEnabled) return skipStep();
+        if (!this.sensorsEnabled) return runNext();
         subject = this._readSensorData();
         break;
       
