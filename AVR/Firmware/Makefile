@@ -10,7 +10,7 @@
 # HFUSE = 0xDD
 # EFUSE = 0x00
 
-MCU   = atmega328
+MCU   = atmega328p
 LFUSE = 0xFF
 HFUSE = 0xDF
 EFUSE = 0x04

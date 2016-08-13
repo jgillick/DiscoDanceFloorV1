@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include <avr/io.h>
+#include <avr/wdt.h>
 #include <avr/eeprom.h> 
 
 #include "pwm.h"
@@ -75,6 +76,9 @@ MultidropSlave comm(&serial);
  * Main program
  */
 int main() {
+  wdt_disable();
+  wdt_enable(WDTO_2S);
+
   DDRB |= (1 << PB2); // debug LED
   
   start_clock();
@@ -90,6 +94,7 @@ int main() {
 
   // Program loop
   while(1) {
+    wdt_reset();
     comm_run();
   }
 }
