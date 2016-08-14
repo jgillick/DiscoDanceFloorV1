@@ -55,6 +55,13 @@ export class CommunicationService {
 
     // Must be done here, otherwise the UI breaks.
     this._serialPortLib = require('serialport');
+
+    // Close port when window unloads
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isConnected()) {
+        this.port.close();
+      }
+    });
   }
 
   /**
@@ -133,6 +140,7 @@ export class CommunicationService {
   disconnect(): Promise<void> {
     return new Promise<void> ( (resolve, reject) => {
       if (!this.port || !this.port.isOpen()) {
+        console.error('Nothing to close');
         resolve();
         return;
       }

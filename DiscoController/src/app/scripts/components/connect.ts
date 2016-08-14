@@ -69,7 +69,10 @@ export class ConnectComponent implements OnInit {
       }
 
     },
-    (err) => alert('Error connecting: '+ err));
+    (err) => {
+      this.connecting = false;
+      alert('Error connecting: '+ err);
+    });
   }
 
   /**
@@ -82,8 +85,8 @@ export class ConnectComponent implements OnInit {
 
     this.disconnecting = true;
     this._comm.disconnect()
-    .then(() => this.disconnecting = false)
-    .catch(() => this.disconnecting = false);
+    .then(() => { this.disconnecting = false })
+    .catch(() => { this.disconnecting = false });
   }
 
   /**
