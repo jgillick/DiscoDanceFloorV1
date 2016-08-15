@@ -300,9 +300,9 @@ export class CommunicationService {
     let nextDelay = CMD_LOOP_DELAY;
 
     // Run the next interation
-    let runNext = function() {
+    let runNext = function(delay) {
       this._runIteration++;
-      setTimeout(this._runThread.bind(this), nextDelay);
+      setTimeout(this._runThread.bind(this), delay || nextDelay);
     }.bind(this);
 
     switch (this._runIteration) {
@@ -310,12 +310,12 @@ export class CommunicationService {
         subject = this._sendColors();
         break;
       case 1: // Run sensors
-        if (!this.sensorsEnabled) return runNext();
+        if (!this.sensorsEnabled) return runNext(5);
         subject = this._runSensors();
         nextDelay = SENSOR_DELAY;
         break;
       case 2: // Get sensor data
-        if (!this.sensorsEnabled) return runNext();
+        if (!this.sensorsEnabled) return runNext(5);
         subject = this._readSensorData();
         break;
       
