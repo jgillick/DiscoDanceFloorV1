@@ -112,6 +112,12 @@ export class DiscoFloorComponent implements OnInit  {
       size = (size > width) ? width : size;
       this.cellSize = Math.floor(size / this.y);
     }
+
+    // Update all cells
+    component.find('td').css({
+      height: this.cellSize,
+      width: this.cellSize
+    });
   }
 
   /**
@@ -119,10 +125,11 @@ export class DiscoFloorComponent implements OnInit  {
    */
   cellColorCSS(floorCell: FloorCell): string {
     // Round colors and make a CSS string
-    let colorValues = floorCell.color.map( c => Math.round(c) ),
-        colorCss = `rgb(${colorValues.join(',')})`;
+    // let colorValues = floorCell.color.map( c => Math.round(c) ),
+    //     colorCss = `rgb(${colorValues.join(',')})`;
     
-    return colorCss;
+    // return colorCss;
+    return `rgb(${floorCell.color.join(',')})`;
   }
 
   /**
