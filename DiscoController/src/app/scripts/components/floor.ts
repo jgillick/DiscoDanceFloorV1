@@ -18,7 +18,7 @@ import { ProgramControllerService } from '../services/program-controller.service
 import { ProgramControllerComponent } from './program-controller';
 
 // How many milliseconds between floor repaints
-const PAINT_INTERVAL = 10;
+const PAINT_INTERVAL = 20;
 
 @Component({
   selector: 'disco-floor',
@@ -43,12 +43,6 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
    * The y length of the floor
    */
   y:number = 0;
-
-  /**
-   * The table cell grid.
-   * A nested array of x and then y.
-   */
-  tableCells:FloorCell[][] = [];
 
   constructor(
     public comm:CommunicationService,
@@ -174,10 +168,8 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
       let cellEl = document.getElementById(`floor-cell-${cell.index}`);
 
       if (cellEl) {
-        let colorValues = cell.color.map( c => Math.round(c) );
-
         $(cellEl)
-          .css('backgroundColor', `rgb(${colorValues})`)
+          .css('backgroundColor', `rgb(${cell.color})`)
           .toggleClass('touched', cell.sensorValue);
       }
     }
