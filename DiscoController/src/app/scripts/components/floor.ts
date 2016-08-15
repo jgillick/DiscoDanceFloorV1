@@ -5,7 +5,9 @@
 import { 
   Component, 
   ElementRef, 
-  OnInit 
+  OnInit,
+  AfterViewInit,
+  OnDestroy
 } from '@angular/core';
 
 import { FloorCell } from '../../../shared/floor-cell';
@@ -15,13 +17,17 @@ import { CommunicationService } from '../services/communication.service';
 import { ProgramControllerService } from '../services/program-controller.service';
 import { ProgramControllerComponent } from './program-controller';
 
+// How many milliseconds between floor repaints
+const PAINT_INTERVAL = 10;
+
 @Component({
   selector: 'disco-floor',
   templateUrl: './html/disco-floor.html',
   styleUrls: ['./styles/floor.css'],
   directives: [ ProgramControllerComponent ],
 })
-export class DiscoFloorComponent implements OnInit  {
+export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
+  private _paintTimer:number;
 
   /**
    * The height/width CSS value for each floor cell
@@ -61,27 +67,35 @@ export class DiscoFloorComponent implements OnInit  {
     if (settings && settings.dimensions) {
       this.x = settings.dimensions.x;
       this.y = settings.dimensions.y;
-      this.cellSize = "100%";
+      this.cellSize = null;
 
       // Build Y/X axis for table
       this.tableCells = [];
       let cells = this._builder.cellList;
-      for (var i = 0; i < cells.length; i++) {
-        let cell = cells.atIndex(i),
-            y = cell.y,
+      for (let cell of this._builder.cellList) {
+        let y = cell.y,
             x = cell.x;
 
         this.tableCells[y] = this.tableCells[y] || [];
         this.tableCells[y][x] = cell;
       }
     }
+
+    this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
   }
 
   /**
    * Once the view has been initialized.
    */
   ngAfterViewInit() {
-    setTimeout(this.sizeFloor.bind(this), 0);
+    setTimeout(this.sizeFloor.bind(this), 10);
+  }
+
+  /**
+   * Cleanup before unloading component.
+   */
+  ngOnDestroy() {
+    clearTimeout(this._paintTimer);
   }
 
   /**
@@ -118,6 +132,20 @@ export class DiscoFloorComponent implements OnInit  {
       height: this.cellSize,
       width: this.cellSize
     });
+  }
+
+  /**
+   * Update the color of all the floor cells
+   */
+  paintFloor(): void {
+    for (let cell of this._builder.cellList) {
+      let cellEl = document.getElementById(`floor-cell-${cell.index}`);
+      if (cellEl) {
+        let colorValues = cell.color.map( c => Math.round(c) );
+        $(cellEl).css('backgroundColor', `rgb(${colorValues})`);
+      }
+    }
+    this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
   }
 
   /**
