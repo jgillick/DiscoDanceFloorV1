@@ -65,22 +65,12 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
     let settings = this._store.getItem('settings');
 
     if (settings && settings.dimensions) {
-      this.x = settings.dimensions.x;
-      this.y = settings.dimensions.y;
+      this.x = settings.dimensions.x || 8;
+      this.y = settings.dimensions.y || 8;
       this.cellSize = null;
-
-      // Build Y/X axis for table
-      this.tableCells = [];
-      let cells = this._builder.cellList;
-      for (let cell of this._builder.cellList) {
-        let y = cell.y,
-            x = cell.x;
-
-        this.tableCells[y] = this.tableCells[y] || [];
-        this.tableCells[y][x] = cell;
-      }
     }
 
+    this.buildFloor();
     this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
   }
 
@@ -96,6 +86,48 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   ngOnDestroy() {
     clearTimeout(this._paintTimer);
+  }
+
+  /**
+   * Build the table for the floor.
+   * For some reason this is slow in angular on the raspberry pi, so we do it here, manually.
+   */
+  buildFloor() {
+    let table,
+        tableCells = [],
+        container = $(this._element.nativeElement).find('.floor-area');
+
+    // Build Y/X axis for table
+    for (let cell of this._builder.cellList) {
+      let y = cell.y,
+          x = cell.x;
+
+      tableCells[y] = tableCells[y] || [];
+      tableCells[y][x] = cell;
+    }
+
+    // Build markup
+    table = document.createElement('table');
+    for (let row of tableCells) {
+      let tableRow = document.createElement('tr');
+
+      row.forEach(cell => {
+        let tableCell = document.createElement('td');
+
+        tableCell.id = `floor-cell-${cell.index}`;
+        $(tableCell).click(() => {
+          this.toggleSensorValue(cell)
+        });
+
+        tableRow.appendChild(tableCell);
+      });
+
+      table.appendChild(tableRow);
+    }
+
+    // Add markup
+    container.empty();
+    container.append(table);
   }
 
   /**
@@ -140,9 +172,13 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
   paintFloor(): void {
     for (let cell of this._builder.cellList) {
       let cellEl = document.getElementById(`floor-cell-${cell.index}`);
+
       if (cellEl) {
         let colorValues = cell.color.map( c => Math.round(c) );
-        $(cellEl).css('backgroundColor', `rgb(${colorValues})`);
+
+        $(cellEl)
+          .css('backgroundColor', `rgb(${colorValues})`)
+          .toggleClass('touched', cell.sensorValue);
       }
     }
     this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);

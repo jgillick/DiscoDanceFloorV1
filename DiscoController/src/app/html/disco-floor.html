@@ -1,16 +1,6 @@
 <div class="disco-floor" (window:resize)="sizeFloor($event)">
 
   <div class="floor-area">
-    <table>
-      <tr *ngFor="let yItem of tableCells">
-        <td
-          *ngFor="let cell of yItem"
-          (click)="toggleSensorValue(cell)"
-          id="floor-cell-{{cell.index}}"
-          [class.empty]="!cell"
-          [class.touched]="cell.sensorValue"></td>
-      </tr>
-    </table>
   </div>
 
   <program-controller></program-controller>
