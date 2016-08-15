@@ -207,8 +207,8 @@ export class CommunicationService {
       // Shift new FPS onto the stack to get an average
       this._fps.push(this._frames);
       this._fps.shift();
-
       this._frames = 0;
+      
     }, 1000);
   }
 
@@ -323,7 +323,7 @@ export class CommunicationService {
       default:
         this._frames++;
         this._runIteration = 0;
-        this._runThread();
+        setTimeout(this._runThread.bind(this), 0);
         return;
     };
 
@@ -339,9 +339,11 @@ export class CommunicationService {
         // Done
         () => {
           // Handle all responses
-          this.bus.messageResponse.forEach( (data, i) => {
-            this._handleNodeResponse(i, data);
-          })
+          if (this.bus.messageResponse.length) {
+            this.bus.messageResponse.forEach( (data, i) => {
+              this._handleNodeResponse(i, data);
+            });
+          }
           runNext();  
         }
       );
@@ -375,12 +377,8 @@ export class CommunicationService {
   private _sendColors(): Observable<any> {
     this.bus.startMessage(CMD.SET_COLOR, 3, { batchMode: true });
 
-    for (let i = 0; i < this.bus.nodeNum; i++) {
-      let node:FloorCell = this._floorBuilder.cellList.atIndex(i);
-      let color = [0, 0, 0];
-      if (node) {
-        color = node.color;
-      }
+    for (let cell of this._floorBuilder.cellList) {
+      let color = cell.color;
       this.bus.sendData(color);
     }
 
