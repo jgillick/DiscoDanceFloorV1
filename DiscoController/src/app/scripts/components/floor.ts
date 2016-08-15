@@ -10,7 +10,7 @@ import {
   OnDestroy
 } from '@angular/core';
 
-import { FloorCell } from '../../../shared/floor-cell';
+import { FloorCell, IFloorCellChange } from '../../../shared/floor-cell';
 import { StorageService } from '../services/storage.service';
 import { FloorBuilderService } from '../services/floor-builder.service';
 import { CommunicationService } from '../services/communication.service';
@@ -65,7 +65,7 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.buildFloor();
-    this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
+    // this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
   }
 
   /**
@@ -79,7 +79,7 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
    * Cleanup before unloading component.
    */
   ngOnDestroy() {
-    clearTimeout(this._paintTimer);
+    // clearTimeout(this._paintTimer);
   }
 
   /**
@@ -105,12 +105,26 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
     for (let row of tableCells) {
       let tableRow = document.createElement('tr');
 
-      row.forEach(cell => {
-        let tableCell = document.createElement('td');
+      row.forEach( (cell:FloorCell) => {
+        let tableCell = document.createElement('td'),
+            $tableCell = $(tableCell);
 
         tableCell.id = `floor-cell-${cell.index}`;
+
+        // Click handler
         $(tableCell).click(() => {
           this.toggleSensorValue(cell)
+        });
+
+        // Observe changes
+        cell.change$.subscribe( (change:IFloorCellChange) => {
+          if (change.type == 'color') {
+            let colorValues = change.value.map( c => Math.round(c) );
+            $tableCell.css('backgroundColor', `rgb(${ colorValues })`)
+          }
+          else if (change.type === 'sensor') {
+            $tableCell.toggleClass('touched', change.value);
+          }
         });
 
         tableRow.appendChild(tableCell);

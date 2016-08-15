@@ -1,4 +1,6 @@
 
+import { Subject } from 'rxjs/Subject';
+import { Observable } from 'rxjs/Observable';
 
 import { FadeController } from './fade-controller';
 
@@ -6,13 +8,35 @@ import { FadeController } from './fade-controller';
  * Represents a single square on the floor.
  */
 export class FloorCell {
-  sensorValue: boolean = false;
+  private _color: number[] = [0,0,0];
+  private _sensorValue: boolean = false;
+  private _fadeCtrl: FadeController;
+  private _changeSubject: Subject<IFloorCellChange> = new Subject<IFloorCellChange>();
+
+  /**
+   * The index this cell is at in the bus.
+   * NOTE: This is not the x/y position
+   * @type int
+   */
   index: number;
+
+  /**
+   * The cell's X coordinate on the dance floor grid
+   * @type int
+   */
   x: number;
+
+  /**
+   * The cell's Y coordinate on the dance floor grid
+   * @type int
+   */
   y: number;
 
-  private _color: number[] = [0,0,0];
-  private _fadeCtrl: FadeController;
+  /**
+   * Subscribe to observe when the color or sensor value of this cell changes.
+   * @type Observable
+   */
+  change$: Observable<IFloorCellChange> = this._changeSubject.asObservable();
 
   constructor(index: number = undefined, x: number = undefined, y: number = undefined) {
     this.index = index;
@@ -26,6 +50,25 @@ export class FloorCell {
    */
   get color(): number[] {
     return this._color.slice(0, 3); // return a copy
+  }
+
+  /**
+   * Touch sensor boolean value. True = cell being touched
+   * @type boolean
+   */
+  get sensorValue(): boolean {
+    return this._sensorValue;
+  }
+
+  /**
+   * Set the touch sensor boolean value
+   */
+  set sensorValue(value:boolean) {
+    this._sensorValue = value;
+    this._changeSubject.next({
+      type: 'sensor',
+      value: value
+    });
   }
 
   /**
@@ -59,6 +102,11 @@ export class FloorCell {
     }
 
     this._color = color;
+
+    this._changeSubject.next({
+      type: 'color',
+      value: color
+    });
   }
 
   /**
@@ -80,6 +128,11 @@ export class FloorCell {
   updateColor(): void {
     if (this._fadeCtrl.isFading) {
       this._color = this._fadeCtrl.currentColor;
+
+      this._changeSubject.next({
+        type: 'color',
+        value: this._color
+      });
     }
   }
   
@@ -92,4 +145,21 @@ export class FloorCell {
       this._fadeCtrl.clearFadePromise();
     }
   }
+}
+
+/**
+ * Describes the observable change to a floor cell
+ */
+export interface IFloorCellChange {
+  /**
+   * What type of change occurred: color or sensor
+   * @type String
+   */
+  type: "color" | "sensor";
+
+  /**
+   * What is the new value for this type of change. 
+   * @type boolean | number[]
+   */
+  value: any;
 }
