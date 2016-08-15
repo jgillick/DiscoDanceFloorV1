@@ -19,7 +19,7 @@ const PROGRAM_DIR = 'build/programs';
 const PROGRAM_TIMEOUT = 5000;
 
 // The number of milliseconds between run loop cycles
-const RUN_LOOP_SPEED = 10;
+const RUN_LOOP_SPEED = 15;
 
 @Injectable()
 export class ProgramControllerService {
@@ -35,6 +35,8 @@ export class ProgramControllerService {
   private _playMode:('all'|'one') = 'one';
   private _shuffle:boolean = false;
   private _runningLoop:boolean = false;
+  
+  private _runloopTimer:NodeJS.Timer;
   private _playTimer:NodeJS.Timer;
 
   constructor(
@@ -275,7 +277,7 @@ export class ProgramControllerService {
         console.error(e);
       }
       
-      window.requestAnimationFrame(runLoop);
+      this._runloopTimer = setTimeout(runLoop, RUN_LOOP_SPEED);
     }).bind(this);
     
     this._runningLoop = true;
@@ -286,6 +288,7 @@ export class ProgramControllerService {
    * Stop the program run loop
    */
   stopRunLoop(): void {
+    clearTimeout(this._runloopTimer);
     this._runningLoop = false;
   }
 
