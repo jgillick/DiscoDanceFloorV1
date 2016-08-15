@@ -310,12 +310,12 @@ export class CommunicationService {
         subject = this._sendColors();
         break;
       case 1: // Run sensors
-        if (!this.sensorsEnabled) return runNext(5);
+        if (!this.sensorsEnabled) return runNext(10);
         subject = this._runSensors();
         nextDelay = SENSOR_DELAY;
         break;
       case 2: // Get sensor data
-        if (!this.sensorsEnabled) return runNext(5);
+        if (!this.sensorsEnabled) return runNext(10);
         subject = this._readSensorData();
         break;
       

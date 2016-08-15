@@ -212,6 +212,11 @@ export class BusProtocolService {
     this._sendBytes([0xFF, 0xFF], false)
     this._sendBytes(data);
 
+    // Start response timer
+    this._serial.port.drain(() => {
+      this._startResponseTimer(); 
+    });
+
     // Message observer
     return this._createMessageObserver();
   }
@@ -417,6 +422,16 @@ export class BusProtocolService {
       if (fill.length > 0) {
         this._pushDataToResponse(Buffer.from(fill));
         this._sendBytes(fill);
+
+        // Restart timer, if we're waiting on more responses
+        if (this._responseCount < this._fullDataLen) {
+          this._serial.port.drain(() => {
+            this._restartResponseTimer();
+          });
+        }
+        else {
+          this.endMessage();
+        }
       }
     }
   }
