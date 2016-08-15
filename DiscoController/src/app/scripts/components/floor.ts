@@ -149,18 +149,6 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Get the color CSS for a floor cell
-   */
-  cellColorCSS(floorCell: FloorCell): string {
-    // Round colors and make a CSS string
-    // let colorValues = floorCell.color.map( c => Math.round(c) ),
-    //     colorCss = `rgb(${colorValues.join(',')})`;
-    
-    // return colorCss;
-    return `rgb(${floorCell.color.join(',')})`;
-  }
-
-  /**
    * Toggle the touch sensor value for a cell
    */
   toggleSensorValue(floorCell: FloorCell): void {
