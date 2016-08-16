@@ -17,17 +17,13 @@ import { CommunicationService } from '../services/communication.service';
 import { ProgramControllerService } from '../services/program-controller.service';
 import { ProgramControllerComponent } from './program-controller';
 
-// How many milliseconds between floor repaints
-const PAINT_INTERVAL = 20;
-
 @Component({
   selector: 'disco-floor',
   templateUrl: './html/disco-floor.html',
   styleUrls: ['./styles/floor.css'],
   directives: [ ProgramControllerComponent ],
 })
-export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
-  private _paintTimer:number;
+export class DiscoFloorComponent implements OnInit, AfterViewInit {
 
   /**
    * The height/width CSS value for each floor cell
@@ -43,6 +39,12 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
    * The y length of the floor
    */
   y:number = 0;
+
+  /**
+   * Is the floor preview enabled
+   */
+  previewEnabled:boolean = true;
+
 
   constructor(
     public comm:CommunicationService,
@@ -64,8 +66,10 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cellSize = null;
     }
 
-    this.buildFloor();
-    // this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
+    this.previewEnabled = (settings.disablePreview !== true);
+    if (this.previewEnabled) {
+      this.buildFloor();
+    }
   }
 
   /**
@@ -73,13 +77,6 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   ngAfterViewInit() {
     setTimeout(this.sizeFloor.bind(this), 10);
-  }
-
-  /**
-   * Cleanup before unloading component.
-   */
-  ngOnDestroy() {
-    // clearTimeout(this._paintTimer);
   }
 
   /**
@@ -143,6 +140,10 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
    * so all cells are square
    */
   sizeFloor() {
+    if (!this.previewEnabled) {
+      return;
+    }
+    
     let component = $(this._element.nativeElement),
         container = component.find('.floor-area'),
         width = container.width(),
@@ -172,22 +173,6 @@ export class DiscoFloorComponent implements OnInit, AfterViewInit, OnDestroy {
       height: this.cellSize,
       width: this.cellSize
     });
-  }
-
-  /**
-   * Update the color of all the floor cells
-   */
-  paintFloor(): void {
-    for (let cell of this._builder.cellList) {
-      let cellEl = document.getElementById(`floor-cell-${cell.index}`);
-
-      if (cellEl) {
-        $(cellEl)
-          .css('backgroundColor', `rgb(${cell.color})`)
-          .toggleClass('touched', cell.sensorValue);
-      }
-    }
-    this._paintTimer = setTimeout(this.paintFloor.bind(this), PAINT_INTERVAL);
   }
 
   /**

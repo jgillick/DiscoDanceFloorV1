@@ -16,6 +16,7 @@
         [(ngModel)]="settings.dimensions.y"
         (ngModelChange)="saveForm($event)" />
     </fieldset>
+
     <fieldset>
       <legend>Startup</legend>
       <ol>
@@ -41,6 +42,25 @@
               (ngModelChange)="saveForm($event)" />
             Start playing programs automatically.
           </label>
+        </li>
+      </ol>
+    </fieldset>
+
+    <fieldset>
+      <legend>Floor Preview</legend>
+      <ol>
+        <li>
+          <label>
+            <input 
+              type="checkbox"
+              name="disable-floor-preview"
+              [(ngModel)]="settings.disablePreview"
+              (ngModelChange)="saveForm($event)" />
+            Disable floor preview
+          </label>
+          <p class="note">
+            Might improve performance
+          </p>
         </li>
       </ol>
     </fieldset>

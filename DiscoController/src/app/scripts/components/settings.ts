@@ -7,7 +7,9 @@ import { Component } from '@angular/core';
 import { StorageService } from '../services/storage.service';
 
 @Component({
+  selector: 'disco-settings',
   templateUrl: './html/settings.html',
+  styleUrls: ['./styles/settings.css'],
 })
 export class SettingsComponent{
 

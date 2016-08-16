@@ -1,4 +1,6 @@
-<div class="disco-floor" (window:resize)="sizeFloor($event)">
+<div class="disco-floor" 
+    (window:resize)="sizeFloor($event)"
+    [class.preview-enabled]="previewEnabled">
 
   <div class="floor-area">
   </div>

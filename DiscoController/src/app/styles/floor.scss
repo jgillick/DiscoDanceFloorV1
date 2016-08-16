@@ -8,16 +8,25 @@
   right: 0;
   bottom: 25px;
   display: flex;
+  justify-content: center;
+
+  .floor-area {
+    display: none;
+  }
+
+  &.preview-enabled {
+    justify-content: flex-start;
+  }
 
   //
   // Floor
   //
-  .floor-area {
+  &.preview-enabled .floor-area {
+    display: flex;
     height: 100%;
     flex-grow: 1;
     margin: auto;
     padding: 10px;
-    display: flex;
     box-sizing: border-box;
 
     table {
