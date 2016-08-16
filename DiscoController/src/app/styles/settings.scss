@@ -2,14 +2,24 @@
 @import "./includes/forms";
 
 .settings {
+  position: absolute;
+  top: $header-height;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+
   h1 {
     font-size: 24px;
     margin: 15px 0;
     text-align: center;
   }
+  h2 {
+    margin-bottom: 4px;
+  }
 
   .dimensions {
-    input {
+    input[type=number] {
       width: 3em;
       text-align: center;
     }
