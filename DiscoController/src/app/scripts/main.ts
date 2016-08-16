@@ -1,6 +1,6 @@
 
 import {bootstrap} from '@angular/platform-browser-dynamic'
-import {provide, Component} from '@angular/core';
+import {provide, Component, enableProdMode} from '@angular/core';
 import {disableDeprecatedForms, provideForms} from '@angular/forms';
 
 import {
@@ -14,6 +14,7 @@ var app = require('./scripts/components/app');
 //
 // Bootstrap
 //
+enableProdMode();
 bootstrap(app.AppComponent, [
    routes.appRouterProviders,
    disableDeprecatedForms(), provideForms(),
