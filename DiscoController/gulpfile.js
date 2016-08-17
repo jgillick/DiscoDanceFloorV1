@@ -23,8 +23,8 @@ const STATIC_GLOB = [
   SRC+ '**/*.icns',
 ]
 const DIST_ICONS = {
-  'darwin': './src/images/app_icon.icns',
-  'win32': './src/images/app_icon.ico',
+  'darwin': './src/images/disco-icon.icns',
+  'win32': './src/images/disco-icon.ico',
 }
 
 /**
