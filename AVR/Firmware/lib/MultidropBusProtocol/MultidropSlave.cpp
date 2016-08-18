@@ -16,9 +16,10 @@ MultidropSlave::MultidropSlave(MultidropData *_serial) : Multidrop(_serial) {
 
 void MultidropSlave::resetNode() {
   lastAddr = 0xFF;
-  address = 0;
+  address = BROADCAST_ADDRESS;
   myAddress = 0;
   setNextDaisyValue(0);
+  resetDaisyChainPolarity();
 }
 
 uint8_t MultidropSlave::hasNewMessage() {
@@ -283,6 +284,7 @@ void MultidropSlave::processAddressing(uint8_t b) {
           myAddress = 0;
           parsePos = ADDR_ERROR;
           setNextDaisyValue(1);
+          return;
         }
         // Master ending message
         else if (b == 0xFF) {
@@ -291,13 +293,11 @@ void MultidropSlave::processAddressing(uint8_t b) {
         }
         else {
           parsePos = ADDR_UNSET;
-          lastAddr = b;
         }
-        return;
       }
     }
     // This might be ours, send tentative new address and wait for confirmation
-    else if(b >= lastAddr) {
+    else if(b < 0xFF && b >= lastAddr) {
       b++;
       parsePos = ADDR_SENT;
       _delay_us(200);
@@ -310,7 +310,7 @@ void MultidropSlave::processAddressing(uint8_t b) {
   }
 
   // Done when we see two 0xFF
-  if (parsePos != ADDR_SENT && lastAddr == b && b == 0xFF) {
+  if (lastAddr == b && b == 0xFF) {
     doneAddressing();
   }
 

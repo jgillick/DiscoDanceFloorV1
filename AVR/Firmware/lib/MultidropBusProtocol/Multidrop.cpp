@@ -84,6 +84,11 @@ void Multidrop::setDaisyChainPolarity(uint8_t prev, uint8_t next) {
   }
 }
 
+void Multidrop::resetDaisyChainPolarity() {
+  daisy_prev = 0;
+  daisy_next = 0;
+}
+
 uint8_t Multidrop::setNextDaisyValue(uint8_t val) {
   if (!daisy_next) return 0;
 

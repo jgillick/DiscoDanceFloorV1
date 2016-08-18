@@ -81,6 +81,9 @@ protected:
   // Try to determine the next/prev daisy chain pins
   void checkDaisyChainPolarity();
 
+  // Reset the daisy chain polarity decision. 
+  void resetDaisyChainPolarity();
+
   // Set the next daisy chain pin to active or inactive (1 or 0)
   uint8_t setNextDaisyValue(uint8_t val);
 
