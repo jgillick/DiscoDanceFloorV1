@@ -8,15 +8,20 @@
 
       <ol>
         <li>
-          <select name="device" [(ngModel)]="selectedDevice">
+          <select 
+            name="device" 
+            [(ngModel)]="selectedDevice" 
+            (change)="userSelectedDevice($event)">
+
             <option value="" *ngIf="!deviceList.length">Loading...</option>
             <option value="" *ngIf="deviceList.length"></option>
             <option *ngFor="let device of deviceList" value="{{ device }}">
               {{ device }}
             </option>
+            
           </select>
         </li>
-        <li>
+        <li *ngIf="!isConnected()">
           <label>
             <input
               type="checkbox"

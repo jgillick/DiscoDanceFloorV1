@@ -27,6 +27,7 @@ import { Observable, Observer } from 'rxjs';
 import { FloorCell } from '../../../shared/floor-cell';
 import { BusProtocolService, CMD } from './bus-protocol.service';
 import { FloorBuilderService } from './floor-builder.service';
+import { StorageService } from '../services/storage.service';
 
 const BAUD_RATE       = 250000;
 const CMD_LOOP_DELAY  = 1;    // Milliseconds between commands
@@ -48,7 +49,8 @@ export class CommunicationService {
   bus:BusProtocolService;
 
   constructor(
-    @Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService) {
+    @Inject(FloorBuilderService) private _floorBuilder:FloorBuilderService,
+    @Inject(StorageService) private _storage:StorageService) {
     this.bus = new BusProtocolService(this);
 
     this._floorBuilder.setComm(this);
@@ -88,6 +90,25 @@ export class CommunicationService {
   }
 
   /**
+   * Return a list of connected devices that we have connected to
+   * in the past. 
+   */
+  getKnownDevices(): Promise<string[]>{
+    return new Promise<string[]> ( (resolve, reject) => {
+      this.getDevices()
+      .then((devices:string[]) => {
+        let knownConnected = [],
+            allKnown = this._storage.getItem('connection.knownDevices') || [];
+
+        // Match known devices with connected devices
+        allKnown.filter((dev) => devices.indexOf(dev) > -1)
+        resolve(allKnown);
+      },
+      reject);
+    });
+  }
+
+  /**
    * Are we currently connected to a device
    */
   isConnected(): boolean {
@@ -103,6 +124,8 @@ export class CommunicationService {
    */
   connect(device:string): Promise<void> {
     this._running = false;
+
+    let knownDevices = this._storage.getItem('connection.knownDevices') || [];
 
     return new Promise<void> ( (resolve, reject) => {
       
@@ -123,6 +146,11 @@ export class CommunicationService {
             console.error(err);
             reject(err);
           } else {
+            // Add to known devices
+            knownDevices.unshift(device);
+            this._storage.setItem('connection.knownDevices', knownDevices);
+
+            // Return and start bus
             resolve();
             this.bus.connect();
           } 

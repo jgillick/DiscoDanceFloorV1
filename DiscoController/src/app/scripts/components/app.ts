@@ -4,6 +4,7 @@ import { ROUTER_DIRECTIVES } from '@angular/router';
 import {DiscoFloorComponent} from './floor';
 import {SettingsComponent} from './settings';
 import {ConnectComponent} from './connect';
+import { StartupScreenComponent } from './startup-screen';
 
 import {StorageService} from '../services/storage.service';
 import {CommunicationService} from '../services/communication.service';
@@ -20,7 +21,8 @@ import {ProgramControllerService} from '../services/program-controller.service';
   precompile: [
     DiscoFloorComponent,
     SettingsComponent,
-    ConnectComponent
+    ConnectComponent,
+    StartupScreenComponent
   ],
   providers: [
     StorageService,
@@ -31,14 +33,7 @@ import {ProgramControllerService} from '../services/program-controller.service';
 })
 export class AppComponent {
 
-  constructor(
-    private _programService:ProgramControllerService,
-    private _storage:StorageService){
-
-    // Start playing automatically
-    if (this._storage.getItem('settings.autoPlay') === true) {
-      this._programService.playNext();
-    }
-
+  constructor(){
   }
+  
 }

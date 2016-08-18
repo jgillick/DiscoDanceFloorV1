@@ -11,7 +11,7 @@ import { StorageService } from '../services/storage.service';
   templateUrl: './html/settings.html',
   styleUrls: ['./styles/settings.css'],
 })
-export class SettingsComponent{
+export class SettingsComponent {
 
   settings:any;
 

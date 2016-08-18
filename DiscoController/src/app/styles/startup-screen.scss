@@ -1,0 +1,27 @@
+
+@import "./includes/variables";
+
+.splash-screen {
+  position: absolute;
+  top: $header-height;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  text-align: center;
+
+  // Center loader under the main image
+  .loader:before {
+    content: '';
+    background: url(images/disco-icon.png) center center no-repeat;
+    position: relative;
+    left: -10px;
+    height: 170px;
+    width: 170px;
+    display: block;
+  }
+}

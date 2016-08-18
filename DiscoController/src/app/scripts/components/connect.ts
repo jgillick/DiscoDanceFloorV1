@@ -9,6 +9,7 @@ import { FloorBuilderService } from '../services/floor-builder.service';
   styleUrls: ['./styles/connect.css']
 })
 export class ConnectComponent implements OnInit {
+  private userSelected = null;
 
   deviceList:string[] = [];
   knownDevices:string[] = [];
@@ -28,10 +29,7 @@ export class ConnectComponent implements OnInit {
 
   ngOnInit() {
     this._updateDeviceList();
-
-    this.selectedDevice = this._storage.getItem("connection.lastDevice");
     this.keepAddresses = this._storage.getItem("connection.keepAddresses");
-    this.knownDevices = this._storage.getItem('connection.knownDevices') || [];
   }
 
   /**
@@ -43,7 +41,6 @@ export class ConnectComponent implements OnInit {
       return;
     }
 
-    this._storage.setItem("connection.lastDevice", this.selectedDevice);
     this._storage.setItem("connection.keepAddresses", this.keepAddresses);
 
     // Connect to the device
@@ -51,11 +48,6 @@ export class ConnectComponent implements OnInit {
     this.connecting = true;
     this._comm.connect(this.selectedDevice)
     .then(() => {
-
-      // Add to known devices list
-      this.knownDevices = this.knownDevices.filter((d) => d != this.selectedDevice);
-      this.knownDevices.unshift(this.selectedDevice);
-      this._storage.setItem('connection.knownDevices', this.knownDevices);
       
       // Start communicating
       if (this.keepAddresses) {
@@ -92,7 +84,7 @@ export class ConnectComponent implements OnInit {
   /**
    * True if we're currently connected to the floor.
    */
-  isConnected() {
+  isConnected(): boolean {
     return this._comm.isConnected();
   }
 
@@ -101,6 +93,13 @@ export class ConnectComponent implements OnInit {
    */
   nodeNum(): number {
     return this._comm.bus.nodeNum;
+  }
+
+  /**
+   * The user chose a device in the list
+   */
+  userSelectedDevice(evt): void {
+    this.userSelected = evt.target.value;
   }
 
   /**
@@ -148,11 +147,16 @@ export class ConnectComponent implements OnInit {
     this._comm.getDevices().then( (devices:string[]) => {
       this.deviceList = devices;
 
-      // Select the first matching known device
-      if (this.deviceList.indexOf(this.selectedDevice) === -1) {
-        this.selectedDevice = this.knownDevices.find( (device) => {
-          return this.deviceList.indexOf(device) > -1;
-        });
+      // Select the first known device
+      this._comm.getKnownDevices().then( (known) => {
+        if (known.length && !this.isConnected() && this.userSelected === null) {
+          this.selectedDevice = known[0];
+        }
+      });
+
+      // Select currently connected device
+      if (this.isConnected()) {
+        this.selectedDevice = this._comm.port.path;
       }
 
       // Update list every 2000ms

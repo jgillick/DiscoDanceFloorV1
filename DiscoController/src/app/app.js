@@ -42,7 +42,7 @@ function openMainWindow() {
   var winState = getWindowState({
     width: 800,
     height: 800,
-    icon: path.join(BUILD_PATH, 'app/images/disco-icon-32x32.png')
+    icon: path.join(BUILD_PATH, 'app/images/disco-icon.png')
   });
 
   // Open window and reset state

@@ -66,7 +66,7 @@ export class FloorBuilderService {
    */
   private _buildFromSettings() {
     let settings = this._storage.getItem('settings'),
-        cellNum = this._storage.getItem('connection-cellNum') || 0;
+        cellNum = this._storage.getItem('connection.numNodes') || 0;
 
     if (cellNum === 0 || !this._comm || !this._comm.isConnected()) {
       cellNum = settings.dimensions.x * settings.dimensions.y;
