@@ -145,7 +145,7 @@ void handle_message() {
       }
     break;
 
-    // The node and it's address reset
+    // Reset address saved in the eeprom
     case CMD_RESET_NODE:
       eeprom_update_byte(EEPROM_HAS_ADDR, 0);
       eeprom_update_byte(EEPROM_ADDR, 0);
