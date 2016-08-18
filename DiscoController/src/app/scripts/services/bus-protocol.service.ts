@@ -64,7 +64,7 @@ import { CommunicationService } from './communication.service';
 
 const BROADCAST_ADDRESS = 0;
 const RESPONSE_TIMEOUT = 20;
-const ADDR_RESPONSE_TIMEOUT = 20;
+const ADDR_RESPONSE_TIMEOUT = 30;
 const MAX_ADDRESS_CORRECTIONS = 10;
 
 // Commands
@@ -213,9 +213,9 @@ export class BusProtocolService {
     this._sendBytes(data);
 
     // Start response timer
-    this._serial.port.drain(() => {
-      this._startResponseTimer(); 
-    });
+    if (options.responseMsg && command !== CMD.ADDRESS) {
+      this._startResponseTimer();
+    }
 
     // Message observer
     return this._createMessageObserver();
@@ -257,7 +257,6 @@ export class BusProtocolService {
 
     return this._createMessageObserver();
   }
-
 
   /**
    * Get the current message command.
@@ -507,9 +506,9 @@ export class BusProtocolService {
    * Start (or restart) the response value timeout counter.
    */
   private _startResponseTimer() {
-    if (this._msgDone) return;
-
     this._stopResponseTimer();
+
+    if (this._msgDone) return;
 
     // Start timer once data has sent
     let timeout = (this._addressing) ? ADDR_RESPONSE_TIMEOUT : RESPONSE_TIMEOUT;

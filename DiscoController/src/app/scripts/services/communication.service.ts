@@ -232,20 +232,30 @@ export class CommunicationService {
     let source = Observable.create( (observer:Observer<number>) => {
       let addressTimes = 0;
       let nodeNum = 0;
+      let resetTimes = 0;
 
       // Clear the bus with a null message
       this.bus.startMessage(CMD.NULL, 0);
-      this.bus.endMessage();
+      this.bus.endMessage().subscribe(null, reset.bind(this), reset.bind(this));
 
-      // Reset node addresses
-      this.bus.startMessage(CMD.RESET, 0);
-      this.bus.endMessage().subscribe(
-        null,
-        (err) => observer.error,
-        () => {
-          setTimeout(addrNodes.bind(this), 500);
-        }
-      );
+      // Reset node addresses (send twice for good measure)
+      function reset() {
+        resetTimes++;
+        this.bus.startMessage(CMD.RESET, 0);
+        this.bus.endMessage().subscribe(
+          null,
+          (err) => observer.error,
+          () => {
+            // Reset twice, for good measure
+            if (resetTimes < 2) {
+              setTimeout(reset.bind(this), 100);
+            }
+            else {
+              setTimeout(addrNodes.bind(this), 500);
+            }
+          }
+        );
+      }
 
       // Address all nodes
       function addrNodes() {
