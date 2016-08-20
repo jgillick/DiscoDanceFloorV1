@@ -16,9 +16,10 @@ import { FloorCellList } from '../../../shared/floor-cell-list';
  * The input/output connectors for each section are along the top and
  * the cells go back and forth along the y-axis.
  *
- * Example:
+ * ## Example:
  * For a floor made of four 4x4 sections, the cell order would be something
  * like this (the arrows represent input/output):
+ * 
  * ```
  * >>> 0   7   8   15 >>> 16  23  24  31 >>>,
  *     1   6   9   14  |  17  22  25  30    ▼
@@ -88,14 +89,11 @@ export class FloorBuilderService {
         xDir = 1,
         yDir = 1,
         map = [],
-        cells = [],
         xFlipped = false,
         yFlipped = false;
 
     floorX = floorX || 0;
     floorY = floorY || 0;
-
-    console.log('Build floor with', num, 'nodes, in', floorX, 'x', floorY);
 
     // Update dimensions, if they don't fit 4x4 sections
     if ((floorX % 4 !== 0 || floorY % 4 !== 0)) {
@@ -160,10 +158,19 @@ export class FloorBuilderService {
       }
     }
 
-    // Shrink cell array
+    // Truncate cell array
     if (this.cells.length > num) {
       this.cells.splice(num);
     }
+
+    // Get actual dimensions of the floor
+    this.x = map.length;
+    this.y = (this.x > 0) ? map[0].length : 0;
+    
+    this._storage.setItem('settings.dimensions.x', this.x);
+    this._storage.setItem('settings.dimensions.y', this.y);
+    
+    console.log('Build floor with', num, 'nodes, in', this.x, 'x', this.y);
 
     this.cellMap = map;
     this.cellList = new FloorCellList(this.cells, this.cellMap, this.x, this.y);
