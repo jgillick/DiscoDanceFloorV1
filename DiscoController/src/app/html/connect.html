@@ -21,7 +21,7 @@
             
           </select>
         </li>
-        <li *ngIf="!isConnected()">
+        <li *ngIf="!isConnected() && !connecting">
           <label>
             <input
               type="checkbox"
