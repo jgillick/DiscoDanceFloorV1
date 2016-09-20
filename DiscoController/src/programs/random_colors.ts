@@ -4,24 +4,24 @@ import { FloorCell } from '../shared/floor-cell';
 import { randomColor, randomNumber } from '../shared/program-utils';
 
 @Program({
-	name: 'Random Colors',
-	description: 'Fades random colors across the floor.',
-	interactive: false,
-	miniumumTime: 0.5
+  name: 'Random Colors',
+  description: 'Fades random colors across the floor.',
+  interactive: false,
+  miniumumTime: 0.5
 })
 class RandomColors implements IProgram {
 
   floorCellList:FloorCellList;
 
   /**
-	 * Start the program
-	 */
-	start(cellList: FloorCellList): Promise<void> {
-		this.floorCellList = cellList;
+   * Start the program
+   */
+  start(cellList: FloorCellList): Promise<void> {
+    this.floorCellList = cellList;
     return this.floorCellList.fadeToColor([20, 20, 20], 1000);
-	}
+  }
 
-	/**
+  /**
    * Shutdown the program
    */
   shutdown(): Promise<void> {
