@@ -1,0 +1,84 @@
+
+@import "./includes/variables";
+
+.disco-floor {
+  position: absolute;
+  top: $header-height;
+  left: 0;
+  right: 0;
+  bottom: 25px;
+  display: flex;
+  justify-content: center;
+
+  .floor-area {
+    display: none;
+  }
+
+  &.preview-enabled {
+    justify-content: flex-start;
+  }
+
+  //
+  // Floor
+  //
+  &.preview-enabled .floor-area {
+    display: flex;
+    height: 100%;
+    flex-grow: 1;
+    margin: auto;
+    padding: 10px;
+    box-sizing: border-box;
+
+    table {
+      margin: auto;
+      box-sizing: border-box;
+      border-collapse: collapse;
+
+      td {
+        background: rgb(0, 0, 0);
+        border: 2px solid #666;
+        width: 50px;
+        height: 50px;
+        opacity: 0.6;
+        cursor: url(../images/foot-small.png) 12 20, auto;
+
+        &.empty {
+          background: transparent;
+          cursor: default;
+        }
+        &.touched {
+          background-image: url(../images/foot-watermark.png);
+          background-size: 50%;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+      }
+    }
+  }
+
+}
+
+//
+// Status
+//
+.status {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 25px;
+  line-height: 25px;
+  background: #333;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+
+  li {
+    flex-grow: 1;
+    padding: 0 10px;
+  }
+  .program-playing {
+    text-align: right;
+    em {
+      font-style: italic;
+    }
+  }
+}

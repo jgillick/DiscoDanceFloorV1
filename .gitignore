@@ -9,3 +9,9 @@ node_modules
 
 *~.skp
 AutoSave_*.skp
+
+# AVR
+*.hex
+*.elf
+*.map
+*.o

@@ -1,0 +1,17 @@
+<div class="disco-floor" 
+    (window:resize)="sizeFloor($event)"
+    [class.preview-enabled]="previewEnabled">
+
+  <div class="floor-area">
+  </div>
+
+  <program-controller></program-controller>
+</div>
+<ul class="status">
+  <li *ngIf="comm && comm.isConnected()">
+    {{comm.framesPerSecond()}} Frames per second
+  </li>
+  <li class="program-playing"> 
+    Playing: <em>{{getRunningProgram()}}</em>
+  </li>
+</ul>

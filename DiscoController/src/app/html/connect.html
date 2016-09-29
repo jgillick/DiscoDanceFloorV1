@@ -1,0 +1,56 @@
+
+<div class="connect">
+  <h1>Connect</h1>
+
+  <form>
+    <fieldset>
+      <legend>Select Device</legend>
+
+      <ol>
+        <li>
+          <select 
+            name="device" 
+            [(ngModel)]="selectedDevice" 
+            (change)="userSelectedDevice($event)">
+
+            <option value="" *ngIf="!deviceList.length">Loading...</option>
+            <option value="" *ngIf="deviceList.length"></option>
+            <option *ngFor="let device of deviceList" value="{{ device }}">
+              {{ device }}
+            </option>
+            
+          </select>
+        </li>
+        <li *ngIf="!isConnected() && !connecting">
+          <label>
+            <input
+              type="checkbox"
+              name="keey-addresse"
+              [(ngModel)]="keepAddresses"
+              value="1" />
+            Reuse node addresses from the last connection.
+          </label>
+        </li>
+      </ol>
+
+      <p class="actions" *ngIf="!connecting">
+        <button *ngIf="!isConnected()" class="connect" (click)="connect()">Connect</button>
+        <button *ngIf="isConnected()" class="disconnect" (click)="disconnect()">
+          <i *ngIf="disconnecting" class="fa fa-circle-o-notch fa-spin fa-lg fa-fw"></i>
+          Disconnect
+        </button>
+      </p>
+
+      <!-- Status of connecting to the floor -->
+      <p class="connectng-status" *ngIf="connecting">
+        <i class="fa fa-circle-o-notch fa-spin fa-lg fa-fw"></i>
+        Connecting... ({{nodes}} {{ (nodes === 1) ? 'node' : 'nodes' }})
+      </p>
+
+      <!-- Status of the current connection -->
+      <p class="connected-status" *ngIf="!connecting && isConnected()">
+        Connected to: {{nodeNum()}} {{ (nodeNum() === 1) ? 'node' : 'nodes' }}
+      </p>
+    </fieldset>
+  </form>
+</div>

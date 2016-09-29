@@ -1,0 +1,14 @@
+<nav class="main-nav">
+  <ul>
+    <li>
+      <a title="Home" [routerLink]="['/floor']" [routerLinkActive]="['active']" class="fa fa-th"></a>
+    </li>
+    <li>
+      <a title="Connect" [routerLink]="['/connect']" [routerLinkActive]="['active']" class="fa fa-plug"></a></li>
+    <li>
+      <a title="Settings" [routerLink]="['/settings']" [routerLinkActive]="['active']" class="fa fa-cog"></a>
+    </li>
+  </ul>
+</nav>
+
+<router-outlet></router-outlet>

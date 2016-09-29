@@ -1,0 +1,72 @@
+<section 
+  class="program-controller"
+  [class.changing-state]="isStoppingOrStarting()">
+
+  <div class="controls">
+    <button  
+      title="Previous"
+      class="prev"
+      [disabled]="!isProgramRunning()"
+      (click)="previous()">
+      <i class="fa fa-step-backward"></i>
+    </button>
+    
+    <!--Play -->
+    <button  
+      title="Play"
+      class="play"
+      (click)="play()"
+      *ngIf="!isProgramRunning() && !isStoppingOrStarting()">
+      <i class="fa fa-play"></i>
+    </button>
+    <!-- Stop -->
+    <button  
+      title="Stop"
+      class="stop"
+      (click)="stopProgram()"
+      *ngIf="isProgramRunning() && !isStoppingOrStarting()">
+      <i class="fa fa-stop"></i>
+    </button>
+    <!-- In process of stoping or starting -->
+    <button 
+      title="Please wait..."
+      class="starting-stoping"
+      *ngIf="isStoppingOrStarting()">
+      <i class="fa fa-circle-o-notch fa-spin"></i>
+    </button>
+      
+    <button  
+      title="Next"
+      class="next"
+      [disabled]="!isProgramRunning()"
+      (click)="next()">
+      <i class="fa fa-step-forward"></i>
+    </button>
+  </div>
+
+  <ul class="programs">
+    <li 
+      *ngFor="let program of programList"
+      (click)="playProgram(program)"
+      [class.selected]="isSelected(program)">
+      {{program.info.name}}</li>
+  </ul>
+
+  <div class="controls">
+    <button 
+      class="shuffle" 
+      [class.selected]="shuffleOn" 
+      (click)="toggleShuffle()"
+      title="Random order">
+      <i class="fa fa-random"></i>
+    </button>
+
+    <button 
+      class="play-all"
+      [class.selected]="playAllOn"
+      (click)="togglePlayAll()" 
+      title="Play all" >
+      <i></i>
+    </button>
+  </div>
+</section>
