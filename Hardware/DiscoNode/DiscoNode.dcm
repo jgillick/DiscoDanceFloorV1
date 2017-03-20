@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP SLV6A-FKB
+D LED RGB 6 pins. Cree SLV6A-FKB
+K led rgb diode
+$ENDCMP
+#
+#End Doc Library
