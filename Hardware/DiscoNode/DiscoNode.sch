@@ -637,7 +637,7 @@ F 4 "Molex, LLC" H 14100 7000 60  0001 C CNN "MFN"
 F 5 "0026605020" H 14100 7000 60  0001 C CNN "MPN"
 F 6 "WM4640-ND" H 14100 7000 60  0001 C CNN "Digikey"
 	1    14100 7000
-	1    0    0    -1  
+	1    0    0    1   
 $EndComp
 $Comp
 L GND #PWR017
@@ -1693,11 +1693,7 @@ Connection ~ 4500 10150
 Wire Wire Line
 	4300 9500 4300 10600
 Connection ~ 4300 10250
-Wire Wire Line
-	3650 9800 3650 10450
 Connection ~ 3650 10150
-Wire Wire Line
-	3450 9800 3450 10550
 Connection ~ 3450 10250
 Wire Wire Line
 	2800 9500 2800 10150
@@ -1810,12 +1806,6 @@ Wire Wire Line
 Wire Wire Line
 	2150 9050 2150 9100
 Wire Wire Line
-	3450 8950 3450 9050
-Wire Wire Line
-	3650 9050 3650 8950
-Wire Wire Line
-	3850 8950 3850 9400
-Wire Wire Line
 	3650 4300 3650 4450
 $Comp
 L GNDA #PWR029
@@ -1844,4 +1834,14 @@ Wire Wire Line
 	6150 9500 6150 9600
 Wire Wire Line
 	3850 8550 3850 8600
+Wire Wire Line
+	3450 9000 3450 9050
+Wire Wire Line
+	3650 9000 3650 9050
+Wire Wire Line
+	3850 9000 3850 9400
+Wire Wire Line
+	3650 9800 3650 10150
+Wire Wire Line
+	3450 9800 3450 10250
 $EndSCHEMATC
