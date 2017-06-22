@@ -1,14 +1,14 @@
 /*******************************************************************************
 * A single disco sqare node.
-* 
-* This program connects to a multi-drop network as a slave node and 
+*
+* This program connects to a multi-drop network as a slave node and
 * waits for the master node to ask it to check the touch sensor and to set the color
 * of the RGB LED.
 ******************************************************************************/
 
 #include <avr/io.h>
 #include <avr/wdt.h>
-#include <avr/eeprom.h> 
+#include <avr/eeprom.h>
 
 #include "pwm.h"
 #include "clock.h"
@@ -38,7 +38,8 @@ void read_sensor();
 #define DEFAULT_DETECT_THRES 11u
 
 // Message commands
-#define CMD_RESET_NODE       0xFA
+#define CMD_BOOTLOADER       0xF0  // jump to bootloader for reprogramming
+#define CMD_RESET_ADDRESS    0xFA  // reset address
 #define CMD_SET_ADDRESS      0xFB
 
 #define CMD_GET_VERSION       0xA0
@@ -48,13 +49,23 @@ void read_sensor();
 
 #define CMD_SET_DETECT_THRESH 0xB0 // Set the QTouch detection threshold
 
-// EEPROM byte addresses
 
-// Since node addresses can go up to 0xFF and EEPROM default values are 0xFF, 
+/*----------------------------------------------------------------------------
+                          EEPROM byte addresses
+----------------------------------------------------------------------------*/
+
+// Since node addresses can go up to 0xFF and EEPROM default values are 0xFF,
 // we need to have an extra byte to tell us if the address has been set.
-#define EEPROM_HAS_ADDR      (uint8_t*)0
-#define EEPROM_ADDR          (uint8_t*)1
-#define EEPROM_DETECT_THRESH (uint8_t*)2
+#define EEPROM_HAS_ADDR        (uint8_t*) 0
+#define EEPROM_ADDR            (uint8_t*) 1
+#define EEPROM_DETECT_THRESH   (uint8_t*) 2
+
+// Bootloader programming flag (set to 0 to program)
+#define EEPROM_SKIP_BOOTLOADER (uint8_t*) 3
+
+// Firmware version
+#define EEPROM_VERSION_MAJOR   (uint8_t*) 4
+#define EEPROM_VERSION_MINOR   (uint8_t*) 5
 
 /*----------------------------------------------------------------------------
                           global variables
@@ -80,7 +91,7 @@ int main() {
   wdt_enable(WDTO_2S);
 
   DDRB |= (1 << PB2); // debug LED
-  
+
   start_clock();
   comm_init();
   pwm_init();
@@ -91,6 +102,11 @@ int main() {
     detect_threshold = DEFAULT_DETECT_THRES;
   }
   touch_init(detect_threshold);
+
+  // Program is okay, skip bootloader next time
+  eeprom_update_byte(EEPROM_SKIP_BOOTLOADER, 1);
+  eeprom_update_byte(EEPROM_VERSION_MAJOR, FIRMWARE_VERSION_MAJOR);
+  eeprom_update_byte(EEPROM_VERSION_MINOR, FIRMWARE_VERSION_MINOR);
 
   // Program loop
   while(1) {
@@ -107,7 +123,7 @@ void comm_init() {
   PORTD |= (1 << PD0);
 
   serial.begin(BUS_BAUD);
-  
+
   // Define daisy chain lines and let polarity (next/previous) be determined at runtime
   comm.addDaisyChain(PC3, &DDRC, &PORTC, &PINC,
                      PC4, &DDRC, &PORTC, &PINC);
@@ -146,7 +162,7 @@ void handle_message() {
     break;
 
     // Reset address saved in the eeprom
-    case CMD_RESET_NODE:
+    case CMD_RESET_ADDRESS:
       eeprom_update_byte(EEPROM_HAS_ADDR, 0);
       eeprom_update_byte(EEPROM_ADDR, 0);
     break;
@@ -166,10 +182,17 @@ void handle_message() {
     // Set the touch sensor detect threshold
     case CMD_SET_DETECT_THRESH:
       if (comm.getDataLen() == 1) {
-        uint8_t dt = comm.getData()[0]; 
+        uint8_t dt = comm.getData()[0];
         eeprom_update_byte(EEPROM_DETECT_THRESH, dt);
         touch_init(dt);
       }
+    break;
+
+    // Reboot the device into the bootloader
+    case CMD_BOOTLOADER:
+      eeprom_update_byte(EEPROM_SKIP_BOOTLOADER, 0);
+      wdt_enable(WDTO_15MS);
+      while(1);
     break;
   }
 }
@@ -222,14 +245,14 @@ void read_sensor() {
 
     // Measure sensor
     status_flag = qt_measure_sensors( millis() );
-    
+
     // Reset pull-ups
     MCUCR = mcuRegister;
 
     // Check bus before next measurement
     comm_run();
   } while (status_flag & QTLIB_BURST_AGAIN); // check again, if burst flag is set
-  
+
   // Get sensor value
   sensor_value = GET_SENSOR_STATE(0);
   reading_sensor = 0;
@@ -241,3 +264,4 @@ void read_sensor() {
     PORTB &= ~(1 << PB2);
   }
 }
+
