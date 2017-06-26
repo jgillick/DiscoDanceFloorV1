@@ -58,7 +58,7 @@ F 3 "" H 3750 1750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L USB_B P1
+L USB_B-RESCUE-DiscoDongle P1
 U 1 1 57468D47
 P 1900 1950
 F 0 "P1" V 2100 1850 50  0000 C CNN
@@ -135,7 +135,7 @@ F 3 "" H 5650 1150 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L LED D1
+L LED-RESCUE-DiscoDongle D1
 U 1 1 5746A4EF
 P 2900 4350
 F 0 "D1" H 2900 4450 50  0000 C CNN
@@ -146,7 +146,7 @@ F 3 "" H 2900 4350 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L LED D2
+L LED-RESCUE-DiscoDongle D2
 U 1 1 5746A53E
 P 2900 4700
 F 0 "D2" H 2900 4800 50  0000 C CNN
@@ -302,7 +302,7 @@ $EndComp
 Text GLabel 4250 4300 0    60   Input ~ 0
 Daisy
 $Comp
-L LED D3
+L LED-RESCUE-DiscoDongle D3
 U 1 1 5748F519
 P 4500 4300
 F 0 "D3" H 4500 4400 50  0000 C CNN
@@ -425,7 +425,7 @@ $EndComp
 Text GLabel 4250 4750 0    60   Input ~ 0
 Signal
 $Comp
-L LED D4
+L LED-RESCUE-DiscoDongle D4
 U 1 1 57490E65
 P 4500 4750
 F 0 "D4" H 4500 4850 50  0000 C CNN
