@@ -15,3 +15,8 @@ AutoSave_*.skp
 *.elf
 *.map
 *.o
+
+# KiCad
+*.kicad_pcb-bak
+*.bak
+*.bck
