@@ -45,6 +45,7 @@
     "typings": "typings",
     "tsc": "tsc",
     "tsc:w": "tsc -w",
-    "postinstall": "typings install"
+    "postinstall": "typings install",
+    "start": "gulp"
   }
 }

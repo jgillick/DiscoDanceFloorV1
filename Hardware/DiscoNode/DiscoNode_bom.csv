@@ -1,0 +1,39 @@
+Component,Description,Part,References,Value,Footprint,Quantity Per PCB,Datasheet,MPN,Digikey,MFN
+1,Unpolarized capacitor,C,C3 C8,0.1uF,C_0805,2,,CL21F104ZAANNNC,1276-1286-1-ND,
+2,Unpolarized capacitor,C,C4,0.33uF,C_0805,1,,CL21B334KAFNNNE,1276-1808-1-ND,
+3,Unpolarized capacitor,C,C7,10nf,C_0805,1,,GRM216R71E223KA01D,490-11558-1-ND,
+4,Unpolarized capacitor,C,C1 C2,18pF,C_0805,2,,C0805C180J3GACTU,399-10065-1-ND,
+5,Unpolarized capacitor,C,C9,1uF,C_0805,1,,CL21B105KAFNNNG,1276-6469-1-ND,
+6,Unpolarized capacitor,C,C10,2.2uf,C_0805,1,,CL21A225KAFNNNG,1276-6458-1-ND,
+7,Unpolarized capacitor,C,C5 C6,22uF,C_1206,2,,GRM31CR61E226ME15K,490-14676-1-ND,
+8,LED RGB 6 pins. Cree SLV6A-FKB,SLV6A-FKB,D1 D2 D3 D4 D5 D6 D7 D8 D9 D10 D11 D12 D13 D14 D15 D16 D17 D18,SLV6A-FKB,LED_RGB-PLCC6-5.5x5.3mm,18,,,,
+9,"TQFP32, 16k Flash, 1kB SRAM, 512B EEPROM",ATMEGA328P-AU,IC1,ATMEGA328P-AU,,1,http://www.atmel.com/images/atmel-8271-8-bit-avr-microcontroller-atmega48a-48pa-88a-88pa-168a-168pa-328-328p_datasheet.pdf,,,
+10,"Connector, single row, 01x02, pin header",CONN_01X02,J6,0026605020,Molex_26_60_5020,1,,0026605020,WM4640-ND,"Molex, LLC"
+11,"Connector, single row, 01x01, pin header",CONN_01X01,J1,1267,Keystone_1267_Connector,1,,1267,36-1267-ND,Keystone Electronics
+12,"Standard IDC6 Male Connector, ATMEL ISP 6pin",AVR-ISP-6,J4,AVR-ISP-6,Pin_Header_Straight_2x03_Pitch2.54mm,1,,,,
+13,"Connector, single row, 01x06, pin header",CONN_01X06,J5,Debug,Pin_Header_Straight_1x06_Pitch2.54mm,1,,,,
+14,RJ45 connector with shield,RJ45,J2 J3,RJ45,RJ45_8,2,,54602-908LF,609-1046-ND,
+15,"60V Vds 0.5A Id, N-Channel MOSFET, SOT-23",MMBF170,Q1 Q2 Q3,NTR4003N,SOT-23,3,http://www.fairchildsemi.com/ds/BS/BS170.pdf,,NTR4003NT1GOSCT-ND,NTR4003NT1G
+16,Resistor,R,R22 R23 R24,1,R_0805,3,,RMCF0805JT1R00,RMCF0805JT1R00CT-ND,
+17,Resistor,R,R2 R3 R5 R6 R8 R9 R11 R12 R14 R15 R17 R18,120,R_0805,12,,RMCF0805JT120R,RMCF0805JT120RCT-ND,
+18,Resistor,R,R27,1k,R_0805_HandSoldering,1,,RMCF0805JT1K00,RMCF0805JT1K00CT-ND,
+19,Resistor,R,R19 R20 R21 R25 R26,20k,R_0805,5,,RMCF0805JT20K0,RMCF0805JT20K0CT-ND,
+20,Resistor,R,R1 R4 R7 R10 R13 R16,330,R_0805,6,,RMCF0805JT330R,RMCF0805JT330RCT-ND,
+21,,AP2204K-5.0,U2,AP2204K-5.0,SOT-23-5,1,,AP2204K-5.0TRG1,AP2204K-5.0TRG1DITR-ND,
+22,,ISL81487E,U1,ISL81487EIBZ-T,SOIC-8_3.9x4.9mm_Pitch1.27mm,1,,ISL81487EIBZ-T,ISL81487EIBZ-TCT-ND,Intersil
+23,Two pin crystal,Crystal,Y1,Crystal,Crystal_SMD_2pin_7.0x4.1mm,1,,ABLS7M2-20.000MHZ-D-2Y-T,535-12832-2-ND,
+
+
+
+
+
+Component Groups:,23
+Component Count:,68
+Fitted Components:,68
+Number of PCBs:,1
+Total components:,68
+Schematic Version:,3
+Schematic Date:,
+BoM Date:,"Monday, May 15, 2017 'AMt' 09:28:01 AM"
+Schematic Source:,/Users/Jeremy/Projects/DiscoDanceFloor/Hardware/DiscoNode/DiscoNode.sch
+KiCad Version:,Eeschema 4.0.6

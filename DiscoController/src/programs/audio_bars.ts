@@ -119,9 +119,9 @@ class AudioBars implements IProgram {
   /**
    * Choose new source colors to use for bars and background.
    * Each color is only changed every other time this is called.
-   * 
+   *
    * Color change works as a simple cross fade.
-   * The currently selected color changes from 255 to 127 and the 
+   * The currently selected color changes from 255 to 127 and the
    * next color goes to 255.
    */
   changeColors(): void {
@@ -130,11 +130,11 @@ class AudioBars implements IProgram {
     if (this.colorChangeCount % 2 === 0) {
       this.barColorSource = [0, 0, 0];
 
-      // Simple cross fade 
+      // Simple cross fade
       this.barColorSource[this.barColorSelect] = 127;
       this.barColorSelect = (++this.barColorSelect > 2) ? 0 : this.barColorSelect;
       this.barColorSource[this.barColorSelect] = 255;
-    } 
+    }
     else {
       this.bgColorSource = [0, 0, 0];
 

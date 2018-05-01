@@ -62,8 +62,8 @@
 /// Communications
 ////////////////////////////////////////////
 
-// #define SERIAL_BAUD 250000
-#define SERIAL_BAUD 115200
+#define SERIAL_BAUD 250000
+// #define SERIAL_BAUD 115200
 
 ////////////////////////////////////////////
 /// Bus Message Commands

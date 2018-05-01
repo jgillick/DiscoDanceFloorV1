@@ -76,7 +76,6 @@ static void bootloader() {
   // Setup
   signalEnable();
   commSetup();
-
   statusOk();
 
   // Parse serial

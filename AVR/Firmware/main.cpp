@@ -190,7 +190,7 @@ void handle_message() {
 
     // Reboot the device into the bootloader
     case CMD_BOOTLOADER:
-      eeprom_update_byte(EEPROM_SKIP_BOOTLOADER, 0);
+      eeprom_update_byte(EEPROM_SKIP_BOOTLOADER, 0xFF);
       wdt_enable(WDTO_15MS);
       while(1);
     break;
